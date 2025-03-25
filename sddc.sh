@@ -431,61 +431,66 @@ if [[ ${operation} == "apply" ]] ; then
   echo '------------------------------------------------------------' | tee -a ${log_file}
   echo "SDDC creation - This should take hours..." | tee -a ${log_file}
   if [[ $(jq -c -r .sddc.create_mgmt $jsonFile) == "true" ]] ; then
-    validation_id=$(curl -s -k "https://${ip_cb}/v1/sddcs/validations" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
-    # validation json
-    retry=60 ; pause=10 ; attempt=1
-    while true ; do
-      echo "attempt $attempt to verify SDDC JSON validation" | tee -a ${log_file}
-      executionStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X GET -H 'Accept: application/json' | jq -c -r .executionStatus)
-      if [[ ${executionStatus} == "COMPLETED" ]]; then
-        resultStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X GET -H 'Accept: application/json' | jq -c -r .resultStatus)
-        echo "SDDC JSON validation: ${resultStatus} after $attempt of ${pause} seconds" | tee -a ${log_file}
-        if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation: '${resultStatus}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-        if [[ ${resultStatus} != "SUCCEEDED" ]] ; then exit ; fi
-        break
-      else
-        sleep $pause
-      fi
-      ((attempt++))
-      if [ $attempt -eq $retry ]; then
-        echo "SDDC JSON validation not finished after $attempt attempts of ${pause} seconds" | tee -a ${log_file}
-        if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-        exit
-      fi
-    done
-    sddc_id=$(curl -s -k "https://${ip_cb}/v1/sddcs" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
-    # validation_sddc creation
-    echo "SDDC ${sddc_id} trying ${count_retry} times to apply" | tee -a ${log_file}
-    retry=120 ; pause=300 ; attempt=1 ; count_retry=1
-    while true ; do
-      echo "attempt $attempt to verify SDDC ${sddc_id} creation" | tee -a ${log_file}
-      sddc_status=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X GET -H 'Accept: application/json' | jq -c -r .status)
-      if [[ ${sddc_status} != "IN_PROGRESS" ]]; then
-        echo "SDDC ${sddc_id} creation ${sddc_status} after attempt $attempt of ${pause} seconds, go to https://${ip_cb}" | tee -a ${log_file}
-        if [[ ${sddc_status} != "COMPLETED_WITH_SUCCESS" ]]; then
-          ((count_retry++))
-          if [[ ${count_retry} == 3 ]]; then
-            if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_cb}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-            exit
-          fi
-          sleep 600
-          echo "SDDC ${sddc_id} trying ${count_retry} times to apply after status ${sddc_status}" | tee -a ${log_file}
-          retry=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X PATCH -H 'Content-type: application/json' -d @/root/${basename_sddc}_cb.json)
-        fi
-        if [[ ${sddc_status} == "COMPLETED_WITH_SUCCESS" ]]; then
-          if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_cb}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+    if [[ $(curl -s -k "https://${ip_cb}/v1/system/appliance-info" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X GET -H 'Content-Type: application/json' -H 'Accept: application/json' | jq -c -r .version | cut -d'.' -f1) == "9" ]]; then
+      echo "VCF 9 has been detected" | tee -a ${log_file}
+    else
+      echo "VCF 9 has not been detected" | tee -a ${log_file}
+      validation_id=$(curl -s -k "https://${ip_cb}/v1/sddcs/validations" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
+      # validation json
+      retry=60 ; pause=10 ; attempt=1
+      while true ; do
+        echo "attempt $attempt to verify SDDC JSON validation" | tee -a ${log_file}
+        executionStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X GET -H 'Accept: application/json' | jq -c -r .executionStatus)
+        if [[ ${executionStatus} == "COMPLETED" ]]; then
+          resultStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X GET -H 'Accept: application/json' | jq -c -r .resultStatus)
+          echo "SDDC JSON validation: ${resultStatus} after $attempt of ${pause} seconds" | tee -a ${log_file}
+          if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation: '${resultStatus}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+          if [[ ${resultStatus} != "SUCCEEDED" ]] ; then exit ; fi
           break
+        else
+          sleep $pause
         fi
-      else
-        sleep $pause
-      fi
-      ((attempt++))
-      if [ $attempt -eq $retry ]; then
-        echo "SDDC ${sddc_id} creation not finished after $attempt attempt of ${pause} seconds" | tee -a ${log_file}
-        if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-        exit
-      fi
-    done
+        ((attempt++))
+        if [ $attempt -eq $retry ]; then
+          echo "SDDC JSON validation not finished after $attempt attempts of ${pause} seconds" | tee -a ${log_file}
+          if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+          exit
+        fi
+      done
+      sddc_id=$(curl -s -k "https://${ip_cb}/v1/sddcs" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
+      # validation_sddc creation
+      echo "SDDC ${sddc_id} trying ${count_retry} times to apply" | tee -a ${log_file}
+      retry=120 ; pause=300 ; attempt=1 ; count_retry=1
+      while true ; do
+        echo "attempt $attempt to verify SDDC ${sddc_id} creation" | tee -a ${log_file}
+        sddc_status=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X GET -H 'Accept: application/json' | jq -c -r .status)
+        if [[ ${sddc_status} != "IN_PROGRESS" ]]; then
+          echo "SDDC ${sddc_id} creation ${sddc_status} after attempt $attempt of ${pause} seconds, go to https://${ip_cb}" | tee -a ${log_file}
+          if [[ ${sddc_status} != "COMPLETED_WITH_SUCCESS" ]]; then
+            ((count_retry++))
+            if [[ ${count_retry} == 3 ]]; then
+              if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_cb}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+              exit
+            fi
+            sleep 600
+            echo "SDDC ${sddc_id} trying ${count_retry} times to apply after status ${sddc_status}" | tee -a ${log_file}
+            retry=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X PATCH -H 'Content-type: application/json' -d @/root/${basename_sddc}_cb.json)
+          fi
+          if [[ ${sddc_status} == "COMPLETED_WITH_SUCCESS" ]]; then
+            if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_cb}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+            break
+          fi
+        else
+          sleep $pause
+        fi
+        ((attempt++))
+        if [ $attempt -eq $retry ]; then
+          echo "SDDC ${sddc_id} creation not finished after $attempt attempt of ${pause} seconds" | tee -a ${log_file}
+          if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+          exit
+        fi
+      done
+    fi
   fi
   echo '------------------------------------------------------------' | tee -a ${log_file}
   echo "ESXi host commissioning - This should take minutes..." | tee -a ${log_file}

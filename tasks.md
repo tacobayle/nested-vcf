@@ -2,11 +2,12 @@
 - checking that the network exists before creating a VM
 
 # to test
-- adding link to esxi (mgmt only)
-- adding link to vsphere
-- adding link to nsx
+- adding a placeholder to recognized VCF 9 (20250325_vcf9_placeholder)
 
 # tested
+- adding link to esxi (mgmt only) - 20241211_esxi_vca_nsx_links
+- adding link to vsphere - 20241211_esxi_vca_nsx_links
+- adding link to nsx - 20241211_esxi_vca_nsx_links
 - last ESXi commissioning is not working (20241207_esxi_iso_removal)
 - cloud builder being shutting down after sddc creation (20241207_esxi_iso_removal)
 - remove the nested vcf folder when the ESXI are ready (20241207_esxi_iso_removal)
