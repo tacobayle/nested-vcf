@@ -3,6 +3,7 @@
 
 # to test
 - adding a placeholder to recognized VCF 9 (20250325_vcf9_placeholder)
+- adding the online depot for VCF-installer (20250325_vcf9_online_depot)
 
 # tested
 - adding link to esxi (mgmt only) - 20241211_esxi_vca_nsx_links

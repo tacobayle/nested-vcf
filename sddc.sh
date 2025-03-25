@@ -433,6 +433,9 @@ if [[ ${operation} == "apply" ]] ; then
   if [[ $(jq -c -r .sddc.create_mgmt $jsonFile) == "true" ]] ; then
     if [[ $(curl -s -k "https://${ip_cb}/v1/system/appliance-info" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X GET -H 'Content-Type: application/json' -H 'Accept: application/json' | jq -c -r .version | cut -d'.' -f1) == "9" ]]; then
       echo "VCF 9 has been detected" | tee -a ${log_file}
+      /nested-vcf/bash/sddc_manager/create_api_session.sh "admin@local" "${CLOUD_BUILDER_PASSWORD}" ${ip_cb} /tmp/token_vcfi.json
+      source /nested-vcf/bash/sddc_manager/sddc_manager_api.sh
+      sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"username" : "'${DEPOT_USERNAME}'", "password" : "'${DEPOT_PASSWORD}'"}}' ${ip_cb} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
     else
       echo "VCF 9 has not been detected" | tee -a ${log_file}
       validation_id=$(curl -s -k "https://${ip_cb}/v1/sddcs/validations" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
