@@ -28,7 +28,7 @@ rm -f ${log_file}
 SLACK_WEBHOOK_URL=$(jq -c -r .slack_webhook $jsonFile)
 DEPOT_USERNAME=$(jq -c -r .depot.username $jsonFile)
 DEPOT_PASSWORD=$(jq -c -r .depot.password $jsonFile)
-folder=$(jq -c -r ..vsphere_underlay.folder $jsonFile)
+folder=$(jq -c -r .vsphere_underlay.folder $jsonFile)
 gw_name="$(jq -c -r .sddc.basename $jsonFile)-external-gw"
 basename=$(jq -c -r .esxi.basename $jsonFile)
 basename_sddc=$(jq -c -r .sddc.basename $jsonFile)
