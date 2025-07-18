@@ -25,7 +25,7 @@ if [[ ${operation} != "apply" && ${operation} != "destroy" ]] ; then echo "ERROR
 #
 rm -f ${log_file}
 #
-source /nested-vcf/bash/variable.sh
+source /nested-vcf/bash/variables.sh
 #
 echo "Starting timestamp: $(date)" | tee -a ${log_file}
 source /nested-vcf/bash/govc/load_govc_external.sh
@@ -208,15 +208,28 @@ if [[ ${operation} == "apply" ]] ; then
       echo "Building custom ESXi ISO for ESXi${esxi}"
       rm -f ${iso_build_location}/ks_cust.cfg
       rm -f "${iso_location}-${esxi}.iso"
-      sed -e "s/\${nested_esxi_root_password}/$(jq -c -r .generic_password $jsonFile)/" \
-          -e "s/\${ip_mgmt}/${ip_esxi}/" \
-          -e "s/\${netmask}/$(ip_netmask_by_prefix $(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f2) "   ++++++")/" \
-          -e "s/\${vlan_id}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
-          -e "s/\${dns_servers}/${ip_gw}/" \
-          -e "s/\${ntp_servers}/${ip_gw}/" \
-          -e "s/\${hostname}/${name_esxi}/" \
-          -e "s/\${domain}/${domain}/" \
-          -e "s/\${gateway}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" /nested-vcf/templates/ks_cust.cfg.template | tee ${iso_build_location}/ks_cust.cfg > /dev/null
+      if [[ ${esxi_trunk} == "true" ]] ; then
+        sed -e "s/\${nested_esxi_root_password}/$(jq -c -r .generic_password $jsonFile)/" \
+            -e "s/\${ip_mgmt}/${ip_esxi}/" \
+            -e "s/\${netmask}/$(ip_netmask_by_prefix $(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f2) "   ++++++")/" \
+            -e "s/\${vlan_id}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+            -e "s/\${dns_servers}/${ip_gw}/" \
+            -e "s/\${ntp_servers}/${ip_gw}/" \
+            -e "s/\${hostname}/${name_esxi}/" \
+            -e "s/\${domain}/${domain}/" \
+            -e "s/\${gateway}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" /nested-vcf/templates/ks_cust-trunk.cfg.template | tee ${iso_build_location}/ks_cust.cfg > /dev/null
+      fi
+      if [[ ${esxi_trunk} == "false" ]] ; then
+        sed -e "s/\${nested_esxi_root_password}/$(jq -c -r .generic_password $jsonFile)/" \
+            -e "s/\${ip_mgmt}/${ip_esxi}/" \
+            -e "s/\${netmask}/$(ip_netmask_by_prefix $(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f2) "   ++++++")/" \
+            -e "s/\${vlan_id}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+            -e "s/\${dns_servers}/${ip_gw}/" \
+            -e "s/\${ntp_servers}/${ip_gw}/" \
+            -e "s/\${hostname}/${name_esxi}/" \
+            -e "s/\${domain}/${domain}/" \
+            -e "s/\${gateway}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" /nested-vcf/templates/ks_cust-multi-nic.cfg.template | tee ${iso_build_location}/ks_cust.cfg > /dev/null
+      fi
       echo "Building new ISO for ESXi ${esxi}"
       xorrisofs -relaxed-filenames -J -R -o "${iso_location}-${esxi}.iso" -b isolinux.bin -c boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e efiboot.img -no-emul-boot ${iso_build_location}
       ds=$(jq -c -r .vsphere_underlay.datastore $jsonFile)
@@ -243,14 +256,28 @@ if [[ ${operation} == "apply" ]] ; then
       govc vm.change -vm "${folder}/${name_esxi}" -nested-hv-enabled > /dev/null
       govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk1 -size ${disk_flash_size} > /dev/null
       govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk2 -size ${disk_capacity_size} > /dev/null
-      net=$(jq -c -r .esxi.nics[1] $jsonFile)
-      govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+      if [[ ${esxi_trunk} == "true" ]] ; then
+        net=$(jq -c -r .esxi.nics[1] $jsonFile)
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+      fi
+      if [[ ${esxi_trunk} == "false" ]] ; then
+        net=$(jq -c -r .esxi.nics[1] $jsonFile)
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+        net=$(jq -c -r .esxi.nics[2] $jsonFile)
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+        net=$(jq -c -r .esxi.nics[3] $jsonFile)
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+        net=$(jq -c -r .esxi.nics[4] $jsonFile)
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+        net=$(jq -c -r .esxi.nics[5] $jsonFile)
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+      fi
       govc vm.power -on=true "${folder}/${name_esxi}" > /dev/null
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': nested ESXi '${esxi}' created"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
     fi
   done
   # affinity rule
-  if [[ $(jq -c -r ..vsphere_underlay.affinity $jsonFile) == "true" ]] ; then
+  if [[ $(jq -c -r .vsphere_underlay.affinity $jsonFile) == "true" ]] ; then
     govc cluster.rule.create -name "${folder}-affinity-rule" -enable -affinity ${names}
   fi
   #
