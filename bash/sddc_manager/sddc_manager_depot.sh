@@ -5,10 +5,10 @@ source /home/ubuntu/sddc_manager/sddc_manager_api.sh
 jsonFile=${1}
 ip_sddc_manager="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.manager.ip ${jsonFile})"
 basename_sddc=$(jq -c -r .sddc.basename $jsonFile)
-SLACK_WEBHOOK_URL=$(jq -c -r .SLACK_WEBHOOK_URL $jsonFile)
+SLACK_WEBHOOK_URL=$(jq -c -r .slack_webhook $jsonFile)
 SDDC_MANAGER_PASSWORD=$(jq -c -r .GENERIC_PASSWORD $jsonFile)
-DEPOT_USERNAME=$(jq -c -r .DEPOT_USERNAME $jsonFile)
-DEPOT_PASSWORD=$(jq -c -r .DEPOT_PASSWORD $jsonFile)
+DEPOT_USERNAME=$(jq -c -r .depot.username $jsonFile)
+DEPOT_PASSWORD=$(jq -c -r .depot.password $jsonFile)
 ssoDomain=$(jq -c -r .sddc.vcenter.ssoDomain ${jsonFile})
 count=1
 until $(curl --output /dev/null --silent --head -k https://${ip_sddc_manager})

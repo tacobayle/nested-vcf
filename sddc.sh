@@ -16,15 +16,6 @@ operation=$(jq -c -r .operation $jsonFile_kube)
 jsonFile="/root/${basename_sddc}_${operation}.json"
 jq -s '.[0] * .[1]' ${jsonFile_kube} ${jsonFile_local} | tee ${jsonFile}
 #
-# add env variables in json
-#
-variables_json=$(jq -c -r . $jsonFile)
-variables_json=$(echo ${variables_json} | jq '. += {"SLACK_WEBHOOK_URL": "'${SLACK_WEBHOOK_URL}'"}')
-variables_json=$(echo ${variables_json} | jq '. += {"GENERIC_PASSWORD": "'${GENERIC_PASSWORD}'"}')
-variables_json=$(echo ${variables_json} | jq '. += {"DEPOT_USERNAME": "'${DEPOT_USERNAME}'"}')
-variables_json=$(echo ${variables_json} | jq '. += {"DEPOT_PASSWORD": "'${DEPOT_PASSWORD}'"}')
-echo ${variables_json} | jq . | tee $jsonFile > /dev/null
-#
 #
 operation=$(jq -c -r .operation $jsonFile)
 #
@@ -34,7 +25,10 @@ if [[ ${operation} != "apply" && ${operation} != "destroy" ]] ; then echo "ERROR
 #
 rm -f ${log_file}
 #
-folder=$(jq -c -r .folder $jsonFile)
+SLACK_WEBHOOK_URL=$(jq -c -r .slack_webhook $jsonFile)
+DEPOT_USERNAME=$(jq -c -r .depot.username $jsonFile)
+DEPOT_PASSWORD=$(jq -c -r .depot.password $jsonFile)
+folder=$(jq -c -r ..vsphere_underlay.folder $jsonFile)
 gw_name="$(jq -c -r .sddc.basename $jsonFile)-external-gw"
 basename=$(jq -c -r .esxi.basename $jsonFile)
 basename_sddc=$(jq -c -r .sddc.basename $jsonFile)
@@ -108,7 +102,7 @@ if [[ ${operation} == "apply" ]] ; then
     for octet in "${octets[@]}"; do if [ $count -eq 3 ]; then break ; fi ; addr_vm_network=$octet"."$addr_vm_network ;((count++)) ; done
     reverse_vm_network=${addr_vm_network%.}
     basename=$(jq -c -r .esxi.basename $jsonFile)
-    sed -e "s/\${password}/${GENERIC_PASSWORD}/" \
+    sed -e "s/\${password}/$(jq -c -r .generic_password $jsonFile)/" \
         -e "s/\${ip_gw}/${ip_gw}/" \
         -e "s/\${prefix}/${prefix}/" \
         -e "s/\${default_gw}/${default_gw}/" \
@@ -136,7 +130,7 @@ if [[ ${operation} == "apply" ]] ; then
     #
     sed -e "s#\${public_key}#$(awk '{printf "%s\\n", $0}' /root/.ssh/id_rsa.pub | awk '{length=$0; print substr($0, 1, length-2)}')#" \
         -e "s@\${base64_userdata}@$(base64 /root/${gw_name}_userdata.yaml -w 0)@" \
-        -e "s/\${EXTERNAL_GW_PASSWORD}/${GENERIC_PASSWORD}/" \
+        -e "s/\${EXTERNAL_GW_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
         -e "s@\${network_ref}@${network_ref}@" \
         -e "s/\${gw_name}/${gw_name}/" /nested-vcf/templates/options-gw.json.template | tee "/tmp/options-${gw_name}.json"
     #
@@ -179,7 +173,7 @@ if [[ ${operation} == "apply" ]] ; then
               name_esxi="${basename_sddc}-wld0$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
             fi
             sed -e "s/\${ip_esxi}/${ip_esxi}/" \
-                -e "s/\${nested_esxi_root_password}/${GENERIC_PASSWORD}/" /nested-vcf/templates/esxi_cert.expect.template | tee /root/cert-esxi-$esxi.expect > /dev/null
+                -e "s/\${nested_esxi_root_password}/$(jq -c -r .generic_password $jsonFile)/" /nested-vcf/templates/esxi_cert.expect.template | tee /root/cert-esxi-$esxi.expect > /dev/null
             scp -o StrictHostKeyChecking=no /root/cert-esxi-$esxi.expect ubuntu@${ip_gw}:/home/ubuntu/cert-esxi-$esxi.expect
             #
             sed -e "s/\${ip_esxi}/${ip_esxi}/" \
@@ -187,7 +181,7 @@ if [[ ${operation} == "apply" ]] ; then
                 -e "s/\${esxi}/${esxi}/" \
                 -e "s/\${name_esxi}/${name_esxi}/" \
                 -e "s/\${basename_sddc}/${basename_sddc}/" \
-                -e "s/\${ESXI_PASSWORD}/${GENERIC_PASSWORD}/" /nested-vcf/templates/esxi_customization.sh.template | tee /root/esxi_customization-$esxi.sh > /dev/null
+                -e "s/\${ESXI_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" /nested-vcf/templates/esxi_customization.sh.template | tee /root/esxi_customization-$esxi.sh > /dev/null
             scp -o StrictHostKeyChecking=no /root/esxi_customization-$esxi.sh ubuntu@${ip_gw}:/home/ubuntu/esxi_customization-$esxi.sh
           done
           break
@@ -238,12 +232,12 @@ if [[ ${operation} == "apply" ]] ; then
     else
       net=$(jq -c -r .esxi.nics[0] $jsonFile)
       ip_esxi="$(echo ${ips_esxi} | jq -r .[$(expr ${esxi} - 1)])"
-      hostSpec='{"association":"'${folder}'-dc","ipAddressPrivate":{"ipAddress":"'${ip_esxi}'"},"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'${GENERIC_PASSWORD}'"},"vSwitch":"vSwitch0"}'
+      hostSpec='{"association":"'${folder}'-dc","ipAddressPrivate":{"ipAddress":"'${ip_esxi}'"},"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'$(jq -c -r .generic_password $jsonFile)'"},"vSwitch":"vSwitch0"}'
       hostSpecs=$(echo ${hostSpecs} | jq '. += ['${hostSpec}']')
       echo "Building custom ESXi ISO for ESXi${esxi}"
       rm -f ${iso_build_location}/ks_cust.cfg
       rm -f "${iso_location}-${esxi}.iso"
-      sed -e "s/\${nested_esxi_root_password}/${GENERIC_PASSWORD}/" \
+      sed -e "s/\${nested_esxi_root_password}/$(jq -c -r .generic_password $jsonFile)/" \
           -e "s/\${ip_mgmt}/${ip_esxi}/" \
           -e "s/\${netmask}/$(ip_netmask_by_prefix $(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f2) "   ++++++")/" \
           -e "s/\${vlan_id}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
@@ -285,7 +279,7 @@ if [[ ${operation} == "apply" ]] ; then
     fi
   done
   # affinity rule
-  if [[ $(jq -c -r .affinity $jsonFile) == "true" ]] ; then
+  if [[ $(jq -c -r ..vsphere_underlay.affinity $jsonFile) == "true" ]] ; then
     govc cluster.rule.create -name "${folder}-affinity-rule" -enable -affinity ${names}
   fi
   #
@@ -298,13 +292,13 @@ if [[ ${operation} == "apply" ]] ; then
     if [[ $(((${esxi}-1)/4+1)) -eq 1 ]] ; then
       name_esxi="${basename_sddc}-mgmt-esxi0${esxi}"
       ip_esxi="$(echo ${ips_esxi} | jq -r .[$(expr ${esxi} - 1)])"
-      hostSpec='{"association":"'${folder}'-dc","ipAddressPrivate":{"ipAddress":"'${ip_esxi}'"},"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'${GENERIC_PASSWORD}'"},"vSwitch":"vSwitch0"}'
+      hostSpec='{"association":"'${folder}'-dc","ipAddressPrivate":{"ipAddress":"'${ip_esxi}'"},"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'$(jq -c -r .generic_password $jsonFile)'"},"vSwitch":"vSwitch0"}'
       hostSpecs=$(echo ${hostSpecs} | jq '. += ['${hostSpec}']')
     fi
     if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
       name_esxi="${basename_sddc}-wld0$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
       ip_esxi="$(echo ${ips_esxi} | jq -r .[$(expr ${esxi} - 1)])"
-      host_validation_json='{"fqdn":"'${name_esxi}'.'${domain}'","username":"root","password" :"'${GENERIC_PASSWORD}'","storageType":"VSAN","vvolStorageProtocolType":null,"networkPoolId" : "58d74167-ee80-4eb8-90d9-cdfb3c1cd9f3","networkPoolName":"engineering-networkpool","sshThumbprint":null,"sslThumbprint":null}'
+      host_validation_json='{"fqdn":"'${name_esxi}'.'${domain}'","username":"root","password" :"'$(jq -c -r .generic_password $jsonFile)'","storageType":"VSAN","vvolStorageProtocolType":null,"networkPoolId" : "58d74167-ee80-4eb8-90d9-cdfb3c1cd9f3","networkPoolName":"engineering-networkpool","sshThumbprint":null,"sslThumbprint":null}'
       hosts_validation_json=$(echo ${hosts_validation_json} | jq '. += ['${host_validation_json}']')
     fi
   done
@@ -315,7 +309,7 @@ if [[ ${operation} == "apply" ]] ; then
     nsxtManagers=$(echo ${nsxtManagers} | jq '. += ['${nsxtManager}']')
   done
   sed -e "s/\${basename_sddc}/${basename_sddc}/" \
-      -e "s/\${SDDC_MANAGER_PASSWORD}/${GENERIC_PASSWORD}/" \
+      -e "s/\${SDDC_MANAGER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
       -e "s/\${ip_sddc_manager}/${ip_sddc_manager}/" \
       -e "s/\${basename_sddc}/${basename_sddc}/" \
       -e "s/\${ip_gw}/${ip_gw}/" \
@@ -338,7 +332,7 @@ if [[ ${operation} == "apply" ]] ; then
       -e "s/\${vlan_id_vm_mgmt}/$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
       -e "s/\${nsxtManagerSize}/$(jq -c -r .sddc.nsx.size ${jsonFile})/" \
       -e "s/\${nsxtManagers}/$(echo ${nsxtManagers} | jq -c -r .)/" \
-      -e "s/\${NSX_PASSWORD}/${GENERIC_PASSWORD}/" \
+      -e "s/\${NSX_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
       -e "s/\${ip_nsx_vip}/${ip_nsx_vip}/" \
       -e "s/\${basename_nsx_manager}/${basename_nsx_manager}/" \
       -e "s/\${transportVlanId}/$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
@@ -346,7 +340,7 @@ if [[ ${operation} == "apply" ]] ; then
       -e "s/\${nsx_pool_range_end}/${nsx_pool_range_end}/" \
       -e "s@\${nsx_subnet_cidr}@$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
       -e "s/\${nsx_subnet_gw}/$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
-      -e "s/\${VCENTER_PASSWORD}/${GENERIC_PASSWORD}/" \
+      -e "s/\${VCENTER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
       -e "s/\${ssoDomain}/$(jq -c -r .sddc.vcenter.ssoDomain ${jsonFile})/" \
       -e "s/\${ip_vcsa}/${ip_vcsa}/" \
       -e "s/\${vmSize}/$(jq -c -r .sddc.vcenter.vmSize ${jsonFile})/" \
@@ -379,7 +373,7 @@ if [[ ${operation} == "apply" ]] ; then
   if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_cb}'")] | length') -eq 1 ]]; then
     echo "cloud Builder VM already exists" | tee -a ${log_file}
   else
-    sed -e "s/\${CLOUD_BUILDER_PASSWORD}/${CLOUD_BUILDER_PASSWORD}/" \
+    sed -e "s/\${CLOUD_BUILDER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
         -e "s/\${name_cb}/${name_cb}/" \
         -e "s/\${ip_cb}/${ip_cb}/" \
         -e "s/\${netmask}/$(ip_netmask_by_prefix $(jq -c -r --arg arg "${network_ref}" '.vsphere_underlay.networks[] | select( .ref == $arg).cidr' $jsonFile | cut -d"/" -f2) "   ++++++")/" \
@@ -431,21 +425,21 @@ if [[ ${operation} == "apply" ]] ; then
   echo '------------------------------------------------------------' | tee -a ${log_file}
   echo "SDDC creation - This should take hours..." | tee -a ${log_file}
   if [[ $(jq -c -r .sddc.create_mgmt $jsonFile) == "true" ]] ; then
-    if [[ $(curl -s -k "https://${ip_cb}/v1/system/appliance-info" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X GET -H 'Content-Type: application/json' -H 'Accept: application/json' | jq -c -r .version | cut -d'.' -f1) == "9" ]]; then
+    if [[ $(curl -s -k "https://${ip_cb}/v1/system/appliance-info" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Content-Type: application/json' -H 'Accept: application/json' | jq -c -r .version | cut -d'.' -f1) == "9" ]]; then
       echo "VCF 9 has been detected" | tee -a ${log_file}
-      /nested-vcf/bash/sddc_manager/create_api_session.sh "admin@local" "${CLOUD_BUILDER_PASSWORD}" ${ip_cb} /tmp/token_vcfi.json
+      /nested-vcf/bash/sddc_manager/create_api_session.sh "admin@local" "$(jq -c -r .generic_password $jsonFile)" ${ip_cb} /tmp/token_vcfi.json
       source /nested-vcf/bash/sddc_manager/sddc_manager_api.sh
       sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"username" : "'${DEPOT_USERNAME}'", "password" : "'${DEPOT_PASSWORD}'"}}' ${ip_cb} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
     else
       echo "VCF 9 has not been detected" | tee -a ${log_file}
-      validation_id=$(curl -s -k "https://${ip_cb}/v1/sddcs/validations" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
+      validation_id=$(curl -s -k "https://${ip_cb}/v1/sddcs/validations" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
       # validation json
       retry=60 ; pause=10 ; attempt=1
       while true ; do
         echo "attempt $attempt to verify SDDC JSON validation" | tee -a ${log_file}
-        executionStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X GET -H 'Accept: application/json' | jq -c -r .executionStatus)
+        executionStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Accept: application/json' | jq -c -r .executionStatus)
         if [[ ${executionStatus} == "COMPLETED" ]]; then
-          resultStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X GET -H 'Accept: application/json' | jq -c -r .resultStatus)
+          resultStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Accept: application/json' | jq -c -r .resultStatus)
           echo "SDDC JSON validation: ${resultStatus} after $attempt of ${pause} seconds" | tee -a ${log_file}
           if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation: '${resultStatus}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
           if [[ ${resultStatus} != "SUCCEEDED" ]] ; then exit ; fi
@@ -460,13 +454,13 @@ if [[ ${operation} == "apply" ]] ; then
           exit
         fi
       done
-      sddc_id=$(curl -s -k "https://${ip_cb}/v1/sddcs" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
+      sddc_id=$(curl -s -k "https://${ip_cb}/v1/sddcs" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
       # validation_sddc creation
       echo "SDDC ${sddc_id} trying ${count_retry} times to apply" | tee -a ${log_file}
       retry=120 ; pause=300 ; attempt=1 ; count_retry=1
       while true ; do
         echo "attempt $attempt to verify SDDC ${sddc_id} creation" | tee -a ${log_file}
-        sddc_status=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X GET -H 'Accept: application/json' | jq -c -r .status)
+        sddc_status=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Accept: application/json' | jq -c -r .status)
         if [[ ${sddc_status} != "IN_PROGRESS" ]]; then
           echo "SDDC ${sddc_id} creation ${sddc_status} after attempt $attempt of ${pause} seconds, go to https://${ip_cb}" | tee -a ${log_file}
           if [[ ${sddc_status} != "COMPLETED_WITH_SUCCESS" ]]; then
@@ -477,7 +471,7 @@ if [[ ${operation} == "apply" ]] ; then
             fi
             sleep 600
             echo "SDDC ${sddc_id} trying ${count_retry} times to apply after status ${sddc_status}" | tee -a ${log_file}
-            retry=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:${CLOUD_BUILDER_PASSWORD}" -X PATCH -H 'Content-type: application/json' -d @/root/${basename_sddc}_cb.json)
+            retry=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X PATCH -H 'Content-type: application/json' -d @/root/${basename_sddc}_cb.json)
           fi
           if [[ ${sddc_status} == "COMPLETED_WITH_SUCCESS" ]]; then
             if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_cb}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
