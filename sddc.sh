@@ -138,18 +138,25 @@ if [[ ${operation} == "apply" ]] ; then
           echo "Gw ${gw_name} is ready." | tee -a ${log_file}
           if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': external-gw '${gw_name}' VM reachable and configured"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
           if [[ ${esxi_trunk} == "false" ]] ; then
-            nic_to_esxi=$(jq -c -r .esxi.nics[0] $jsonFile)
-            govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-            nic_to_esxi=$(jq -c -r .esxi.nics[1] $jsonFile)
-            govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-            nic_to_esxi=$(jq -c -r .esxi.nics[2] $jsonFile)
-            govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-            nic_to_esxi=$(jq -c -r .esxi.nics[3] $jsonFile)
-            govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-            nic_to_esxi=$(jq -c -r .esxi.nics[4] $jsonFile)
-            govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-            nic_to_esxi=$(jq -c -r .esxi.nics[5] $jsonFile)
-            govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+            count=3
+            count_nic=0
+            ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "mv /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.old"
+            ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "cat /etc/netplan/50-cloud-init.yaml.old | head -n -1 | tee /etc/netplan/50-cloud-init.yaml"
+            echo ${networks} | jq -c -r .[] | while read net
+            do
+              nic_to_esxi=$(jq -c -r .esxi.nics[${count_nic}] $jsonFile)
+              govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+              ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"        \$(ip -o link show | awk -F': ' '{print \$2}' | head -${count} | tail -1):\" | tee -a /etc/netplan/50-cloud-init.yaml"
+              ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            dhcp4: false\" | tee -a /etc/netplan/50-cloud-init.yaml"
+              ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            addresses: [$(echo $net | jq -c -r .cidr | awk -F'0/' '{print \$1}')${ip_gw_last_octet}/$(echo $net | jq -c -r .cidr | cut -f2 -d'/')]\" | tee -a /etc/netplan/50-cloud-init.yaml"
+              ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            match:\" | tee -a /etc/netplan/50-cloud-init.yaml"
+              ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"                macaddress: \$(ip -o link show | awk -F'link/ether ' '{print \$2}' | awk -F' ' '{print \$1}' | head -${count} | tail -1)\" | tee -a /etc/netplan/50-cloud-init.yaml"
+              ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            set-name: \$(ip -o link show | awk -F': ' '{print \$2}' | head -${count} | tail -1)\" | tee -a /etc/netplan/50-cloud-init.yaml"
+              count=$((count+1))
+              count_nic=$((count_nic+1))
+            done
+            ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"    version: 2\" | tee -a /etc/netplan/50-cloud-init.yaml"
+            ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo netplan apply"
           fi
           scp -o StrictHostKeyChecking=no /nested-vcf/bash/sddc_manager/create_api_session.sh ubuntu@${ip_gw}:/home/ubuntu/sddc_manager/create_api_session.sh
           scp -o StrictHostKeyChecking=no /nested-vcf/bash/sddc_manager/sddc_manager_api.sh ubuntu@${ip_gw}:/home/ubuntu/sddc_manager/sddc_manager_api.sh
