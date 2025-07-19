@@ -118,20 +118,6 @@ if [[ ${operation} == "apply" ]] ; then
       nic_to_esxi=$(jq -c -r .esxi.nics[0] $jsonFile)
       govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
     fi
-#    if [[ ${esxi_trunk} == "false" ]] ; then
-#      nic_to_esxi=$(jq -c -r .esxi.nics[0] $jsonFile)
-#      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-#      nic_to_esxi=$(jq -c -r .esxi.nics[1] $jsonFile)
-#      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-#      nic_to_esxi=$(jq -c -r .esxi.nics[2] $jsonFile)
-#      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-#      nic_to_esxi=$(jq -c -r .esxi.nics[3] $jsonFile)
-#      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-#      nic_to_esxi=$(jq -c -r .esxi.nics[4] $jsonFile)
-#      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-#      nic_to_esxi=$(jq -c -r .esxi.nics[5] $jsonFile)
-#      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-#    fi
     govc vm.power -on=true "${gw_name}" | tee -a ${log_file}
     echo "   +++ Updating /etc/hosts..." | tee -a ${log_file}
     contents=$(cat /etc/hosts | grep -v ${ip_gw})
@@ -151,6 +137,20 @@ if [[ ${operation} == "apply" ]] ; then
         if [[ $? -eq 0 ]]; then
           echo "Gw ${gw_name} is ready." | tee -a ${log_file}
           if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': external-gw '${gw_name}' VM reachable and configured"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+          if [[ ${esxi_trunk} == "false" ]] ; then
+            nic_to_esxi=$(jq -c -r .esxi.nics[0] $jsonFile)
+            govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+            nic_to_esxi=$(jq -c -r .esxi.nics[1] $jsonFile)
+            govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+            nic_to_esxi=$(jq -c -r .esxi.nics[2] $jsonFile)
+            govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+            nic_to_esxi=$(jq -c -r .esxi.nics[3] $jsonFile)
+            govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+            nic_to_esxi=$(jq -c -r .esxi.nics[4] $jsonFile)
+            govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+            nic_to_esxi=$(jq -c -r .esxi.nics[5] $jsonFile)
+            govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+          fi
           scp -o StrictHostKeyChecking=no /nested-vcf/bash/sddc_manager/create_api_session.sh ubuntu@${ip_gw}:/home/ubuntu/sddc_manager/create_api_session.sh
           scp -o StrictHostKeyChecking=no /nested-vcf/bash/sddc_manager/sddc_manager_api.sh ubuntu@${ip_gw}:/home/ubuntu/sddc_manager/sddc_manager_api.sh
           scp -o StrictHostKeyChecking=no /nested-vcf/bash/sddc_manager/sddc_manager_depot.sh ubuntu@${ip_gw}:/home/ubuntu/sddc_manager/sddc_manager_depot.sh
