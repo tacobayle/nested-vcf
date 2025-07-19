@@ -146,12 +146,12 @@ if [[ ${operation} == "apply" ]] ; then
             do
               nic_to_esxi=$(jq -c -r .esxi.nics[${count_nic}] $jsonFile)
               govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-              ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"        \$(ip -o link show | awk -F': ' '{print \$2}' | head -${count} | tail -1):\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
-              ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            dhcp4: false\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
-              ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            addresses: [$(echo $net | jq -c -r .cidr | awk -F'0/' '{print $1}')${ip_gw_last_octet}/$(echo $net | jq -c -r .cidr | cut -f2 -d'/')]\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
-              ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            match:\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
-              ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"                macaddress: \$(ip -o link show | awk -F'link/ether ' '{print \$2}' | awk -F' ' '{print \$1}' | head -${count} | tail -1)\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
-              ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            set-name: \$(ip -o link show | awk -F': ' '{print \$2}' | head -${count} | tail -1)\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
+              ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"        \$(ip -o link show | awk -F': ' '{print \$2}' | head -${count} | tail -1):\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
+              ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            dhcp4: false\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
+              ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            addresses: [$(echo $net | jq -c -r .cidr | awk -F'0/' '{print $1}')${ip_gw_last_octet}/$(echo $net | jq -c -r .cidr | cut -f2 -d'/')]\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
+              ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            match:\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
+              ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"                macaddress: \$(ip -o link show | awk -F'link/ether ' '{print \$2}' | awk -F' ' '{print \$1}' | head -${count} | tail -1)\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
+              ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            set-name: \$(ip -o link show | awk -F': ' '{print \$2}' | head -${count} | tail -1)\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
               count=$((count+1))
               count_nic=$((count_nic+1))
             done
