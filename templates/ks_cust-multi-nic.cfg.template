@@ -21,11 +21,11 @@ reboot
 %firstboot --interpreter=busybox
 
 # Network config
-esxcli network ip interface remove --interface-name=vmk0
-esxcli network ip interface add --interface-name=vmk0 --portgroup-name="Management Network"
-esxcli network ip interface ipv4 set --interface-name=vmk0 --ipv4=${ip_mgmt} --netmask=${netmask} --type=static
-esxcli network ip interface tag add -i vmk0 -t Management
-esxcli network ip route ipv4 add -g ${gateway} -n 0.0.0.0/0
+#esxcli network ip interface remove --interface-name=vmk0
+#esxcli network ip interface add --interface-name=vmk0 --portgroup-name="Management Network"
+#esxcli network ip interface ipv4 set --interface-name=vmk0 --ipv4=${ip_mgmt} --netmask=${netmask} --type=static
+#esxcli network ip interface tag add -i vmk0 -t Management
+#esxcli network ip route ipv4 add -g ${gateway} -n 0.0.0.0/0
 
 # ssh config.
 vim-cmd hostsvc/enable_ssh
