@@ -118,20 +118,20 @@ if [[ ${operation} == "apply" ]] ; then
       nic_to_esxi=$(jq -c -r .esxi.nics[0] $jsonFile)
       govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
     fi
-    if [[ ${esxi_trunk} == "false" ]] ; then
-      nic_to_esxi=$(jq -c -r .esxi.nics[0] $jsonFile)
-      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-      nic_to_esxi=$(jq -c -r .esxi.nics[1] $jsonFile)
-      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-      nic_to_esxi=$(jq -c -r .esxi.nics[2] $jsonFile)
-      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-      nic_to_esxi=$(jq -c -r .esxi.nics[3] $jsonFile)
-      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-      nic_to_esxi=$(jq -c -r .esxi.nics[4] $jsonFile)
-      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-      nic_to_esxi=$(jq -c -r .esxi.nics[5] $jsonFile)
-      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
-    fi
+#    if [[ ${esxi_trunk} == "false" ]] ; then
+#      nic_to_esxi=$(jq -c -r .esxi.nics[0] $jsonFile)
+#      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+#      nic_to_esxi=$(jq -c -r .esxi.nics[1] $jsonFile)
+#      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+#      nic_to_esxi=$(jq -c -r .esxi.nics[2] $jsonFile)
+#      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+#      nic_to_esxi=$(jq -c -r .esxi.nics[3] $jsonFile)
+#      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+#      nic_to_esxi=$(jq -c -r .esxi.nics[4] $jsonFile)
+#      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+#      nic_to_esxi=$(jq -c -r .esxi.nics[5] $jsonFile)
+#      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 | tee -a ${log_file}
+#    fi
     govc vm.power -on=true "${gw_name}" | tee -a ${log_file}
     echo "   +++ Updating /etc/hosts..." | tee -a ${log_file}
     contents=$(cat /etc/hosts | grep -v ${ip_gw})
