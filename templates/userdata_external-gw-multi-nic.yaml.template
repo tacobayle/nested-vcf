@@ -16,6 +16,7 @@ write_files:
       #!/bin/bash
       # retrieve the network interface names
       iface_routable=`ip -o link show | awk -F': ' '{print $2}' | head -2 | tail -1`
+      mac_iface_routable=`ip -o link show | awk -F'link/ether ' '{print $2}' | awk -F' ' '{print $1}' | head -2 | tail -1`
       hostname=${hostname}
       echo "${ip_gw} $hostname" | tee -a /etc/hosts
       cp /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.old
