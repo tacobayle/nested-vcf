@@ -31,6 +31,7 @@
         "networkType": "MANAGEMENT",
         "subnet": "${subnet_mgmt}",
         "gateway": "${gw_mgmt}",
+        "vlanId": "0",
         "mtu": "9000",
         "portGroupKey": "${basename_sddc}-pg-mgmt"
       },
@@ -38,6 +39,7 @@
         "networkType": "VMOTION",
         "subnet": "${subnet_vmotion}",
         "gateway": "${gw_vmotion}",
+        "vlanId": "0",
         "mtu": "9000",
         "portGroupKey": "${basename_sddc}-pg-vmotion",
         "includeIpAddressRanges": [
@@ -51,6 +53,7 @@
         "networkType": "VSAN",
         "subnet": "${subnet_vsan}",
         "gateway": "${gw_vsan}",
+        "vlanId": "0",
         "mtu": "9000",
         "portGroupKey": "${basename_sddc}-pg-vsan",
         "includeIpAddressRanges": [
@@ -64,6 +67,7 @@
         "networkType": "VM_MANAGEMENT",
         "subnet": "${subnet_vm_mgmt}",
         "gateway": "${gw_vm_mgmt}",
+        "vlanId": "0",
         "mtu": "9000",
         "portGroupKey": "${basename_sddc}-pg-vm-mgmt"
       }
@@ -108,7 +112,7 @@
       {
         "dvsName": "${basename_sddc}-vds-01-mgmt",
         "vmnics": [
-          "vmnic0"
+          "vmnic0", "vmnic1"
         ],
         "mtu": 9000,
         "networks": [
@@ -151,24 +155,12 @@
             "trafficType": "ISCSI",
             "value": "LOW"
           }
-        ],
-        "nsxtSwitchConfig": {
-          "transportZones": [
-            {
-              "name": "${basename_sddc}-tz-overlay",
-              "transportType": "OVERLAY"
-            },
-            {
-              "name": "${basename_sddc}-tz-vlan",
-              "transportType": "VLAN"
-            }
-          ]
-        }
+        ]
       },
       {
         "dvsName": "${basename_sddc}-vds-02-vsan",
         "vmnics": [
-          "vmnic1"
+          "vmnic2", "vmnic3"
         ],
         "mtu": 9000,
         "networks": [
@@ -211,24 +203,12 @@
             "trafficType": "ISCSI",
             "value": "LOW"
           }
-        ],
-        "nsxtSwitchConfig": {
-          "transportZones": [
-            {
-              "name": "${basename_sddc}-tz-overlay",
-              "transportType": "OVERLAY"
-            },
-            {
-              "name": "${basename_sddc}-tz-vlan",
-              "transportType": "VLAN"
-            }
-          ]
-        }
+        ]
       },
       {
         "dvsName": "${basename_sddc}-vds-03-vmotion",
         "vmnics": [
-          "vmnic2"
+          "vmnic4", "vmnic5"
         ],
         "mtu": 9000,
         "networks": [
@@ -271,24 +251,12 @@
             "trafficType": "ISCSI",
             "value": "LOW"
           }
-        ],
-        "nsxtSwitchConfig": {
-          "transportZones": [
-            {
-              "name": "${basename_sddc}-tz-overlay",
-              "transportType": "OVERLAY"
-            },
-            {
-              "name": "${basename_sddc}-tz-vlan",
-              "transportType": "VLAN"
-            }
-          ]
-        }
+        ]
       },
       {
         "dvsName": "${basename_sddc}-vds-04-vm-management",
         "vmnics": [
-          "vmnic4"
+          "vmnic6", "vmnic7"
         ],
         "mtu": 9000,
         "networks": [
