@@ -25,6 +25,7 @@ domain=$(jq -c -r .domain $jsonFile)
 ip_gw=$(jq -c -r .gw.ip $jsonFile)
 ip_vcsa="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.vcenter.ip ${jsonFile})"
 name_cb=$(jq -c -r .cloud_builder.name $jsonFile)
+name_vcf_installer=$(jq -c -r .vcf_installer.name $jsonFile)
 cidr_mgmt=$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f1)
 if [[ ${cidr_mgmt} =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.[0-9]{1,3}$ ]] ; then
   cidr_mgmt_three_octets="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
@@ -33,5 +34,8 @@ ips_esxi=$(jq -c -r .esxi.ips $jsonFile | jq ". | map(\"$(jq -c -r --arg arg "MA
 esxi_trunk=$(jq -c -r .esxi.trunk $jsonFile)
 cloud_builder_ova_url=$(jq -c -r .cloud_builder.ova_url $jsonFile)
 cloud_builder_network_ref=$(jq -c -r .cloud_builder.network_ref $jsonFile)
+vcf_installer_ova_url=$(jq -c -r .vcf_installer.ova_url $jsonFile)
+vcf_installer_network_ref=$(jq -c -r .vcf_installer.network_ref $jsonFile)
 ip_cb=$(jq -c -r .cloud_builder.ip $jsonFile)
+ip_vcf_installer=$(jq -c -r .ip_vcf_installer.ip $jsonFile)
 iso_url=$(jq -c -r .esxi.iso_url $jsonFile)

@@ -1,0 +1,58 @@
+{
+  "DiskProvisioning": "thin",
+  "IPAllocationPolicy": "fixedPolicy",
+  "IPProtocol": "IPv4",
+  "PropertyMapping": [
+    {
+      "Key": "ROOT_PASSWORD",
+      "Value": "${VCF_INSTALLER_PASSWORD}"
+    },
+    {
+      "Key": "LOCAL_USER_PASSWORD",
+      "Value": "${VCF_INSTALLER_PASSWORD}"
+    },
+    {
+      "Key": "vami.hostname",
+      "Value": "${name_vcf_installer}"
+    },
+    {
+      "Key": "guestinfo.ntp",
+      "Value": "${ip_gw}"
+    },
+    {
+      "Key": "vami.ip0.SDDC-Manager",
+      "Value": "${ip_vcf_installer}"
+    },
+    {
+      "Key": "vami.netmask0.SDDC-Manager",
+      "Value": "${netmask}"
+    },
+    {
+      "Key": "vami.gateway.SDDC-Manager",
+      "Value": "${ip_gw}"
+    },
+    {
+      "Key": "vami.domain.SDDC-Manager",
+      "Value": "${domain}"
+    },
+    {
+      "Key": "vami.searchpath.SDDC-Manager",
+      "Value": ""
+    },
+    {
+      "Key": "vami.DNS.SDDC-Manager",
+      "Value": "${ip_gw}"
+    }
+  ],
+  "NetworkMapping": [
+    {
+      "Name": "Network 1",
+      "Network": "${network_ref}"
+    }
+  ],
+  "MarkAsTemplate": false,
+  "PowerOn": false,
+  "InjectOvfEnv": false,
+  "WaitForIP": false,
+  "Name": "${name_vcf_installer}"
+}
