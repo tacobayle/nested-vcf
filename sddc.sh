@@ -2,6 +2,7 @@
 #
 source /nested-vcf/bash/download_file.sh
 source /nested-vcf/bash/ip.sh
+source /nested-vcf/vcenter/vcenter_api.sh
 rm -f /root/govc.error
 jsonFile_kube="${1}"
 if [ -s "${jsonFile_kube}" ]; then
@@ -286,7 +287,16 @@ if [[ ${operation} == "apply" ]] ; then
       names="${names} ${name_esxi}"
       govc vm.create -c ${cpu} -m ${memory} -disk ${disk_os_size} -disk.controller pvscsi -net ${net} -g vmkernel65Guest -net.adapter vmxnet3 -firmware efi -folder "${folder}" -on=false "${name_esxi}" > /dev/null
       govc device.cdrom.add -vm "${folder}/${name_esxi}" > /dev/null
-      govc device.cdrom.insert -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
+      # adding a SATA controller
+      token=$(/bin/bash /nested-vsphere/vcenter/create_vcenter_api_session.sh "${GOVC_USERNAME}" "" "${GOVC_PASSWORD}" "$(basename ${GOVC_URL})")
+      vcenter_api 2 2 "GET" $token "" "$(basename ${GOVC_URL})" "api/vcenter/vm"
+      esxi_nested_vm_id=$(echo ${response_body} | jq -c -r --arg arg "${name_esxi}" '.[] | select(.name == $arg).vm')
+      json_data='{"type": "AHCI"}'
+      vcenter_api 2 2 "POST" $token "${json_data}" "$(basename ${GOVC_URL})" "api/vcenter/vm/${esxi_nested_vm_id}/hardware/adapter/sata"
+      # adding a cdrom based on sata
+      json_data='{"type": "SATA", "start_connected": true, "backing": {"iso_file": "['${GOVC_DATASTORE}'] 'nested-vcf/$(basename ${iso_location}-${esxi}.iso)'","type": "ISO_FILE"}}'
+      vcenter_api 2 2 "POST" $token "${json_data}" "$(basename ${GOVC_URL})" "api/vcenter/vm/${esxi_nested_vm_id}/hardware/cdrom"
+#      govc device.cdrom.insert -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
       govc vm.change -vm "${folder}/${name_esxi}" -nested-hv-enabled > /dev/null
       govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk1 -size ${disk_flash_size} > /dev/null
       govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk2 -size ${disk_capacity_size} > /dev/null
