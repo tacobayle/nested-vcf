@@ -624,11 +624,23 @@ fi
 #
 #
 if [[ ${operation} == "destroy" ]] ; then
-  echo '------------------------------------------------------------' | tee -a ${log_file}
-  if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_cb}'")] | length') -eq 1 ]]; then
-    govc vm.power -off=true "${folder}/${name_cb}" | tee -a ${log_file}
-    govc vm.destroy "${folder}/${name_cb}" | tee -a ${log_file}
-    if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF-Cloud_Builder VM powered off and destroyed"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+  if [[ ${name_cb} != "null" ]]; then
+    echo '------------------------------------------------------------' | tee -a ${log_file}
+    if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_cb}'")] | length') -eq 1 ]]; then
+      govc vm.power -off=true "${folder}/${name_cb}" | tee -a ${log_file}
+      govc vm.destroy "${folder}/${name_cb}" | tee -a ${log_file}
+      if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF-Cloud_Builder VM powered off and destroyed"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+    fi
+  fi
+  #
+  #
+  if [[ ${name_vcf_installer} != "null" ]]; then
+    echo '------------------------------------------------------------' | tee -a ${log_file}
+    if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_vcf_installer}'")] | length') -eq 1 ]]; then
+      govc vm.power -off=true "${folder}/${name_vcf_installer}" | tee -a ${log_file}
+      govc vm.destroy "${folder}/${name_vcf_installer}" | tee -a ${log_file}
+      if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF-installer VM powered off and destroyed"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+    fi
   fi
   #
   #
