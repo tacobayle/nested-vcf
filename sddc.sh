@@ -286,7 +286,7 @@ if [[ ${operation} == "apply" ]] ; then
       fi
       names="${names} ${name_esxi}"
       govc vm.create -c ${cpu} -m ${memory} -disk ${disk_os_size} -disk.controller pvscsi -net ${net} -g vmkernel65Guest -net.adapter vmxnet3 -firmware efi -folder "${folder}" -on=false "${name_esxi}" > /dev/null
-      govc device.cdrom.add -vm "${folder}/${name_esxi}" > /dev/null
+      #govc device.cdrom.add -vm "${folder}/${name_esxi}" > /dev/null
       # adding a SATA controller
       token=$(/bin/bash /nested-vcf/bash/vcenter/create_vcenter_api_session.sh "${GOVC_USERNAME}" "" "${GOVC_PASSWORD}" "$(basename ${GOVC_URL})")
       vcenter_api 2 2 "GET" $token "" "$(basename ${GOVC_URL})" "api/vcenter/vm"
@@ -479,32 +479,31 @@ if [[ ${operation} == "apply" ]] ; then
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': nested Cloud Builder VM configured and reachable"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
     fi
     if [[ ${name_vcf_installer} != "null" ]]; then
-        sed -e "s/\${VCF_INSTALLER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
-            -e "s/\${name_vcf_installer}/${name_vcf_installer}/" \
-            -e "s/\${ip_vcf_installer}/${ip_vcf_installer}/" \
-            -e "s/\${domain}/${domain}/" \
-            -e "s/\${netmask}/$(ip_netmask_by_prefix $(jq -c -r --arg arg "${vcf_installer_network_ref}" '.vsphere_underlay.networks[] | select( .ref == $arg).cidr' $jsonFile | cut -d"/" -f2) "   ++++++")/" \
-            -e "s/\${ip_gw}/${ip_gw}/" \
-            -e "s@\${network_ref}@${vcf_installer_network_ref}@" /nested-vcf/templates/options-vcf-i.json.template | tee "/tmp/options-${name_vcf_installer}.json"
-        #
-        govc import.ova --options="/tmp/options-${name_vcf_installer}.json" -folder "${folder}" "/root/$(basename ${vcf_installer_ova_url})" >/dev/null
-        if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM created"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-        govc vm.power -on=true "${name_vcf_installer}" | tee -a ${log_file}
-        if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM started"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-        count=1
-        until $(curl --output /dev/null --silent --head -k https://${ip_cb})
-        do
-          echo "Attempt ${count}: Waiting for Cloud Builder VM at https://${ip_cb} to be reachable..." | tee -a ${log_file}
-          sleep 30
-          count=$((count+1))
-          if [[ "${count}" -eq 30 ]]; then
-            echo "ERROR: Unable to connect to Cloud Builder VM at https://${ip_cb} to be reachable after ${count} Attempts" | tee -a ${log_file}
-            exit 1
-          fi
-        done
-        if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': nested Cloud Builder VM configured and reachable"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-      fi
-
+      sed -e "s/\${VCF_INSTALLER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+          -e "s/\${name_vcf_installer}/${name_vcf_installer}/" \
+          -e "s/\${ip_vcf_installer}/${ip_vcf_installer}/" \
+          -e "s/\${domain}/${domain}/" \
+          -e "s/\${netmask}/$(ip_netmask_by_prefix $(jq -c -r --arg arg "${vcf_installer_network_ref}" '.vsphere_underlay.networks[] | select( .ref == $arg).cidr' $jsonFile | cut -d"/" -f2) "   ++++++")/" \
+          -e "s/\${ip_gw}/${ip_gw}/" \
+          -e "s@\${network_ref}@${vcf_installer_network_ref}@" /nested-vcf/templates/options-vcf-i.json.template | tee "/tmp/options-${name_vcf_installer}.json"
+      #
+      govc import.ova --options="/tmp/options-${name_vcf_installer}.json" -folder "${folder}" "/root/$(basename ${vcf_installer_ova_url})" >/dev/null
+      if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM created"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+      govc vm.power -on=true "${name_vcf_installer}" | tee -a ${log_file}
+      if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM started"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+      count=1
+      until $(curl --output /dev/null --silent --head -k https://${ip_cb})
+      do
+        echo "Attempt ${count}: Waiting for Cloud Builder VM at https://${ip_cb} to be reachable..." | tee -a ${log_file}
+        sleep 30
+        count=$((count+1))
+        if [[ "${count}" -eq 30 ]]; then
+          echo "ERROR: Unable to connect to Cloud Builder VM at https://${ip_cb} to be reachable after ${count} Attempts" | tee -a ${log_file}
+          exit 1
+        fi
+      done
+      if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': nested Cloud Builder VM configured and reachable"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+    fi
   fi
   #
   #
