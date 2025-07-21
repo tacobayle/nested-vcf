@@ -2,7 +2,7 @@
 #
 source /nested-vcf/bash/download_file.sh
 source /nested-vcf/bash/ip.sh
-source /nested-vcf/vcenter/vcenter_api.sh
+source /nested-vcf/bash/vcenter/vcenter_api.sh
 rm -f /root/govc.error
 jsonFile_kube="${1}"
 if [ -s "${jsonFile_kube}" ]; then
