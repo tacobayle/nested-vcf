@@ -441,14 +441,25 @@ if [[ ${operation} == "apply" ]] ; then
   if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Details for cloud deployment available at http://'${ip_gw}'/"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
   #
   echo '------------------------------------------------------------'
-  echo "Creation of a cloud builder VM underlay infrastructure - This should take 10 minutes"
+  echo "Creation of a cloud builder or VCF Installer VM underlay infrastructure - This should take 10 minutes"
   #
   wait
-  if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Cloud Builder OVA or VCF Installer OVA downloaded"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-  if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_cb}'")] | length') -eq 1 ]]; then
-    echo "cloud Builder VM already exists"
-  else
-    if [[ ${name_cb} != "null" ]]; then
+  #
+  # Cloud builder use case
+  #
+  if [[ ${cloud_builder_ova_url} != "null" ]]; then
+    echo "Cloud Builder OVA downloaded"
+    if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Cloud Builder OVA downloaded"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+  fi
+  if [[ ${vcf_installer_ova_url} != "null" ]]; then
+    echo "VCF Installer OVA downloaded"
+    if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF Installer OVA downloaded"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+  fi
+  if [[ ${name_cb} != "null" ]]; then
+    if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_cb}'")] | length') -eq 1 ]]; then
+      echo "cloud Builder VM already exists"
+      exit
+    else
       sed -e "s/\${CLOUD_BUILDER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
           -e "s/\${name_cb}/${name_cb}/" \
           -e "s/\${ip_cb}/${ip_cb}/" \
@@ -473,7 +484,15 @@ if [[ ${operation} == "apply" ]] ; then
       done
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': nested Cloud Builder VM configured and reachable"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
     fi
-    if [[ ${name_vcf_installer} != "null" ]]; then
+  fi
+  #
+  # VCF installer use case
+  #
+  if [[ ${name_vcf_installer} != "null" ]]; then
+    if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_vcf_installer}'")] | length') -eq 1 ]]; then
+      echo "VCF installer VM already exists"
+      exit
+    else
       sed -e "s/\${VCF_INSTALLER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
           -e "s/\${name_vcf_installer}/${name_vcf_installer}/" \
           -e "s/\${ip_vcf_installer}/${ip_vcf_installer}/" \
@@ -498,6 +517,7 @@ if [[ ${operation} == "apply" ]] ; then
         fi
       done
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM configured and reachable"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+      if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM: please patch it if needed"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
     fi
   fi
   #
