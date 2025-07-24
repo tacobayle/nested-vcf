@@ -564,6 +564,7 @@ if [[ ${operation} == "apply" ]] ; then
       bundles_count=$(echo ${bundles} | jq -c -r '.elements | length')
       if [[ bundles_count -gt 0 ]] ; then
         echo "bundles are populated"
+        sleep 30
         break
       fi
       if [ $attempt -eq $retry ]; then
