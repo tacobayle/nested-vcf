@@ -334,7 +334,13 @@ if [[ ${operation} == "apply" ]] ; then
     if [[ $(((${esxi}-1)/4+1)) -eq 1 ]] ; then
       name_esxi="${basename_sddc}-mgmt-esxi0${esxi}"
       ip_esxi="$(echo ${ips_esxi} | jq -r .[$(expr ${esxi} - 1)])"
-      hostSpec='{"association":"'${folder}'-dc","ipAddressPrivate":{"ipAddress":"'${ip_esxi}'"},"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'$(jq -c -r .generic_password $jsonFile)'"},"vSwitch":"vSwitch0"}'
+      if [[ ${name_cb} != "null" ]]; then
+        hostSpec='{"association":"'${folder}'-dc","ipAddressPrivate":{"ipAddress":"'${ip_esxi}'"},"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'$(jq -c -r .generic_password $jsonFile)'"},"vSwitch":"vSwitch0"}'
+      fi
+      if [[ ${name_vcf_installer} != "null" ]]; then
+        esxi_sslThumbprint=$(openssl s_client -connect $(echo $subscription_url  | cut -d"/" -f3):443 < /dev/null 2>/dev/null | openssl x509 -fingerprint -noout -in /dev/stdin | awk -F'Fingerprint=' '{print $2}')
+        hostSpec='{"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'$(jq -c -r .generic_password $jsonFile)'"},"sslThumbprint":"'${esxi_sslThumbprint}'"}'
+      fi
       hostSpecs=$(echo ${hostSpecs} | jq '. += ['${hostSpec}']')
     fi
     if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
