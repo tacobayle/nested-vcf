@@ -50,6 +50,7 @@ def create_vcfi(spec):
         json.dump(a_dict, outfile)
 
 def delete_vcfi(spec):
+    a_dict = spec
     json_file='/root/vcfi-{0}-patched.json'.format(a_dict['ip'])
     os.remove(json_file)
 #
