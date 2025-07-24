@@ -21,6 +21,7 @@ def create_sddc(spec):
     folder='/nested-vcf'
     a_dict = spec
     a_dict['operation'] = "apply"
+    now = datetime.datetime.now()
     json_file='/root/data.json'
     log_file="/nested-vcf/log/{0}-{1}_apply.stdout".format(a_dict['sddc']['basename'], now.strftime("%Y%m%d%H%M%S"))
     with open(json_file, 'w') as outfile:
@@ -36,6 +37,7 @@ def delete_sddc(spec):
     folder='/nested-vcf'
     a_dict = spec
     a_dict['operation'] = "destroy"
+    now = datetime.datetime.now()
     json_file='/root/data.json'
     log_file="/nested-vcf/log/{0}-{1}_destroy.stdout".format(a_dict['sddc']['basename'], now.strftime("%Y%m%d%H%M%S"))
     with open(json_file, 'w') as outfile:
