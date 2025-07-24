@@ -4,13 +4,13 @@ source /nested-vcf/bash/download_file.sh
 source /nested-vcf/bash/ip.sh
 source /nested-vcf/bash/sddc_manager/sddc_manager_api.sh
 source /nested-vcf/bash/vcenter/vcenter_api.sh
-logfile=${2}
+log_file=${2}
 rm -f /root/govc.error
 jsonFile_kube="${1}"
 if [ -s "${jsonFile_kube}" ]; then
   jq . ${jsonFile_kube} > /dev/null
 else
-  echo "ERROR: ${jsonFile_kube} file is not present" | tee -a ${logfile}
+  echo "ERROR: ${jsonFile_kube} file is not present" | tee -a ${log_file}
   exit 255
 fi
 jsonFile_local="/nested-vcf/json/variables.json"
@@ -24,26 +24,26 @@ operation=$(jq -c -r .operation $jsonFile)
 #
 source /nested-vcf/bash/variables.sh
 #
-echo "Starting timestamp: $(date)" | tee -a ${logfile}
+echo "Starting timestamp: $(date)" | tee -a ${log_file}
 source /nested-vcf/bash/govc/load_govc_external.sh
 govc about
 if [ $? -ne 0 ] ; then touch /root/govc.error ; fi
 list_folder=$(govc find -json . -type f)
 list_gw=$(govc find -json vm -name "${gw_name}")
 #
-echo '------------------------------------------------------------' | tee -a ${logfile}
+echo '------------------------------------------------------------' | tee -a ${log_file}
 if [[ ${operation} == "apply" ]] ; then
-  echo "Creation of a folder on the underlay infrastructure - This should take less than a minute" | tee -a ${logfile}
+  echo "Creation of a folder on the underlay infrastructure - This should take less than a minute" | tee -a ${log_file}
   if $(echo ${list_folder} | jq -e '. | any(. == "./vm/'${folder}'")' >/dev/null ) ; then
-    echo "ERROR: unable to create folder ${folder}: it already exists" | tee -a ${logfile}
+    echo "ERROR: unable to create folder ${folder}: it already exists" | tee -a ${log_file}
   else
     govc folder.create /${vsphere_dc}/vm/${folder}
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': vsphere external folder '${folder}' created"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
   fi
   #
   #
-  echo '------------------------------------------------------------' | tee -a ${logfile}
-  echo "Creation of an external gw on the underlay infrastructure - This should take 10 minutes" | tee -a ${logfile}
+  echo '------------------------------------------------------------' | tee -a ${log_file}
+  echo "Creation of an external gw on the underlay infrastructure - This should take 10 minutes" | tee -a ${log_file}
   # ova download
   ova_url=$(jq -c -r .gw.ova_url $jsonFile)
   download_file_from_url_to_location "${ova_url}" "/root/$(basename ${ova_url})" "Ubuntu OVA"
@@ -51,7 +51,7 @@ if [[ ${operation} == "apply" ]] ; then
   if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Ubuntu OVA downloaded"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
   #
   if [[ ${list_gw} != "null" ]] ; then
-    echo "ERROR: unable to create VM ${gw_name}: it already exists" | tee -a ${logfile}
+    echo "ERROR: unable to create VM ${gw_name}: it already exists" | tee -a ${log_file}
   else
     network_ref=$(jq -c -r .gw.network_ref $jsonFile)
     prefix=$(jq -c -r --arg arg "${network_ref}" '.vsphere_underlay.networks[] | select( .ref == $arg).cidr' $jsonFile | cut -d"/" -f2)
@@ -117,7 +117,7 @@ if [[ ${operation} == "apply" ]] ; then
       govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3
     fi
     govc vm.power -on=true "${gw_name}"
-    echo "   +++ Updating /etc/hosts..." | tee -a ${logfile}
+    echo "   +++ Updating /etc/hosts..." | tee -a ${log_file}
     contents=$(cat /etc/hosts | grep -v ${ip_gw})
     echo "${contents}" | tee /etc/hosts > /dev/null
     contents="${ip_gw} gw"
@@ -126,14 +126,14 @@ if [[ ${operation} == "apply" ]] ; then
     # ssh check
     retry=60 ; pause=10 ; attempt=1
     while true ; do
-      echo "attempt $attempt to verify gw ${gw_name} is ready" | tee -a ${logfile}
+      echo "attempt $attempt to verify gw ${gw_name} is ready" | tee -a ${log_file}
       ssh -o StrictHostKeyChecking=no "ubuntu@${ip_gw}" -q >/dev/null 2>&1
       if [[ $? -eq 0 ]]; then
-        echo "Gw ${gw_name} is reachable." | tee -a ${logfile}
+        echo "Gw ${gw_name} is reachable." | tee -a ${log_file}
         #if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': external-gw '${gw_name}' VM reachable"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
         ssh -o StrictHostKeyChecking=no "ubuntu@${ip_gw}" "test -f /tmp/cloudInitDone.log" 2>/dev/null
         if [[ $? -eq 0 ]]; then
-          echo "Gw ${gw_name} is ready." | tee -a ${logfile}
+          echo "Gw ${gw_name} is ready." | tee -a ${log_file}
           if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': external-gw '${gw_name}' VM reachable and configured"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
           if [[ ${esxi_trunk} == "false" ]] ; then
             count=3
@@ -184,12 +184,12 @@ if [[ ${operation} == "apply" ]] ; then
           done
           break
         else
-          echo "Gw ${gw_name}: cloud init is not finished." | tee -a ${logfile}
+          echo "Gw ${gw_name}: cloud init is not finished." | tee -a ${log_file}
         fi
       fi
       ((attempt++))
       if [ $attempt -eq $retry ]; then
-        echo "Gw ${gw_name} is unreachable after $attempt attempt" | tee -a ${logfile}
+        echo "Gw ${gw_name} is unreachable after $attempt attempt" | tee -a ${log_file}
         exit
       fi
       sleep $pause
@@ -198,8 +198,8 @@ if [[ ${operation} == "apply" ]] ; then
   names="${gw_name}"
   #
   #
-  echo '------------------------------------------------------------' | tee -a ${logfile}
-  echo "Creation of an ESXi hosts on the underlay infrastructure - This should take 10 minutes" | tee -a ${logfile}
+  echo '------------------------------------------------------------' | tee -a ${log_file}
+  echo "Creation of an ESXi hosts on the underlay infrastructure - This should take 10 minutes" | tee -a ${log_file}
   wait
   if [[ ${cloud_builder_ova_url} != "null" ]]; then
     download_file_from_url_to_location "${cloud_builder_ova_url}" "/root/$(basename ${cloud_builder_ova_url})" "VFC-Cloud_Builder OVA" &
@@ -214,12 +214,12 @@ if [[ ${operation} == "apply" ]] ; then
   boot_cfg_location="efi/boot/boot.cfg"
   iso_location="/tmp/esxi"
   xorriso -ecma119_map lowercase -osirrox on -indev "/root/$(basename ${iso_url})" -extract / ${iso_mount_location}
-  echo "Copying source ESXi ISO to Build directory" | tee -a ${logfile}
+  echo "Copying source ESXi ISO to Build directory" | tee -a ${log_file}
   rm -fr ${iso_build_location}
   mkdir -p ${iso_build_location}
   cp -r ${iso_mount_location}/* ${iso_build_location}
   rm -fr ${iso_mount_location}
-  echo "Modifying ${iso_build_location}/${boot_cfg_location}" | tee -a ${logfile}
+  echo "Modifying ${iso_build_location}/${boot_cfg_location}" | tee -a ${log_file}
   echo "kernelopt=runweasel ks=cdrom:/KS_CUST.CFG" | tee -a ${iso_build_location}/${boot_cfg_location}
   #
   for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
@@ -231,14 +231,14 @@ if [[ ${operation} == "apply" ]] ; then
       name_esxi="${basename_sddc}-wld0$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
     fi
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_esxi}'")] | length') -eq 1 ]]; then
-      echo "ERROR: unable to create nested ESXi ${name_esxi}: it already exists" | tee -a ${logfile}
+      echo "ERROR: unable to create nested ESXi ${name_esxi}: it already exists" | tee -a ${log_file}
       exit
     else
       net=$(jq -c -r .esxi.nics[0] $jsonFile)
       ip_esxi="$(echo ${ips_esxi} | jq -r .[$(expr ${esxi} - 1)])"
       hostSpec='{"association":"'${folder}'-dc","ipAddressPrivate":{"ipAddress":"'${ip_esxi}'"},"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'$(jq -c -r .generic_password $jsonFile)'"},"vSwitch":"vSwitch0"}'
       hostSpecs=$(echo ${hostSpecs} | jq '. += ['${hostSpec}']')
-      echo "Building custom ESXi ISO for ESXi${esxi}" | tee -a ${logfile}
+      echo "Building custom ESXi ISO for ESXi${esxi}" | tee -a ${log_file}
       rm -f ${iso_build_location}/ks_cust.cfg
       rm -f "${iso_location}-${esxi}.iso"
       if [[ ${esxi_trunk} == "true" ]] ; then
@@ -262,7 +262,7 @@ if [[ ${operation} == "apply" ]] ; then
             -e "s/\${domain}/${domain}/" \
             -e "s/\${gateway}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" /nested-vcf/templates/ks_cust-multi-nic.cfg.template | tee ${iso_build_location}/ks_cust.cfg > /dev/null
       fi
-      echo "Building new ISO for ESXi ${esxi}" | tee -a ${logfile}
+      echo "Building new ISO for ESXi ${esxi}" | tee -a ${log_file}
       xorrisofs -relaxed-filenames -J -R -o "${iso_location}-${esxi}.iso" -b isolinux.bin -c boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e efiboot.img -no-emul-boot ${iso_build_location}
       ds=$(jq -c -r .vsphere_underlay.datastore $jsonFile)
       dc=$(jq -c -r .vsphere_underlay.datacenter $jsonFile)
@@ -327,8 +327,8 @@ if [[ ${operation} == "apply" ]] ; then
     govc cluster.rule.create -name "${folder}-affinity-rule" -enable -affinity ${names}
   fi
   #
-  echo '------------------------------------------------------------' | tee -a ${logfile}
-  echo "Cloud Builder JSON file creation  - This should take 1 minute" | tee -a ${logfile}
+  echo '------------------------------------------------------------' | tee -a ${log_file}
+  echo "Cloud Builder JSON file creation  - This should take 1 minute" | tee -a ${log_file}
   hostSpecs="[]"
   hosts_validation_json="[]"
   for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
@@ -448,16 +448,16 @@ if [[ ${operation} == "apply" ]] ; then
   ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "chgrp root /var/www/html/${basename_sddc}_cb.json"
   if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Details for cloud deployment available at http://'${ip_gw}'/"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
   #
-  echo '------------------------------------------------------------' | tee -a ${logfile}
-  echo "Creation of a cloud builder or VCF Installer VM underlay infrastructure - This should take 10 minutes" | tee -a ${logfile}
+  echo '------------------------------------------------------------' | tee -a ${log_file}
+  echo "Creation of a cloud builder or VCF Installer VM underlay infrastructure - This should take 10 minutes" | tee -a ${log_file}
   #
   wait
   if [[ ${cloud_builder_ova_url} != "null" ]]; then
-    echo "Cloud Builder OVA downloaded" | tee -a ${logfile}
+    echo "Cloud Builder OVA downloaded" | tee -a ${log_file}
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Cloud Builder OVA downloaded"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
   fi
   if [[ ${vcf_installer_ova_url} != "null" ]]; then
-    echo "VCF Installer OVA downloaded" | tee -a ${logfile}
+    echo "VCF Installer OVA downloaded" | tee -a ${log_file}
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF Installer OVA downloaded"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
   fi
   #
@@ -465,7 +465,7 @@ if [[ ${operation} == "apply" ]] ; then
   #
   if [[ ${name_cb} != "null" ]]; then
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_cb}'")] | length') -eq 1 ]]; then
-      echo "cloud Builder VM already exists" | tee -a ${logfile}
+      echo "cloud Builder VM already exists" | tee -a ${log_file}
       exit
     else
       sed -e "s/\${CLOUD_BUILDER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
@@ -482,11 +482,11 @@ if [[ ${operation} == "apply" ]] ; then
       count=1
       until $(curl --output /dev/null --silent --head -k https://${ip_cb})
       do
-        echo "Attempt ${count}: Waiting for Cloud Builder VM at https://${ip_cb} to be reachable..." | tee -a ${logfile}
+        echo "Attempt ${count}: Waiting for Cloud Builder VM at https://${ip_cb} to be reachable..." | tee -a ${log_file}
         sleep 30
         count=$((count+1))
         if [[ "${count}" -eq 30 ]]; then
-          echo "ERROR: Unable to connect to Cloud Builder VM at https://${ip_cb} to be reachable after ${count} Attempts" | tee -a ${logfile}
+          echo "ERROR: Unable to connect to Cloud Builder VM at https://${ip_cb} to be reachable after ${count} Attempts" | tee -a ${log_file}
           exit 1
         fi
       done
@@ -498,7 +498,7 @@ if [[ ${operation} == "apply" ]] ; then
   #
   if [[ ${name_vcf_installer} != "null" ]]; then
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_vcf_installer}'")] | length') -eq 1 ]]; then
-      echo "VCF installer VM already exists" | tee -a ${logfile}
+      echo "VCF installer VM already exists" | tee -a ${log_file}
       exit
     else
       sed -e "s/\${VCF_INSTALLER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
@@ -516,11 +516,11 @@ if [[ ${operation} == "apply" ]] ; then
       count=1
       until $(curl --output /dev/null --silent --head -k https://${ip_vcf_installer})
       do
-        echo "Attempt ${count}: Waiting for VCF installer VM at https://${ip_vcf_installer} to be reachable..." | tee -a ${logfile}
+        echo "Attempt ${count}: Waiting for VCF installer VM at https://${ip_vcf_installer} to be reachable..." | tee -a ${log_file}
         sleep 30
         count=$((count+1))
         if [[ "${count}" -eq 30 ]]; then
-          echo "ERROR: Unable to connect to VCF installer VM at https://${ip_vcf_installer} to be reachable after ${count} Attempts" | tee -a ${logfile}
+          echo "ERROR: Unable to connect to VCF installer VM at https://${ip_vcf_installer} to be reachable after ${count} Attempts" | tee -a ${log_file}
           exit 1
         fi
       done
@@ -530,8 +530,8 @@ if [[ ${operation} == "apply" ]] ; then
   fi
   #
   #
-  echo '------------------------------------------------------------' | tee -a ${logfile}
-  echo "ESXI customization  - This should take 2 minutes per nested ESXi" | tee -a ${logfile}
+  echo '------------------------------------------------------------' | tee -a ${log_file}
+  echo "ESXI customization  - This should take 2 minutes per nested ESXi" | tee -a ${log_file}
   for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
   do
     if [[ $(((${esxi}-1)/4+1)) -eq 1 ]] ; then
@@ -540,6 +540,7 @@ if [[ ${operation} == "apply" ]] ; then
     if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
       name_esxi="${basename_sddc}-wld0$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
     fi
+    sleep 60
     govc vm.power -s ${name_esxi}
     sleep 30
     govc vm.power -on ${name_esxi}
@@ -555,13 +556,15 @@ if [[ ${operation} == "apply" ]] ; then
   # VCF 9 - vcf_installer use case
   #
   if [[ ${name_vcf_installer} != "null" ]]; then
+    echo '------------------------------------------------------------' | tee -a ${log_file}
+    echo "VCF Installer configuration - This should take 2 minutes per nested ESXi" | tee -a ${log_file}
     /nested-vcf/bash/sddc_manager/create_api_session.sh "admin@local" "$(jq -c -r .generic_password $jsonFile)" ${ip_vcf_installer} /tmp/token_vcfi.json
     while [ ! -f "/root/vcfi-${ip_vcf_installer}-patched.json" ]; do
         if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': please patch vcf installer"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
         echo "File not found yet. Sleeping for 30 seconds..."
         sleep 30
     done
-    echo "VCF installer VM patched" | tee -a ${logfile}
+    echo "VCF installer VM patched" | tee -a ${log_file}
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM patched"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
     sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"downloadToken" : "'${vcf_installer_token}'"}}' ${ip_vcf_installer} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
     retry=60 ; pause=10 ; attempt=1
@@ -571,12 +574,12 @@ if [[ ${operation} == "apply" ]] ; then
       bundles=$(echo ${response_body} | jq -c -r '.')
       bundles_count=$(echo ${bundles} | jq -c -r '.elements | length')
       if [[ bundles_count -gt 0 ]] ; then
-        echo "bundles are populated" | tee -a ${logfile}
+        echo "bundles are populated" | tee -a ${log_file}
         sleep 30
         break
       fi
       if [ $attempt -eq $retry ]; then
-        echo "Bundles are not populated after ${attempt} attempts of ${pause} seconds" | tee -a ${logfile}
+        echo "Bundles are not populated after ${attempt} attempts of ${pause} seconds" | tee -a ${log_file}
         exit
       fi
       sleep ${pause}
@@ -596,12 +599,12 @@ if [[ ${operation} == "apply" ]] ; then
       sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
       depot_downloaded=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.downloadStatus == "SUCCESSFUL") and (.version | startswith("9"))) ] | length')
       if [[ ${depot_downloaded} == ${depots_to_download} ]]; then
-        echo "bundles are downloaded" | tee -a ${logfile}
+        echo "bundles are downloaded" | tee -a ${log_file}
         if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer bundles downloaded"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
         break
       fi
       if [ $attempt -eq $retry ]; then
-        echo "Bundles are not downloaded after ${attempt} attempts of ${pause} seconds" | tee -a ${logfile}
+        echo "Bundles are not downloaded after ${attempt} attempts of ${pause} seconds" | tee -a ${log_file}
         exit
       fi
       sleep ${pause}
@@ -609,18 +612,17 @@ if [[ ${operation} == "apply" ]] ; then
     done
   fi
   #
-  #
+  # VCF - cloud builder use case
   #
   if [[ ${name_cb} != "null" ]]; then
-    echo '------------------------------------------------------------' | tee -a ${logfile}
-    echo "SDDC creation - This should take hours..." | tee -a ${logfile}
+    echo '------------------------------------------------------------' | tee -a ${log_file}
+    echo "SDDC creation - This should take hours..." | tee -a ${log_file}
     if [[ $(jq -c -r .sddc.create_mgmt $jsonFile) == "true" ]] ; then
-      echo "VCF 9 has not been detected" | tee -a ${logfile}
       validation_id=$(curl -s -k "https://${ip_cb}/v1/sddcs/validations" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
       # validation json
       retry=60 ; pause=10 ; attempt=1
       while true ; do
-        echo "attempt $attempt to verify SDDC JSON validation" | tee -a ${logfile}
+        echo "attempt $attempt to verify SDDC JSON validation" | tee -a ${log_file}
         executionStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Accept: application/json' | jq -c -r .executionStatus)
         if [[ ${executionStatus} == "COMPLETED" ]]; then
           resultStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Accept: application/json' | jq -c -r .resultStatus)
@@ -633,14 +635,14 @@ if [[ ${operation} == "apply" ]] ; then
         fi
         ((attempt++))
         if [ $attempt -eq $retry ]; then
-          echo "SDDC JSON validation not finished after $attempt attempts of ${pause} seconds" | tee -a ${logfile}
+          echo "SDDC JSON validation not finished after $attempt attempts of ${pause} seconds" | tee -a ${log_file}
           if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
           exit
         fi
       done
       sddc_id=$(curl -s -k "https://${ip_cb}/v1/sddcs" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
       # validation_sddc creation
-      echo "SDDC ${sddc_id} trying ${count_retry} times to apply" | tee -a ${logfile}
+      echo "SDDC ${sddc_id} trying ${count_retry} times to apply" | tee -a ${log_file}
       retry=120 ; pause=300 ; attempt=1 ; count_retry=1
       while true ; do
         echo "attempt $attempt to verify SDDC ${sddc_id} creation"
@@ -654,7 +656,7 @@ if [[ ${operation} == "apply" ]] ; then
               exit
             fi
             sleep 600
-            echo "SDDC ${sddc_id} trying ${count_retry} times to apply after status ${sddc_status}" | tee -a ${logfile}
+            echo "SDDC ${sddc_id} trying ${count_retry} times to apply after status ${sddc_status}" | tee -a ${log_file}
             retry=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X PATCH -H 'Content-type: application/json' -d @/root/${basename_sddc}_cb.json)
           fi
           if [[ ${sddc_status} == "COMPLETED_WITH_SUCCESS" ]]; then
@@ -666,28 +668,28 @@ if [[ ${operation} == "apply" ]] ; then
         fi
         ((attempt++))
         if [ $attempt -eq $retry ]; then
-          echo "SDDC ${sddc_id} creation not finished after $attempt attempt of ${pause} seconds" | tee -a ${logfile}
+          echo "SDDC ${sddc_id} creation not finished after $attempt attempt of ${pause} seconds" | tee -a ${log_file}
           if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
           exit
         fi
       done
     fi
-    echo '------------------------------------------------------------' | tee -a ${logfile}
-    echo "ESXi host commissioning - This should take minutes..." | tee -a ${logfile}
+    echo '------------------------------------------------------------' | tee -a ${log_file}
+    echo "ESXi host commissioning - This should take minutes..." | tee -a ${log_file}
     if [[ $(jq -c -r .sddc.create_wld $jsonFile) == "true" ]] ; then
       for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
       do
         if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
           esxi_fqdn="${basename_sddc}-wld0$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4)).${domain}"
           ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "/home/ubuntu/sddc_manager/sddc_manager_commission_host.sh /home/ubuntu/json/$(basename ${jsonFile}) ${esxi_fqdn}" > ${log_file} 2>&1
-          echo "ESXi host commissioning of ESXi host: ${esxi_fqdn}" | tee -a ${logfile}
+          echo "ESXi host commissioning of ESXi host: ${esxi_fqdn}" | tee -a ${log_file}
           if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' ESXi host commissioning of ESXi host: '${esxi_fqdn}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
         fi
       done
     fi
     sleep 120
     govc vm.power -off=true "${name_cb}" >> /dev/null 2>&1
-    echo "Powering off Cloud Builder VM" | tee -a ${logfile}
+    echo "Powering off Cloud Builder VM" | tee -a ${log_file}
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Powering off Cloud Builder VM"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
   fi
 fi
@@ -698,7 +700,7 @@ fi
 #
 if [[ ${operation} == "destroy" ]] ; then
   if [[ ${name_cb} != "null" ]]; then
-    echo '------------------------------------------------------------' | tee -a ${logfile}
+    echo '------------------------------------------------------------' | tee -a ${log_file}
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_cb}'")] | length') -eq 1 ]]; then
       govc vm.power -off=true "${folder}/${name_cb}"
       govc vm.destroy "${folder}/${name_cb}"
@@ -726,38 +728,38 @@ if [[ ${operation} == "destroy" ]] ; then
     if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
       name_esxi="${basename_sddc}-wld0$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
     fi
-    echo "Deletion of a nested ESXi ${name_esxi} on the underlay infrastructure - This should take less than a minute" | tee -a ${logfile}
+    echo "Deletion of a nested ESXi ${name_esxi} on the underlay infrastructure - This should take less than a minute" | tee -a ${log_file}
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_esxi}'")] | length') -eq 1 ]]; then
       govc vm.power -off=true "${folder}/${name_esxi}"
       govc vm.destroy "${folder}/${name_esxi}"
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': nested ESXi '${esxi}' destroyed"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
     else
-      echo "ERROR: unable to delete ESXi ${name_esxi}: it is already gone" | tee -a ${logfile}
+      echo "ERROR: unable to delete ESXi ${name_esxi}: it is already gone" | tee -a ${log_file}
     fi
   done
   #
   #
-  echo '------------------------------------------------------------' | tee -a ${logfile}
-  echo "Deletion of a VM on the underlay infrastructure - This should take less than a minute" | tee -a ${logfile}
+  echo '------------------------------------------------------------' | tee -a ${log_file}
+  echo "Deletion of a VM on the underlay infrastructure - This should take less than a minute" | tee -a ${log_file}
   if [[ ${list_gw} != "null" ]] ; then
     govc vm.power -off=true "${gw_name}"
     govc vm.destroy "${gw_name}"
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': external-gw '${gw_name}' VM powered off and destroyed"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
   else
-    echo "ERROR: unable to delete VM ${gw_name}: it already exists" | tee -a ${logfile}
+    echo "ERROR: unable to delete VM ${gw_name}: it already exists" | tee -a ${log_file}
   fi
   govc cluster.rule.remove -name "${folder}-affinity-rule"
   #
   #
-  echo '------------------------------------------------------------' | tee -a ${logfile}
-  echo "Deletion of a folder on the underlay infrastructure - This should take less than a minute" | tee -a ${logfile}
+  echo '------------------------------------------------------------' | tee -a ${log_file}
+  echo "Deletion of a folder on the underlay infrastructure - This should take less than a minute" | tee -a ${log_file}
   if $(echo ${list_folder} | jq -e '. | any(. == "./vm/'${folder}'")' >/dev/null ) ; then
     govc object.destroy /${vsphere_dc}/vm/${folder}
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': vsphere external folder '${folder}' removed"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
   else
-    echo "ERROR: unable to delete folder ${folder}: it does not exist" | tee -a ${logfile}
+    echo "ERROR: unable to delete folder ${folder}: it does not exist" | tee -a ${log_file}
   fi
 fi
 #
-echo "Ending timestamp: $(date)" | tee -a ${logfile}
-echo '------------------------------------------------------------' | tee -a ${logfile}
+echo "Ending timestamp: $(date)" | tee -a ${log_file}
+echo '------------------------------------------------------------' | tee -a ${log_file}
