@@ -21,12 +21,6 @@ jq -s '.[0] * .[1]' ${jsonFile_kube} ${jsonFile_local} | tee ${jsonFile}
 #
 operation=$(jq -c -r .operation $jsonFile)
 #
-if [[ ${operation} == "apply" ]] ; then log_file="/nested-vcf/log/$(basename "$0" | cut -f1 -d'.')_${operation}.stdout" ; fi
-if [[ ${operation} == "destroy" ]] ; then log_file="/nested-vcf/log/$(basename "$0" | cut -f1 -d'.')_${operation}.stdout" ; fi
-if [[ ${operation} != "apply" && ${operation} != "destroy" ]] ; then echo "ERROR: Unsupported operation" ; exit 255 ; fi
-#
-rm -f ${log_file}
-#
 source /nested-vcf/bash/variables.sh
 #
 echo "Starting timestamp: $(date)"
@@ -539,11 +533,13 @@ if [[ ${operation} == "apply" ]] ; then
         echo "File not found yet. Sleeping for 30 seconds..."
         sleep 30
     done
+    echo "VCF installer VM patched"
+    if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM patched"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
     sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"downloadToken" : "'${vcf_installer_token}'"}}' ${ip_vcf_installer} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
     retry=60 ; pause=10 ; attempt=1
     while true
     do
-      sddc_manager_api 3 2 GET '' ${vcf_installer_token} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
+      sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
       bundles=$(echo ${response_body} | jq -c -r '.')
       bundles_count=$(echo ${bundles} | jq -c -r '.elements | length')
       if [[ bundles_count -gt 0 ]] ; then
@@ -572,6 +568,7 @@ if [[ ${operation} == "apply" ]] ; then
       depot_downloaded=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.downloadStatus == "SUCCESSFUL") and (.version | startswith("9"))) ] | length')
       if [[ ${depot_downloaded} == ${depots_to_download} ]]; then
         echo "bundles are downloaded"
+        if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer bundles downloaded"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
         break
       fi
       if [ $attempt -eq $retry ]; then
