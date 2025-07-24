@@ -340,7 +340,7 @@ if [[ ${operation} == "apply" ]] ; then
         hostSpec='{"association":"'${folder}'-dc","ipAddressPrivate":{"ipAddress":"'${ip_esxi}'"},"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'$(jq -c -r .generic_password $jsonFile)'"},"vSwitch":"vSwitch0"}'
       fi
       if [[ ${name_vcf_installer} != "null" ]]; then
-        esxi_sslThumbprint=$(openssl s_client -connect $(echo $subscription_url  | cut -d"/" -f3):443 < /dev/null 2>/dev/null | openssl x509 -fingerprint -noout -in /dev/stdin | awk -F'Fingerprint=' '{print $2}')
+        esxi_sslThumbprint=$(echo | openssl s_client -servername ${ip_esxi} -connect ${ip_esxi}:443 2>/dev/null | openssl x509 -noout -fingerprint -sha256 | awk -F'Fingerprint=' '{print $2}')
         hostSpec='{"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'$(jq -c -r .generic_password $jsonFile)'"},"sslThumbprint":"'${esxi_sslThumbprint}'"}'
       fi
       hostSpecs=$(echo ${hostSpecs} | jq '. += ['${hostSpec}']')
@@ -685,6 +685,7 @@ if [[ ${operation} == "apply" ]] ; then
         fi
       done
     fi
+    sleep 120
     govc vm.power -off=true "${name_cb}" >> /dev/null 2>&1
     echo "Powering off Cloud Builder VM" | tee -a ${logfile}
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Powering off Cloud Builder VM"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
