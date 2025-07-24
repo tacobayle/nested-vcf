@@ -2,6 +2,7 @@
 #
 source /nested-vcf/bash/download_file.sh
 source /nested-vcf/bash/ip.sh
+source /nested-vcf/bash/sddc_manager/sddc_manager_api.sh
 source /nested-vcf/bash/vcenter/vcenter_api.sh
 rm -f /root/govc.error
 jsonFile_kube="${1}"
@@ -529,75 +530,120 @@ if [[ ${operation} == "apply" ]] ; then
   done
   govc datastore.rm nested-vcf
   #
+  # VCF 9 - vcf_installer use case
+  #
+  if [[ ${name_vcf_installer} != "null" ]]; then
+    /nested-vcf/bash/sddc_manager/create_api_session.sh "admin@local" "$(jq -c -r .generic_password $jsonFile)" ${ip_vcf_installer} /tmp/token_vcfi.json
+    while [ ! -f "/root/vcfi-${ip_vcf_installer}-patched.json" ]; do
+        echo "File not found yet. Sleeping for 30 seconds..."
+        sleep 30
+    done
+    sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"downloadToken" : "'${vcf_installer_token}'"}}' ${ip_vcf_installer} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
+    retry=60 ; pause=10 ; attempt=1
+    while true
+    do
+      sddc_manager_api 3 2 GET '' ${vcf_installer_token} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
+      bundles=$(echo ${response_body} | jq -c -r '.')
+      bundles_count=$(echo ${bundles} | jq -c -r '.elements | length')
+      if [[ bundles_count -gt 0 ]] ; then
+        echo "bundles are populated"
+        break
+      fi
+      if [ $attempt -eq $retry ]; then
+        echo "Bundles are not populated after ${attempt} attempts of ${pause} seconds" | tee -a ${log_file}
+        exit
+      fi
+      sleep ${pause}
+      ((attempt++))
+    done
+    sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
+    depots_ids=$( echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith("9"))) | .id]')
+    depots_to_download=$( echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith("9"))) | length]')
+    echo ${depots_ids} | jq -c -r .[] | while read depot_id
+    do
+      sddc_manager_api 3 2 PATCH '{"bundleDownloadSpec":{"downloadNow":true}}' ${ip_vcf_installer} v1/bundles/${depot_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
+    done
+    sleep 120
+    retry=60 ; pause=10 ; attempt=1
+    while true
+    do
+      sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
+      depot_downloaded=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.downloadStatus == "SUCCESSFUL") and (.version | startswith("9"))) ] | length')
+      if [[ ${depot_downloaded} == ${depots_to_download} ]]; then
+        echo "bundles are downloaded"
+        break
+      fi
+      if [ $attempt -eq $retry ]; then
+        echo "Bundles are not downloaded after ${attempt} attempts of ${pause} seconds"
+        exit
+      fi
+      sleep ${pause}
+      ((attempt++))
+    done
+  fi
+  #
+  #
   #
   if [[ ${name_cb} != "null" ]]; then
     echo '------------------------------------------------------------' | tee -a ${log_file}
     echo "SDDC creation - This should take hours..." | tee -a ${log_file}
     if [[ $(jq -c -r .sddc.create_mgmt $jsonFile) == "true" ]] ; then
-      if [[ $(curl -s -k "https://${ip_cb}/v1/system/appliance-info" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Content-Type: application/json' -H 'Accept: application/json' | jq -c -r .version | cut -d'.' -f1) == "9" ]]; then
-        echo "VCF 9 has been detected" | tee -a ${log_file}
-        exit
-        /nested-vcf/bash/sddc_manager/create_api_session.sh "admin@local" "$(jq -c -r .generic_password $jsonFile)" ${ip_cb} /tmp/token_vcfi.json
-        source /nested-vcf/bash/sddc_manager/sddc_manager_api.sh
-        sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"username" : "'${DEPOT_USERNAME}'", "password" : "'${DEPOT_PASSWORD}'"}}' ${ip_cb} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
-      else
-        echo "VCF 9 has not been detected" | tee -a ${log_file}
-        validation_id=$(curl -s -k "https://${ip_cb}/v1/sddcs/validations" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
-        # validation json
-        retry=60 ; pause=10 ; attempt=1
-        while true ; do
-          echo "attempt $attempt to verify SDDC JSON validation" | tee -a ${log_file}
-          executionStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Accept: application/json' | jq -c -r .executionStatus)
-          if [[ ${executionStatus} == "COMPLETED" ]]; then
-            resultStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Accept: application/json' | jq -c -r .resultStatus)
-            echo "SDDC JSON validation: ${resultStatus} after $attempt of ${pause} seconds" | tee -a ${log_file}
-            if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation: '${resultStatus}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-            if [[ ${resultStatus} != "SUCCEEDED" ]] ; then exit ; fi
-            break
-          else
-            sleep $pause
-          fi
-          ((attempt++))
-          if [ $attempt -eq $retry ]; then
-            echo "SDDC JSON validation not finished after $attempt attempts of ${pause} seconds" | tee -a ${log_file}
-            if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-            exit
-          fi
-        done
-        sddc_id=$(curl -s -k "https://${ip_cb}/v1/sddcs" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
-        # validation_sddc creation
-        echo "SDDC ${sddc_id} trying ${count_retry} times to apply" | tee -a ${log_file}
-        retry=120 ; pause=300 ; attempt=1 ; count_retry=1
-        while true ; do
-          echo "attempt $attempt to verify SDDC ${sddc_id} creation" | tee -a ${log_file}
-          sddc_status=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Accept: application/json' | jq -c -r .status)
-          if [[ ${sddc_status} != "IN_PROGRESS" ]]; then
-            echo "SDDC ${sddc_id} creation ${sddc_status} after attempt $attempt of ${pause} seconds, go to https://${ip_cb}" | tee -a ${log_file}
-            if [[ ${sddc_status} != "COMPLETED_WITH_SUCCESS" ]]; then
-              ((count_retry++))
-              if [[ ${count_retry} == 3 ]]; then
-                if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_cb}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-                exit
-              fi
-              sleep 600
-              echo "SDDC ${sddc_id} trying ${count_retry} times to apply after status ${sddc_status}" | tee -a ${log_file}
-              retry=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X PATCH -H 'Content-type: application/json' -d @/root/${basename_sddc}_cb.json)
-            fi
-            if [[ ${sddc_status} == "COMPLETED_WITH_SUCCESS" ]]; then
+      echo "VCF 9 has not been detected" | tee -a ${log_file}
+      validation_id=$(curl -s -k "https://${ip_cb}/v1/sddcs/validations" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
+      # validation json
+      retry=60 ; pause=10 ; attempt=1
+      while true ; do
+        echo "attempt $attempt to verify SDDC JSON validation" | tee -a ${log_file}
+        executionStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Accept: application/json' | jq -c -r .executionStatus)
+        if [[ ${executionStatus} == "COMPLETED" ]]; then
+          resultStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Accept: application/json' | jq -c -r .resultStatus)
+          echo "SDDC JSON validation: ${resultStatus} after $attempt of ${pause} seconds" | tee -a ${log_file}
+          if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation: '${resultStatus}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+          if [[ ${resultStatus} != "SUCCEEDED" ]] ; then exit ; fi
+          break
+        else
+          sleep $pause
+        fi
+        ((attempt++))
+        if [ $attempt -eq $retry ]; then
+          echo "SDDC JSON validation not finished after $attempt attempts of ${pause} seconds" | tee -a ${log_file}
+          if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+          exit
+        fi
+      done
+      sddc_id=$(curl -s -k "https://${ip_cb}/v1/sddcs" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
+      # validation_sddc creation
+      echo "SDDC ${sddc_id} trying ${count_retry} times to apply" | tee -a ${log_file}
+      retry=120 ; pause=300 ; attempt=1 ; count_retry=1
+      while true ; do
+        echo "attempt $attempt to verify SDDC ${sddc_id} creation" | tee -a ${log_file}
+        sddc_status=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Accept: application/json' | jq -c -r .status)
+        if [[ ${sddc_status} != "IN_PROGRESS" ]]; then
+          echo "SDDC ${sddc_id} creation ${sddc_status} after attempt $attempt of ${pause} seconds, go to https://${ip_cb}" | tee -a ${log_file}
+          if [[ ${sddc_status} != "COMPLETED_WITH_SUCCESS" ]]; then
+            ((count_retry++))
+            if [[ ${count_retry} == 3 ]]; then
               if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_cb}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-              break
+              exit
             fi
-          else
-            sleep $pause
+            sleep 600
+            echo "SDDC ${sddc_id} trying ${count_retry} times to apply after status ${sddc_status}" | tee -a ${log_file}
+            retry=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X PATCH -H 'Content-type: application/json' -d @/root/${basename_sddc}_cb.json)
           fi
-          ((attempt++))
-          if [ $attempt -eq $retry ]; then
-            echo "SDDC ${sddc_id} creation not finished after $attempt attempt of ${pause} seconds" | tee -a ${log_file}
-            if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-            exit
+          if [[ ${sddc_status} == "COMPLETED_WITH_SUCCESS" ]]; then
+            if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_cb}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+            break
           fi
-        done
-      fi
+        else
+          sleep $pause
+        fi
+        ((attempt++))
+        if [ $attempt -eq $retry ]; then
+          echo "SDDC ${sddc_id} creation not finished after $attempt attempt of ${pause} seconds" | tee -a ${log_file}
+          if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+          exit
+        fi
+      done
     fi
     echo '------------------------------------------------------------' | tee -a ${log_file}
     echo "ESXi host commissioning - This should take minutes..." | tee -a ${log_file}

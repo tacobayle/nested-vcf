@@ -38,6 +38,17 @@ def delete_sddc(spec):
     with open(json_file, 'w') as outfile:
         json.dump(a_dict, outfile)
     result=subprocess.Popen(['/bin/bash', 'sddc.sh', json_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=folder)
+
+
+def create_vcfi(spec):
+    a_dict = spec
+    json_file='/root/vcfi-{0}-patched.json'.format(a_dict['ip'])
+    with open(json_file, 'w') as outfile:
+        json.dump(a_dict, outfile)
+
+def delete_vcfi(spec):
+    json_file='/root/vcfi-{0}-patched.json'.format(a_dict['ip'])
+    os.remove(json_file)
 #
 #
 #
@@ -55,5 +66,22 @@ def on_delete(body, **kwargs):
     spec = body['spec']
     try:
         delete_sddc(spec)
+    except requests.RequestException as e:
+        raise kopf.PermanentError(f'Failed to delete external resource: {e}')
+
+
+@kopf.on.create('vcfi')
+def on_create(body, **kwargs):
+    spec = body['spec']
+    try:
+        create_vcfi(spec)
+    except requests.RequestException as e:
+        raise kopf.PermanentError(f'Failed to create external resource: {e}')
+
+@kopf.on.delete('vcfi')
+def on_delete(body, **kwargs):
+    spec = body['spec']
+    try:
+        delete_vcfi(spec)
     except requests.RequestException as e:
         raise kopf.PermanentError(f'Failed to delete external resource: {e}')
