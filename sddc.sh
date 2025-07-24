@@ -493,7 +493,7 @@ if [[ ${operation} == "apply" ]] ; then
       govc vm.power -on=true "${name_vcf_installer}" | tee -a ${log_file}
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM started"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
       count=1
-      until $(curl --output /dev/null --silent --head -k https://${ip_cb})
+      until $(curl --output /dev/null --silent --head -k https://${ip_vcf_installer})
       do
         echo "Attempt ${count}: Waiting for VCF installer VM at https://${ip_vcf_installer} to be reachable..." | tee -a ${log_file}
         sleep 30
