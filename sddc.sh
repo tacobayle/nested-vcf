@@ -444,9 +444,6 @@ if [[ ${operation} == "apply" ]] ; then
   echo "Creation of a cloud builder or VCF Installer VM underlay infrastructure - This should take 10 minutes"
   #
   wait
-  #
-  # Cloud builder use case
-  #
   if [[ ${cloud_builder_ova_url} != "null" ]]; then
     echo "Cloud Builder OVA downloaded"
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Cloud Builder OVA downloaded"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
@@ -455,6 +452,9 @@ if [[ ${operation} == "apply" ]] ; then
     echo "VCF Installer OVA downloaded"
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF Installer OVA downloaded"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
   fi
+  #
+  # Cloud builder use case
+  #
   if [[ ${name_cb} != "null" ]]; then
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_cb}'")] | length') -eq 1 ]]; then
       echo "cloud Builder VM already exists"
@@ -575,8 +575,8 @@ if [[ ${operation} == "apply" ]] ; then
       ((attempt++))
     done
     sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
-    depots_ids=$( echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith("9"))) | .id]')
-    depots_to_download=$( echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith("9"))) | length]')
+    depots_ids=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith("9"))) | .id]')
+    depots_to_download=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith("9"))) | .id ] | length')
     echo ${depots_ids} | jq -c -r .[] | while read depot_id
     do
       sddc_manager_api 3 2 PATCH '{"bundleDownloadSpec":{"downloadNow":true}}' ${ip_vcf_installer} v1/bundles/${depot_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
