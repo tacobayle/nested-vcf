@@ -401,7 +401,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s/\${gw_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
         -e "s/\${vlan_id_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
         -e "s/\${ending_ip_vsan}/${ending_ip_vsan}/" \
-        -e "s/\${starting_ip_vsan}/${starting_ip_vsan}/" /nested-vcf/templates/sddc_vcf_installer_trunk.json.template | tee /root/${basename_sddc}_cb.json > /dev/null
+        -e "s/\${starting_ip_vsan}/${starting_ip_vsan}/" /nested-vcf/templates/sddc_vcf_installer_trunk.json.template | tee /root/${basename_sddc}.json > /dev/null
   fi
   if [[ ${esxi_trunk} == "true" && ${name_cb} != "null" ]] ; then
     sed -e "s/\${basename_sddc}/${basename_sddc}/" \
@@ -440,7 +440,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s/\${ssoDomain}/$(jq -c -r .sddc.vcenter.ssoDomain ${jsonFile})/" \
         -e "s/\${ip_vcsa}/${ip_vcsa}/" \
         -e "s/\${vmSize}/$(jq -c -r .sddc.vcenter.vmSize ${jsonFile})/" \
-        -e "s/\${hostSpecs}/$(echo ${hostSpecs} | jq -c -r .)/" /nested-vcf/templates/sddc_cb_v5_trunk.json.template | tee /root/${basename_sddc}_cb.json > /dev/null
+        -e "s/\${hostSpecs}/$(echo ${hostSpecs} | jq -c -r .)/" /nested-vcf/templates/sddc_cb_v5_trunk.json.template | tee /root/${basename_sddc}.json > /dev/null
   fi
   if [[ ${esxi_trunk} == "false" ]] ; then
     sed -e "s/\${basename_sddc}/${basename_sddc}/" \
@@ -475,7 +475,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s/\${ssoDomain}/$(jq -c -r .sddc.vcenter.ssoDomain ${jsonFile})/" \
         -e "s/\${ip_vcsa}/${ip_vcsa}/" \
         -e "s/\${vmSize}/$(jq -c -r .sddc.vcenter.vmSize ${jsonFile})/" \
-        -e "s/\${hostSpecs}/$(echo ${hostSpecs} | jq -c -r .)/" /nested-vcf/templates/sddc_cb_v5_multi_nic.json.template | tee /root/${basename_sddc}_cb.json > /dev/null
+        -e "s/\${hostSpecs}/$(echo ${hostSpecs} | jq -c -r .)/" /nested-vcf/templates/sddc_cb_v5_multi_nic.json.template | tee /root/${basename_sddc}.json > /dev/null
   fi
   sed -e "s/\${basename_sddc}/${basename_sddc}/" \
       -e "s/\${domain}/${domain}/" /nested-vcf/templates/index.html.template | tee /root/index.html > /dev/null
@@ -487,10 +487,10 @@ if [[ ${operation} == "apply" ]] ; then
   ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "while read -r line; do echo \"\$line<br>\" ; done < /var/www/html/avi_raw.html | sudo tee /var/www/html/avi.html"
   ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo cat /var/lib/bind/db.${domain} | grep wld | sudo tee /var/www/html/esxi_raw.html"
   ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "while read -r line; do echo \"$line<br>\" ; done < /var/www/html/esxi_raw.html | sudo tee /var/www/html/esxi.html"
-  scp -o StrictHostKeyChecking=no /root/${basename_sddc}_cb.json ubuntu@${ip_gw}:/home/ubuntu/${basename_sddc}_cb.json
-  ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo mv /home/ubuntu/${basename_sddc}_cb.json /var/www/html/${basename_sddc}_cb.json"
-  ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "chown root /var/www/html/${basename_sddc}_cb.json"
-  ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "chgrp root /var/www/html/${basename_sddc}_cb.json"
+  scp -o StrictHostKeyChecking=no /root/${basename_sddc}.json ubuntu@${ip_gw}:/home/ubuntu/${basename_sddc}.json
+  ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo mv /home/ubuntu/${basename_sddc}.json /var/www/html/${basename_sddc}.json"
+  ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "chown root /var/www/html/${basename_sddc}.json"
+  ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "chgrp root /var/www/html/${basename_sddc}.json"
   if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Details for cloud deployment available at http://'${ip_gw}'/"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
   #
   # VCF Installer or Cloud Builder Deployment
@@ -687,7 +687,7 @@ if [[ ${operation} == "apply" ]] ; then
     echo '------------------------------------------------------------' | tee -a ${log_file}
     echo "SDDC creation - This should take hours..." | tee -a ${log_file}
     if [[ $(jq -c -r .sddc.create_mgmt $jsonFile) == "true" ]] ; then
-      validation_id=$(curl -s -k "https://${ip_cb}/v1/sddcs/validations" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
+      validation_id=$(curl -s -k "https://${ip_cb}/v1/sddcs/validations" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}.json | jq -c -r .id)
       # validation json
       retry=60 ; pause=10 ; attempt=1
       while true ; do
@@ -709,7 +709,7 @@ if [[ ${operation} == "apply" ]] ; then
           exit
         fi
       done
-      sddc_id=$(curl -s -k "https://${ip_cb}/v1/sddcs" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}_cb.json | jq -c -r .id)
+      sddc_id=$(curl -s -k "https://${ip_cb}/v1/sddcs" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d @/root/${basename_sddc}.json | jq -c -r .id)
       # validation_sddc creation
       echo "SDDC ${sddc_id} trying ${count_retry} times to apply" | tee -a ${log_file}
       retry=120 ; pause=300 ; attempt=1 ; count_retry=1
@@ -726,7 +726,7 @@ if [[ ${operation} == "apply" ]] ; then
             fi
             sleep 600
             echo "SDDC ${sddc_id} trying ${count_retry} times to apply after status ${sddc_status}" | tee -a ${log_file}
-            retry=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X PATCH -H 'Content-type: application/json' -d @/root/${basename_sddc}_cb.json)
+            retry=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X PATCH -H 'Content-type: application/json' -d @/root/${basename_sddc}.json)
           fi
           if [[ ${sddc_status} == "COMPLETED_WITH_SUCCESS" ]]; then
             if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_cb}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi

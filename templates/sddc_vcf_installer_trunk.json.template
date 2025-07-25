@@ -124,7 +124,7 @@
             "portGroupKey": "${basename_sddc}-pg-vm-mgmt",
             "gateway": "${gw_vm_mgmt}",
             "mtu": "1500",
-            "vlanId": "{vlan_id_vm_mgmt}",
+            "vlanId": "${vlan_id_vm_mgmt}",
             "subnet": "${cidr_vm_mgmt}",
             "teamingPolicy": "loadbalance_loadbased",
             "activeUplinks": [
@@ -139,7 +139,7 @@
             "gateway": "${gw_vmotion}",
             "mtu": "8000",
             "vlanId": "${vlan_id_vmotion}",
-            "subnet": "{cidr_vmotion}",
+            "subnet": "${cidr_vmotion}",
             "includeIpAddressRanges": [
                 {
                     "startIpAddress": "${starting_ip_vmotion}",
