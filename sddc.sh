@@ -101,6 +101,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s/\${ip_sddc_manager}/${ip_sddc_manager}/" \
         -e "s/\${ip_vcsa}/${ip_vcsa}/" \
         -e "s/\${ip_vcf_automation}/${ip_vcf_automation}/" \
+        -e "s/\${ip_vcf_installer}/${ip_vcf_installer}/" \
         -e "s/\${ip_vcf_operation}/${ip_vcf_operation}/" \
         -e "s/\${ip_vcf_operation_fleet}/${ip_vcf_operation_fleet}/" \
         -e "s/\${ip_vcf_operation_collector}/${ip_vcf_operation_collector}/" \

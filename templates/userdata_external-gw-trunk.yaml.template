@@ -152,21 +152,21 @@ write_files:
       dns       IN            A       ${ip_gw}
       ${basename_sddc}-nsx       IN            A       ${ip_nsx_vip}
       ${basename_sddc}-avi       IN            A       ${ip_avi_vip}
+      ${basename_sddc}-vcsa       IN            A       ${ip_vcsa}
+      EOT
       name_vcf_installer=${name_vcf_installer}
       name_cb=${name_cb}
       if [[ ${name_cb} != "null" ]]; then
-        ${basename_sddc}-sddc-manager       IN            A       ${ip_sddc_manager}
+        echo "${basename_sddc}-sddc-manager       IN            A       ${ip_sddc_manager}" | tee -a /var/lib/bind/db.${domain}
       fi
       if [[ ${name_vcf_installer} != "null" ]]; then
-        ${basename_sddc}-sddc-manager       IN            A       ${ip_vcf_installer}
-        ${basename_sddc}-vcfa       IN            A       ${ip_vcf_automation}
-        ${basename_sddc}-vcfo       IN            A       ${ip_vcf_operation}
-        ${basename_sddc}-vcfo-fleet       IN            A       ${ip_vcf_operation_fleet}
-        ${basename_sddc}-vcfo-collector       IN            A       ${ip_vcf_operation_collector}
-
+        echo "${basename_sddc}-sddc-manager       IN            A       ${ip_vcf_installer}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-vcfa       IN            A       ${ip_vcf_automation}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-vcfo       IN            A       ${ip_vcf_operation}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-vcfo-fleet       IN            A       ${ip_vcf_operation_fleet}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-vcfo-collector       IN            A       ${ip_vcf_operation_collector}" | tee -a /var/lib/bind/db.${domain}
       fi
-      ${basename_sddc}-vcsa       IN            A       ${ip_vcsa}
-      EOT
+
       #
       count_esxi=1
       echo '${ips_esxi}' | jq -c -r .[] | while read ip_esxi
