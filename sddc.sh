@@ -88,6 +88,8 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s/\${reverse_vm_network}/${reverse_vm_network}/g" \
         -e "s/\${ips_esxi}/$(echo ${ips_esxi} | jq -c -r .)/" \
         -e "s@\${directories}@$(jq -c -r '.directories' $jsonFile)@" \
+        -e "s@\${name_vcf_installer}@${name_vcf_installer}@" \
+        -e "s@\${name_cb}@${name_cb}@" \
         -e "s/\${packages}/$(jq -c -r '.apt_packages' $jsonFile)/" \
         -e "s/\${basename_sddc}/${basename_sddc}/" \
         -e "s/\${basename_nsx_manager}/${basename_nsx_manager}/" \
@@ -98,6 +100,10 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s/\${ips_avi}/$(echo ${ips_avi} | jq -c -r .)/" \
         -e "s/\${ip_sddc_manager}/${ip_sddc_manager}/" \
         -e "s/\${ip_vcsa}/${ip_vcsa}/" \
+        -e "s/\${ip_vcf_automation}/${ip_vcf_automation}/" \
+        -e "s/\${ip_vcf_operation}/${ip_vcf_operation}/" \
+        -e "s/\${ip_vcf_operation_fleet}/${ip_vcf_operation_fleet}/" \
+        -e "s/\${ip_vcf_operation_collector}/${ip_vcf_operation_collector}/" \
         -e "s@\${networks}@${networks}@" \
         -e "s@\${ip_gw_last_octet}@${ip_gw_last_octet}@" \
         -e "s/\${forwarders_bind}/${forwarders_bind}/" \
@@ -358,7 +364,85 @@ if [[ ${operation} == "apply" ]] ; then
     nsxtManager='{"hostname":"'${basename_sddc}''${basename_nsx_manager}''${nsx_count}'","ip":"'$(echo ${ips_nsx} | jq -c -r '.['$(expr '${nsx_count}' - 1)']')'"}'
     nsxtManagers=$(echo ${nsxtManagers} | jq '. += ['${nsxtManager}']')
   done
-  if [[ ${esxi_trunk} == "true" ]] ; then
+  if [[ ${esxi_trunk} == "true" && ${name_vcf_installer} != "null" ]] ; then
+    sed -e "s/\${basename_sddc}/${basename_sddc}/" \
+        -e "s/\${SDDC_MANAGER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+        -e "s/\${VCFA_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+        -e "s/\${ip_vcf_automation_start}/${ip_vcf_automation_start}/" \
+        -e "s/\${ip_vcf_automation_end}/${ip_vcf_automation_end}/" \
+        -e "s/\${vcf_automation_node_prefix}/${vcf_automation_node_prefix}/" \
+        -e "s/\${basename_sddc}/${basename_sddc}/" \
+        -e "s/\${domain}/${domain}/" \
+        -e "s/\${hostSpecs}/$(echo ${hostSpecs} | jq -c -r .)/" \
+        -e "s/\${VCFO_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+        -e "s/\${ip_gw}/${ip_gw}/" \
+        -e "s/\${VCS_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+        -e "s/\${ssoDomain}/$(jq -c -r .sddc.vcenter.ssoDomain ${jsonFile})/" \
+        -e "s/\${nsxtManagerSize}/$(jq -c -r .sddc.nsx.size ${jsonFile})/" \
+        -e "s/\${NSX_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+        -e "s/\${nsx_pool_range_start}/${nsx_pool_range_start}/" \
+        -e "s/\${nsx_pool_range_end}/${nsx_pool_range_end}/" \
+        -e "s@\${nsx_subnet_cidr}@$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s/\${nsx_subnet_gw}/$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_host_overlay}/$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s/\${basename_nsx_manager}/${basename_nsx_manager}/" \
+        -e "s/\${gw_mgmt}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_mgmt}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s@\${cidr_mgmt}@$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s@\${cidr_vm_mgmt}@$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s/\${gw_vm_mgmt}/$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_vm_mgmt}/$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s@\${cidr_vmotion}@$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s/\${gw_vmotion}/$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_vmotion}/$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s/\${ending_ip_vmotion}/${ending_ip_vmotion}/" \
+        -e "s/\${starting_ip_vmotion}/${starting_ip_vmotion}/" \
+        -e "s@\${cidr_vsan}@$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s/\${gw_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s/\${ending_ip_vsan}/${ending_ip_vsan}/" \
+        -e "s/\${starting_ip_vsan}/${starting_ip_vsan}/" \
+
+
+
+
+
+
+
+
+
+
+
+        -e "s/\${ip_gw}/${ip_gw}/" \
+        -e "s/\${domain}/${domain}/" \
+        -e "s@\${subnet_mgmt}@$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s/\${gw_mgmt}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_mgmt}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s@\${subnet_vmotion}@$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s/\${gw_vmotion}/$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_vmotion}/$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s/\${ending_ip_vmotion}/${ending_ip_vmotion}/" \
+        -e "s/\${starting_ip_vmotion}/${starting_ip_vmotion}/" \
+        -e "s@\${subnet_vm_mgmt}@$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s/\${gw_vm_mgmt}/$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_vm_mgmt}/$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s/\${nsxtManagerSize}/$(jq -c -r .sddc.nsx.size ${jsonFile})/" \
+        -e "s/\${nsxtManagers}/$(echo ${nsxtManagers} | jq -c -r .)/" \
+        -e "s/\${NSX_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+        -e "s/\${ip_nsx_vip}/${ip_nsx_vip}/" \
+        -e "s/\${basename_nsx_manager}/${basename_nsx_manager}/" \
+        -e "s/\${transportVlanId}/$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s/\${nsx_pool_range_start}/${nsx_pool_range_start}/" \
+        -e "s/\${nsx_pool_range_end}/${nsx_pool_range_end}/" \
+        -e "s@\${nsx_subnet_cidr}@$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s/\${nsx_subnet_gw}/$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${VCENTER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+        -e "s/\${ssoDomain}/$(jq -c -r .sddc.vcenter.ssoDomain ${jsonFile})/" \
+        -e "s/\${ip_vcsa}/${ip_vcsa}/" \
+        -e "s/\${vmSize}/$(jq -c -r .sddc.vcenter.vmSize ${jsonFile})/" \
+        -e "s/\${hostSpecs}/$(echo ${hostSpecs} | jq -c -r .)/" /nested-vcf/templates/sddc_vcf_installer_trunk.json.template | tee /root/${basename_sddc}_cb.json > /dev/null
+  fi
+  if [[ ${esxi_trunk} == "true" && ${name_cb} != "null" ]] ; then
     sed -e "s/\${basename_sddc}/${basename_sddc}/" \
         -e "s/\${SDDC_MANAGER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
         -e "s/\${ip_sddc_manager}/${ip_sddc_manager}/" \
@@ -448,6 +532,8 @@ if [[ ${operation} == "apply" ]] ; then
   ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "chgrp root /var/www/html/${basename_sddc}_cb.json"
   if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Details for cloud deployment available at http://'${ip_gw}'/"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
   #
+  # VCF Installer or Cloud Builder Deployment
+  #
   echo '------------------------------------------------------------' | tee -a ${log_file}
   echo "Creation of a cloud builder or VCF Installer VM underlay infrastructure - This should take 10 minutes" | tee -a ${log_file}
   #
@@ -529,6 +615,25 @@ if [[ ${operation} == "apply" ]] ; then
     fi
   fi
   #
+  # ESX connectivity check
+  #
+  for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
+  do
+    count=1
+    until $(curl --output /dev/null --silent --head -k https://${ip_esxi})
+    do
+      echo "Attempt ${count}: Waiting for ESXi host at https://${ip_esxi} to be reachable..." | tee -a ${log_file}
+      sleep 10
+      count=$((count+1))
+        if [[ "${count}" -eq 60 ]]; then
+          echo "ERROR: Unable to connect to ESXi host at https://${ip_esxi}" | tee -a ${log_file}
+          if [ -z "${SLACK_WEBHOOK_URL_LOCAL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-${basename_sddc}: nested ESXi '${ip_esxi}' unable to reach"}' ${SLACK_WEBHOOK_URL_LOCAL} >/dev/null 2>&1; fi
+          exit
+        fi
+    done
+  done
+  #
+  # ESX customization
   #
   echo '------------------------------------------------------------' | tee -a ${log_file}
   echo "ESXI customization  - This should take 2 minutes per nested ESXi" | tee -a ${log_file}
