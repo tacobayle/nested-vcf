@@ -164,8 +164,9 @@ if [[ ${operation} == "apply" ]] ; then
           fi
           echo $folders_to_copy | jq -c -r .[] | while read folder
           do
-            scp -o StrictHostKeyChecking=no -r /nested-vsphere/${folder} ubuntu@${ip_gw}:/home/ubuntu
+            scp -o StrictHostKeyChecking=no -r /nested-vcf/${folder} ubuntu@${ip_gw}:/home/ubuntu
           done
+          scp -o StrictHostKeyChecking=no -r /root/${basename_sddc}_${operation}.json ubuntu@${ip_gw}:/home/ubuntu/json/${basename_sddc}_${operation}.json
           for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
           do
             ip_esxi="$(echo ${ips_esxi} | jq -r .[$(expr ${esxi} - 1)])"
@@ -334,7 +335,6 @@ if [[ ${operation} == "apply" ]] ; then
   #
   # json file creation
   #
-  log_file="/nested-vcf/log/${basename_sddc}_json_builder.stdout"
   script_file="/home/ubuntu/bash/json_builder.sh"
   echo "running the following command from the gw: ${script_file} /home/ubuntu/json/${basename_sddc}_${operation}.json" >> ${log_file} 2>&1
   ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} /home/ubuntu/json/${basename_sddc}_${operation}.json" >> ${log_file} &

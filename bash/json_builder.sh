@@ -46,9 +46,11 @@ done
 nsxtManagers="[]"
 for nsx_count in $(seq 1 $(echo ${ips_nsx} | jq -c -r '. | length'))
 do
-  nsxtManager='{"hostname":"'${basename_sddc}''${basename_nsx_manager}''${nsx_count}'","ip":"'$(echo ${ips_nsx} | jq -c -r '.['$(expr '${nsx_count}' - 1)']')'"}'
-  nsxtManagers=$(echo ${nsxtManagers} | jq '. += ['${nsxtManager}']')
+  nsxtManager='{"hostname":"'${basename_sddc}''${basename_nsx_manager}''${nsx_count}'","ip":"'$(echo ${ips_nsx} | jq -c -r '.['$((nsx_count - 1))']')'"}'  nsxtManagers=$(echo ${nsxtManagers} | jq '. += ['${nsxtManager}']')
 done
+#
+#
+#
 if [[ ${esxi_trunk} == "true" && ${name_vcf_installer} != "null" ]] ; then
   sed -e "s/\${basename_sddc}/${basename_sddc}/" \
       -e "s/\${SDDC_MANAGER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
@@ -168,7 +170,7 @@ fi
 mkdir /home/ubuntu/html
 sed -e "s/\${basename_sddc}/${basename_sddc}/" \
     -e "s/\${domain}/${domain}/" /home/ubuntu/templates/index.html.template | tee /home/ubuntu/html/index.html > /dev/null
-mv /home/ubuntu/html/index.html /var/www/html/index.html
+sudo mv /home/ubuntu/html/index.html /var/www/html/index.html
 sudo chown root /var/www/html/index.html
 sudo chgrp root /var/www/html/index.html
 sudo cat /var/lib/bind/db.${domain} | grep avi | sudo tee /var/www/html/avi_raw.html
