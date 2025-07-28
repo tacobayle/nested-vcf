@@ -57,14 +57,6 @@ write_files:
       #
       curl -L -o - "https://github.com/vmware/govmomi/releases/latest/download/govc_$(uname -s)_$(uname -m).tar.gz" | tar -C /usr/local/bin -xvzf - govc
       #
-      # Directories
-      #
-      directories='${directories}'
-      echo $directories | jq -c -r .[] | while read directory
-      do
-        sudo -u ubuntu  mkdir -p /home/ubuntu/$directory
-      done
-      #
       # Network
       #
       mv /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.old

@@ -4,6 +4,6 @@
     "memory": 4096,
     "disk": "40G"
   },
-  "directories": ["sddc_manager", "json"],
+  "folders_to_copy": ["bash", "json", "templates"],
   "apt_packages": ["iptables-persistent", "expect", "bind9", "bind9utils", "dnsutils", "chrony", "nginx"]
 }
