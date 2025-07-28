@@ -342,6 +342,10 @@ if [[ ${operation} == "apply" ]] ; then
   do
     if [[ $(((${esxi}-1)/4+1)) -eq 1 ]] ; then
       name_esxi="${basename_sddc}-mgmt-esxi0${esxi}"
+    fi
+    if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
+      name_esxi="${basename_sddc}-wld$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
+    fi
       ip_esxi="$(echo ${ips_esxi} | jq -r .[$(expr ${esxi} - 1)])"
       count=1
       until $(curl --output /dev/null --silent --head -k https://${ip_esxi})
@@ -357,30 +361,14 @@ if [[ ${operation} == "apply" ]] ; then
       done
       if [[ ${name_cb} != "null" ]]; then
         hostSpec='{"association":"'${folder}'-dc","ipAddressPrivate":{"ipAddress":"'${ip_esxi}'"},"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'$(jq -c -r .generic_password $jsonFile)'"},"vSwitch":"vSwitch0"}'
+        #host_validation_json='{"fqdn":"'${name_esxi}'.'${domain}'","username":"root","password" :"'$(jq -c -r .generic_password $jsonFile)'","storageType":"VSAN","vvolStorageProtocolType":null,"networkPoolId" : "58d74167-ee80-4eb8-90d9-cdfb3c1cd9f3","networkPoolName":"engineering-networkpool","sshThumbprint":null,"sslThumbprint":null}'
+        #hosts_validation_json=$(echo ${hosts_validation_json} | jq '. += ['${host_validation_json}']')
       fi
       if [[ ${name_vcf_installer} != "null" ]]; then
         esxi_sslThumbprint=$(echo | openssl s_client -servername ${ip_esxi} -connect ${ip_esxi}:443 2>/dev/null | openssl x509 -noout -fingerprint -sha256 | awk -F'Fingerprint=' '{print $2}')
         hostSpec='{"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'$(jq -c -r .generic_password $jsonFile)'"},"sslThumbprint":"'${esxi_sslThumbprint}'"}'
       fi
       hostSpecs=$(echo ${hostSpecs} | jq '. += ['${hostSpec}']')
-    fi
-    if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
-      name_esxi="${basename_sddc}-wld0$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
-      ip_esxi="$(echo ${ips_esxi} | jq -r .[$(expr ${esxi} - 1)])"
-      until $(curl --output /dev/null --silent --head -k https://${ip_esxi})
-      do
-        echo "Attempt ${count}: Waiting for ESXi host at https://${ip_esxi} to be reachable..." | tee -a ${log_file}
-        sleep 10
-        count=$((count+1))
-          if [[ "${count}" -eq 60 ]]; then
-            echo "ERROR: Unable to connect to ESXi host at https://${ip_esxi}" | tee -a ${log_file}
-            if [ -z "${SLACK_WEBHOOK_URL_LOCAL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-${basename_sddc}: nested ESXi '${ip_esxi}' unable to reach"}' ${SLACK_WEBHOOK_URL_LOCAL} >/dev/null 2>&1; fi
-            exit
-          fi
-      done
-      host_validation_json='{"fqdn":"'${name_esxi}'.'${domain}'","username":"root","password" :"'$(jq -c -r .generic_password $jsonFile)'","storageType":"VSAN","vvolStorageProtocolType":null,"networkPoolId" : "58d74167-ee80-4eb8-90d9-cdfb3c1cd9f3","networkPoolName":"engineering-networkpool","sshThumbprint":null,"sslThumbprint":null}'
-      hosts_validation_json=$(echo ${hosts_validation_json} | jq '. += ['${host_validation_json}']')
-    fi
   done
   nsxtManagers="[]"
   for nsx_count in $(seq 1 $(echo ${ips_nsx} | jq -c -r '. | length'))
