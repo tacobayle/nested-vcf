@@ -51,7 +51,7 @@
         "skipNsxOverlayOverManagementNetwork": true,
         "ipAddressPoolSpec": {
             "name": "teppool",
-            "description": "",
+            "description": "teppool",
             "subnets": [
                 {
                     "cidr": "${nsx_subnet_cidr}",
