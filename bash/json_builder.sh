@@ -53,9 +53,6 @@ done
 #
 #
 if [[ ${esxi_trunk} == "true" && ${name_vcf_installer} != "null" ]] ; then
-        echo test1
-        echo ${hostSpecs} | jq -c -r .
-echo /home/ubuntu/json/${basename_sddc}.json
   sed -e "s/\${basename_sddc}/${basename_sddc}/" \
       -e "s/\${SDDC_MANAGER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
       -e "s/\${VCFA_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
@@ -92,7 +89,7 @@ echo /home/ubuntu/json/${basename_sddc}.json
       -e "s/\${gw_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
       -e "s/\${vlan_id_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
       -e "s/\${ending_ip_vsan}/${ending_ip_vsan}/" \
-      -e "s/\${starting_ip_vsan}/${starting_ip_vsan}/" /home/ubuntu/templates/sddc_vcf_installer_trunk.json.template | tee /home/ubuntu/json/${basename_sddc}.json
+      -e "s/\${starting_ip_vsan}/${starting_ip_vsan}/" /home/ubuntu/templates/sddc_vcf_installer_trunk.json.template | tee /home/ubuntu/json/${basename_sddc}.json > /dev/null
 fi
 #
 #

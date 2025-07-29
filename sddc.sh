@@ -330,7 +330,9 @@ if [[ ${operation} == "apply" ]] ; then
   done
   # affinity rule
   if [[ $(jq -c -r .vsphere_underlay.affinity $jsonFile) == "true" ]] ; then
+    echo '------------------------------------------------------------' | tee -a ${log_file}
     govc cluster.rule.create -name "${folder}-affinity-rule" -enable -affinity ${names}
+    echo "Affinity rules should have been configured: ${folder}-affinity-rule" | tee -a ${log_file}
   fi
   #
   # json file creation
