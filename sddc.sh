@@ -455,7 +455,7 @@ if [[ ${operation} == "apply" ]] ; then
     /nested-vcf/bash/sddc_manager/create_api_session.sh "admin@local" "$(jq -c -r .generic_password $jsonFile)" ${ip_vcf_installer} /tmp/token_vcfi.json
     while [ ! -f "/root/vcfi-${ip_vcf_installer}-patched.json" ]; do
         if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': please patch vcf installer"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-        echo "File not found yet. Sleeping for 30 seconds..."
+        echo "File not found yet. Sleeping for 30 seconds..." | tee -a ${log_file}
         sleep 30
     done
     echo "VCF installer VM patched" | tee -a ${log_file}
