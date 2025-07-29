@@ -489,9 +489,9 @@ if [[ ${operation} == "apply" ]] ; then
     done
     sleep 120
     retry=60 ; pause=10 ; attempt=1
+    echo "starting to download the ${depots_to_download} bundles..." | tee -a ${log_file}
     while true
     do
-      echo "starting to download the ${depots_to_download} bundles..." | tee -a ${log_file}
       sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
       depot_downloaded=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.downloadStatus == "SUCCESSFUL") and (.version | startswith("9"))) ] | length')
       if [[ ${depot_downloaded} == ${depots_to_download} ]]; then
