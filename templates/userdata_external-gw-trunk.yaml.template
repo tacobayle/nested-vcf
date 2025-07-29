@@ -226,7 +226,6 @@ write_files:
       echo "`echo '${ip_vcsa}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcsa.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       echo "`echo '${ip_sddc_manager}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-sddc-manager.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       if [[ ${name_vcf_installer} != "null" ]]; then
-        echo "`echo '${ip_vcf_installer}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-sddc-manager.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_automation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfa.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_operation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfo.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_operation_fleet}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfo-fleet.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
