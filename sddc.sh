@@ -434,7 +434,6 @@ if [[ ${operation} == "apply" ]] ; then
     if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
       name_esxi="${basename_sddc}-wld0$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
     fi
-    sleep 60
     govc vm.power -s ${name_esxi}
     sleep 30
     govc vm.power -on ${name_esxi}
