@@ -452,7 +452,6 @@ if [[ ${operation} == "apply" ]] ; then
   if [[ ${name_vcf_installer} != "null" ]]; then
     echo '------------------------------------------------------------' | tee -a ${log_file}
     echo "VCF Installer configuration - This should take 2 minutes per nested ESXi" | tee -a ${log_file}
-    /nested-vcf/bash/sddc_manager/create_api_session.sh "admin@local" "$(jq -c -r .generic_password $jsonFile)" ${ip_vcf_installer} /tmp/token_vcfi.json
     while [ ! -f "/root/vcfi-${ip_vcf_installer}-patched.json" ]; do
         if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': please patch vcf installer"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
         echo "File not found yet. Sleeping for 30 seconds..." | tee -a ${log_file}
@@ -460,6 +459,7 @@ if [[ ${operation} == "apply" ]] ; then
     done
     echo "VCF installer VM patched" | tee -a ${log_file}
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM patched"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+    /nested-vcf/bash/sddc_manager/create_api_session.sh "admin@local" "$(jq -c -r .generic_password $jsonFile)" ${ip_vcf_installer} /tmp/token_vcfi.json
     sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"downloadToken" : "'${vcf_installer_token}'"}}' ${ip_vcf_installer} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
     retry=60 ; pause=10 ; attempt=1
     while true
