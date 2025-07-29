@@ -148,9 +148,7 @@ write_files:
       EOT
       name_vcf_installer=${name_vcf_installer}
       name_cb=${name_cb}
-      if [[ ${name_cb} != "null" ]]; then
-        echo "${basename_sddc}-sddc-manager       IN            A       ${ip_sddc_manager}" | tee -a /var/lib/bind/db.${domain}
-      fi
+      echo "${basename_sddc}-sddc-manager       IN            A       ${ip_sddc_manager}" | tee -a /var/lib/bind/db.${domain}
       if [[ ${name_vcf_installer} != "null" ]]; then
         echo "${basename_sddc}-sddc-manager       IN            A       ${ip_vcf_installer}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-vcfa       IN            A       ${ip_vcf_automation}" | tee -a /var/lib/bind/db.${domain}
@@ -226,9 +224,7 @@ write_files:
       \$ORIGIN ${reverse_vm_network}.in-addr.arpa.
       EOT
       echo "`echo '${ip_vcsa}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcsa.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
-      if [[ ${name_cb} != "null" ]]; then
-        echo "`echo '${ip_sddc_manager}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-sddc-manager.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
-      fi
+      echo "`echo '${ip_sddc_manager}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-sddc-manager.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       if [[ ${name_vcf_installer} != "null" ]]; then
         echo "`echo '${ip_vcf_installer}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-sddc-manager.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_automation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfa.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}

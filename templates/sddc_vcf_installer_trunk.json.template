@@ -18,7 +18,7 @@
         "rootVcenterPassword": "${VCS_PASSWORD}",
         "vmSize": "medium",
         "storageSize": "",
-        "adminUserSsoPassword": ${VCS_PASSWORD}",
+        "adminUserSsoPassword": "${VCS_PASSWORD}",
         "ssoDomain": "${ssoDomain}",
         "useExistingDeployment": false
     },
@@ -31,7 +31,7 @@
             "esaConfig": {
                 "enabled": false
             },
-            "datastoreName": ${basename_sddc}-vsan",
+            "datastoreName": "${basename_sddc}-vsan",
             "failuresToTolerate": 1,
             "vsanDedup": false
         }
@@ -71,30 +71,30 @@
         "nodes": [
             {
                 "hostname": "${basename_sddc}-vcfo.${domain}",
-                "rootUserPassword": ${VCFO_PASSWORD},
+                "rootUserPassword": "${VCFO_PASSWORD}",
                 "type": "master"
             }
         ],
-        "adminUserPassword": ${VCFO_PASSWORD},
+        "adminUserPassword": "${VCFO_PASSWORD}",
         "applianceSize": "small",
         "useExistingDeployment": false,
         "loadBalancerFqdn": null
     },
     "vcfOperationsFleetManagementSpec": {
         "hostname": "${basename_sddc}-vcfo-fleet.${domain}",
-        "rootUserPassword": ${VCFO_PASSWORD},
-        "adminUserPassword": ${VCFO_PASSWORD},
+        "rootUserPassword": "${VCFO_PASSWORD}",
+        "adminUserPassword": "${VCFO_PASSWORD}",
         "useExistingDeployment": false
     },
     "vcfOperationsCollectorSpec": {
         "hostname": "${basename_sddc}-vcfo-collector.${domain}",
         "applicationSize": "small",
-        "rootUserPassword": ${VCFO_PASSWORD},
+        "rootUserPassword": "${VCFO_PASSWORD}",
         "useExistingDeployment": false
     },
     "vcfAutomationSpec": {
         "hostname": "${basename_sddc}-vcfa.${domain}",
-        "adminUserPassword": ${VCFA_PASSWORD},
+        "adminUserPassword": "${VCFA_PASSWORD}",
         "ipPool": [
             "${ip_vcf_automation_start}",
             "${ip_vcf_automation_end}"
@@ -159,7 +159,7 @@
             "gateway": "${gw_vsan}",
             "mtu": "8000",
             "vlanId": "${vlan_id_vsan}",
-            "subnet": "{cidr_vsan}",
+            "subnet": "${cidr_vsan}",
             "includeIpAddressRanges": [
                 {
                     "startIpAddress": "${starting_ip_vsan}",
