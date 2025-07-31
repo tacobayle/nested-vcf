@@ -48,4 +48,15 @@ ip_vcf_operation="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[]
 ip_vcf_operation_fleet="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_operation_fleet.ip ${jsonFile})"
 ip_vcf_operation_collector="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_operation_collector.ip ${jsonFile})"
 folders_to_copy=$(jq -c -r '.folders_to_copy' ${jsonFile})
-
+ssoDomain=$(jq -c -r '.sddc.vcenter.ssoDomain' ${jsonFile})
+vsphere_nested_username=$(jq -c -r '.vsphere_nested_username' ${jsonFile})
+generic_password=$(jq -c -r .generic_password $jsonFile)
+transport_zones=$(jq -c -r .nsx.config.transport_zones $jsonFile)
+ip_pools=$(jq -c -r .nsx.config.ip_pools $jsonFile)
+ip_gw_edge_overlay="$(jq -c -r --arg arg "EDGE_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}"
+cidr_edge_overlay=$(jq -c -r --arg arg "EDGE_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)
+if [[ ${cidr_edge_overlay} =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.[0-9]{1,3}$ ]] ; then
+  cidr_edge_overlay_three_octets="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+fi
+ip_start_nsx_edge_overlay="${cidr_edge_overlay_three_octets}.$(jq -c -r .nsx.pool_start $jsonFile)"
+ip_end_nsx_edge_overlay="${cidr_edge_overlay_three_octets}.$(jq -c -r .nsx.pool_end $jsonFile)"

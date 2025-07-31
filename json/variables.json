@@ -4,6 +4,27 @@
     "memory": 4096,
     "disk": "40G"
   },
-  "folders_to_copy": ["bash", "json", "templates"],
-  "apt_packages": ["iptables-persistent", "expect", "bind9", "bind9utils", "dnsutils", "chrony", "nginx"]
+  "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx"],
+  "apt_packages": ["iptables-persistent", "expect", "bind9", "bind9utils", "dnsutils", "chrony", "nginx"],
+  "vsphere_nested_username": "administrator",
+  "nsx": {
+    "pool_start": 32,
+    "pool_end": 64,
+    "config": {
+      "transport_zones":
+      [
+        {
+          "display_name": "-VCF9-tz_vlan",
+          "transport_type": "VLAN"
+        }
+      ]
+    },
+    "ip_pools":
+    [
+      {
+        "display_name": "ip_pool_tep_edge_overlay",
+        "resource_type": "IpAddressPoolStaticSubnet"
+      }
+    ]
+  }
 }
