@@ -19,7 +19,7 @@ while true ; do
                   -c $4 \
                   -D $5 \
                   -X POST \
-                  -d 'j_username='$1'&j_password=$2')
+                  -d 'j_username='$1'&j_password='$2'')
   http_code=$(tail -n1 <<< "$response")
   content=$(sed '$ d' <<< "$response")
   if [[ $http_code == 200 ]] ; then

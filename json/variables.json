@@ -14,17 +14,27 @@
       "transport_zones":
       [
         {
-          "display_name": "-VCF9-tz_vlan",
+          "display_name": "VCF9-tz_vlan",
           "transport_type": "VLAN"
         }
+      ],
+      "ip_pools":
+      [
+        {
+          "display_name": "ip_pool_tep_edge_overlay",
+          "resource_type": "IpAddressPoolStaticSubnet"
+        }
+      ],
+      "segments":
+      [
+        {
+          "display_name": "seg-external",
+          "vlan_ids": [0],
+          "transport_zone": "VCF9-tz_vlan",
+          "description": "Segment configured for tier0 external connectivity",
+          "nsx_external": true
+        }
       ]
-    },
-    "ip_pools":
-    [
-      {
-        "display_name": "ip_pool_tep_edge_overlay",
-        "resource_type": "IpAddressPoolStaticSubnet"
-      }
-    ]
+    }
   }
 }

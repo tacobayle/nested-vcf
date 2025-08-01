@@ -30,7 +30,9 @@ write_files:
       echo "            match:" | tee -a /etc/netplan/50-cloud-init.yaml
       echo "                macaddress: $macFirst" | tee -a /etc/netplan/50-cloud-init.yaml
       echo "            set-name: $ifaceFirstName" | tee -a /etc/netplan/50-cloud-init.yaml
-      echo "            gateway4: ${default_gw}" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "            routes:" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "            - to: default" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "              via: ${default_gw}" | tee -a /etc/netplan/50-cloud-init.yaml
       echo "            nameservers:" | tee -a /etc/netplan/50-cloud-init.yaml
       echo "              addresses: [${forwarders_netplan}]" | tee -a /etc/netplan/50-cloud-init.yaml
       echo "        $ifaceLastName:" | tee -a /etc/netplan/50-cloud-init.yaml
