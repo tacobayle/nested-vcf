@@ -147,7 +147,7 @@ sudo cat /var/lib/bind/db.${domain} | grep avi | sudo tee /var/www/html/avi_raw.
 while read -r line; do echo \"\$line<br>\" ; done < /var/www/html/avi_raw.html | sudo tee /var/www/html/avi.html
 sudo cat /var/lib/bind/db.${domain} | grep wld | sudo tee /var/www/html/esxi_raw.html
 while read -r line; do echo \"$line<br>\" ; done < /var/www/html/esxi_raw.html | sudo tee /var/www/html/esxi.html
-sudo mv /home/ubuntu/json/${basename_sddc}.json /var/www/html/${basename_sddc}.json
+sudo cp /home/ubuntu/json/${basename_sddc}.json /var/www/html/${basename_sddc}.json
 sudo chown root /var/www/html/${basename_sddc}.json
 sudo chgrp root /var/www/html/${basename_sddc}.json
 if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Details for cloud deployment available at http://'${ip_gw}'/"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi

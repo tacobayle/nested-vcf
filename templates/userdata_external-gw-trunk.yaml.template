@@ -152,7 +152,6 @@ write_files:
       name_cb=${name_cb}
       echo "${basename_sddc}-sddc-manager       IN            A       ${ip_sddc_manager}" | tee -a /var/lib/bind/db.${domain}
       if [[ ${name_vcf_installer} != "null" ]]; then
-        echo "${basename_sddc}-sddc-manager       IN            A       ${ip_vcf_installer}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-vcfa       IN            A       ${ip_vcf_automation}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-vcfo       IN            A       ${ip_vcf_operation}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-vcfo-fleet       IN            A       ${ip_vcf_operation_fleet}" | tee -a /var/lib/bind/db.${domain}

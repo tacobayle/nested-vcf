@@ -340,14 +340,14 @@ if [[ ${operation} == "apply" ]] ; then
   #
   script_file="/home/ubuntu/bash/json_builder.sh"
   echo "running the following command from the gw: ${script_file} /home/ubuntu/json/${basename_sddc}_${operation}.json" >> ${log_file} 2>&1
-  ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} /home/ubuntu/json/${basename_sddc}_${operation}.json" >> ${log_file} &
+  ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} /home/ubuntu/json/${basename_sddc}_${operation}.json" >> ${log_file}
   #
   # VCF Installer or Cloud Builder Deployment
   #
+  wait
   echo '------------------------------------------------------------' | tee -a ${log_file}
   echo "Creation of a cloud builder or VCF Installer VM underlay infrastructure - This should take 10 minutes" | tee -a ${log_file}
   #
-  wait
   if [[ ${cloud_builder_ova_url} != "null" ]]; then
     echo "Cloud Builder OVA downloaded" | tee -a ${log_file}
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Cloud Builder OVA downloaded"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
@@ -452,6 +452,7 @@ if [[ ${operation} == "apply" ]] ; then
     sleep 10
     govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
     govc datastore.rm nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
+    echo "ESXI customization  - ESXi ${name_esxi} done" | tee -a ${log_file}
   done
   govc datastore.rm nested-vcf
   #
@@ -467,56 +468,10 @@ if [[ ${operation} == "apply" ]] ; then
     done
     echo "VCF installer VM patched" | tee -a ${log_file}
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM patched"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-    echo "Create VCF Installer API session" | tee -a ${log_file}
-    /nested-vcf/bash/sddc_manager/create_api_session.sh "admin@local" ''$(jq -c -r .generic_password $jsonFile)'' ${ip_vcf_installer} /tmp/token_vcfi.json
-    sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"downloadToken" : "'${vcf_installer_token}'"}}' ${ip_vcf_installer} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
-    retry=60 ; pause=10 ; attempt=1
-    while true
-    do
-      sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
-      bundles=$(echo ${response_body} | jq -c -r '.')
-      bundles_count=$(echo ${bundles} | jq -c -r '.elements | length')
-      if [[ bundles_count -gt 0 ]] ; then
-        echo "bundles are populated" | tee -a ${log_file}
-        sleep 30
-        break
-      fi
-      if [ $attempt -eq $retry ]; then
-        echo "Bundles are not populated after ${attempt} attempts of ${pause} seconds" | tee -a ${log_file}
-        exit
-      fi
-      sleep ${pause}
-      ((attempt++))
-    done
-    sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
-    depots_ids=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith("9"))) | .id]')
-    depots_to_download=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith("9"))) | .id ] | length')
-    echo ${depots_ids} | jq -c -r .[] | while read depot_id
-    do
-      sddc_manager_api 3 2 PATCH '{"bundleDownloadSpec":{"downloadNow":true}}' ${ip_vcf_installer} v1/bundles/${depot_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
-      echo "patching bundle ${depot_id} to download it" | tee -a ${log_file}
-    done
-    sleep 240
-    retry=60 ; pause=10 ; attempt=1
-    while true
-    do
-      sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
-      depot_downloaded=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.downloadStatus == "SUCCESSFUL") and (.version | startswith("9"))) ] | length')
-      echo "${depot_downloaded} on ${depots_to_download} bundles have been downloaded" | tee -a ${log_file}
-      if [[ ${depot_downloaded} == ${depots_to_download} ]]; then
-        echo "all bundles downloaded" | tee -a ${log_file}
-        if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer all bundles downloaded"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-        break
-      else
-        echo "${depot_downloaded} bundles have been downloaded" | tee -a ${log_file}
-      fi
-      if [ $attempt -eq $retry ]; then
-        echo "Bundles are not downloaded after ${attempt} attempts of ${pause} seconds" | tee -a ${log_file}
-        exit
-      fi
-      sleep ${pause}
-      ((attempt++))
-    done
+    script_file="/home/ubuntu/vcf-installer/vcfi.sh"
+    echo "running the following command from the gw: ${script_file} /home/ubuntu/json/${basename_sddc}_${operation}.json" >> ${log_file} 2>&1
+    ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} /home/ubuntu/json/${basename_sddc}_${operation}.json" >> ${log_file}
+
   fi
   #
   # VCF - cloud builder use case
