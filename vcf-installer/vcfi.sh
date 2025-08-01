@@ -8,7 +8,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
   echo "Create VCF Installer API session"
   /home/ubuntu/bash/sddc_manager/create_api_session.sh "admin@local" ''$(jq -c -r .generic_password $jsonFile)'' ${ip_vcf_installer} /tmp/token_vcfi.json
   sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"downloadToken" : "'${vcf_installer_token}'"}}' ${ip_vcf_installer} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
-  retry=60 ; pause=10 ; attempt=1
+  retry_bundle=60 ; pause_bundle=10 ; attempt_bundle=1
   while true
   do
     sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
@@ -18,12 +18,12 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       sleep 30
       break
     fi
-    if [ $attempt -eq $retry ]; then
-      echo "Bundles are not populated after ${attempt} attempts of ${pause} seconds"
+    if [ $attempt_bundle -eq $retry_bundle ]; then
+      echo "Bundles are not populated after ${attempt_bundle} attempts of ${pause_bundle} seconds"
       exit
     fi
-    sleep ${pause}
-    ((attempt++))
+    sleep ${pause_bundle}
+    ((attempt_bundle++))
   done
   sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
   depots_ids=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith("9"))) | .id]')
@@ -34,7 +34,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     echo "patching bundle ${depot_id} to download it"
   done
   sleep 240
-  retry=60 ; pause=10 ; attempt=1
+  retry_download=60 ; pause_download=10 ; attempt_download=1
   while true
   do
     sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
@@ -46,20 +46,20 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     else
       echo "${depot_downloaded} on ${depots_to_download} bundles have been downloaded"
     fi
-    if [ $attempt -eq $retry ]; then
-      echo "Bundles are not downloaded after ${attempt} attempts of ${pause} seconds"
+    if [ $attempt_download -eq $retry_download ]; then
+      echo "Bundles are not downloaded after ${attempt_download} attempts of ${pause_download} seconds"
       exit
     fi
-    sleep ${pause}
-    ((attempt++))
+    sleep ${pause_download}
+    ((attempt_download++))
   done
   # validation json
   sddc_manager_api 3 2 POST "@/home/ubuntu/json/${basename_sddc}.json" ${ip_vcf_installer} v1/sddcs/validations $(jq -c -r .accessToken /tmp/token_vcfi.json)
   sddc_validation_id=$(echo ${response_body} | jq -c -r .id)
   echo "sddc_validation_id: ${sddc_validation_id}"
-  retry=60 ; pause=10 ; attempt=1
+  retry_validation=60 ; pause_validation=10 ; attempt_validation=1
   while true ; do
-    echo "attempt $attempt to verify SDDC JSON validation"
+    echo "attempt $attempt_validation to verify SDDC JSON validation"
     sddc_manager_api 3 2 GET "" ${ip_vcf_installer} v1/sddcs/validations/${sddc_validation_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
     executionStatus=$(echo ${response_body} | jq -c -r .executionStatus)
     if [[ ${executionStatus} == "COMPLETED" ]]; then
@@ -78,9 +78,9 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     else
       sleep $pause
     fi
-    ((attempt++))
-    if [ $attempt -eq $retry ]; then
-      echo "SDDC JSON validation not finished after $attempt attempts of ${pause} seconds"
+    ((attempt_validation++))
+    if [ $attempt_validation -eq $retry_validation ]; then
+      echo "SDDC JSON validation not finished after $attempt_validation attempts of ${pause_validation} seconds"
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
       exit
     fi
@@ -91,9 +91,9 @@ if [[ ${name_vcf_installer} != "null" ]]; then
   sddc_id=$(echo ${response_body} | jq -c -r .id)
   # validation_sddc creation
   echo "SDDC ${sddc_id} trying ${count_retry} times to apply"
-  retry=120 ; pause=300 ; attempt=1 ; count_retry=1
+  retry_build=120 ; pause_build=300 ; attempt_build=1 ; count_retry=1
   while true ; do
-    echo "attempt $attempt to verify SDDC ${sddc_id} creation"
+    echo "attempt $attempt_build to verify SDDC ${sddc_id} creation"
     sddc_manager_api 3 2 GET "" ${ip_vcf_installer} v1/sddcs/${sddc_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
     sddc_status=$(echo ${response_body} | jq -c -r .status)
     if [[ ${sddc_status} != "IN_PROGRESS" ]]; then
@@ -115,13 +115,13 @@ if [[ ${name_vcf_installer} != "null" ]]; then
         break
       fi
     else
-      sleep $pause
+      sleep $pause_build
     fi
-    ((attempt++))
-    if [ $attempt -eq $retry ]; then
-      echo "SDDC ${sddc_id} creation not finished after $attempt attempt of ${pause} seconds"
+    ((attempt_build++))
+    if [ $attempt_build -eq $retry_build ]; then
+      echo "SDDC ${sddc_id} creation not finished after $attempt_build attempt of ${pause_build} seconds"
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
       exit
     fi
   done
-fi
+f
