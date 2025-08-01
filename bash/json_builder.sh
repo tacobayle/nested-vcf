@@ -35,7 +35,7 @@ do
       #hosts_validation_json=$(echo ${hosts_validation_json} | jq '. += ['${host_validation_json}']')
     fi
     if [[ ${name_vcf_installer} != "null" ]]; then
-      sleep 30
+      sleep 60
       esxi_sslThumbprint=$(echo | openssl s_client -servername ${ip_esxi} -connect ${ip_esxi}:443 2>/dev/null | openssl x509 -noout -fingerprint -sha256 | awk -F'Fingerprint=' '{print $2}')
       hostSpec='{"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'$(jq -c -r .generic_password $jsonFile)'"},"sslThumbprint":"'${esxi_sslThumbprint}'"}'
     fi
