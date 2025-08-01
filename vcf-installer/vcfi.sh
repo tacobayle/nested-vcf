@@ -124,4 +124,4 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       exit
     fi
   done
-f
+fi
