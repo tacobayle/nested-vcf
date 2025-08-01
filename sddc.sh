@@ -486,9 +486,9 @@ if [[ ${operation} == "apply" ]] ; then
     echo ${depots_ids} | jq -c -r .[] | while read depot_id
     do
       sddc_manager_api 3 2 PATCH '{"bundleDownloadSpec":{"downloadNow":true}}' ${ip_vcf_installer} v1/bundles/${depot_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
-      echo "starting to download the ${depots_to_download} bundles..." | tee -a ${log_file}
+      echo "patching bundle ${depot_id} to download it" | tee -a ${log_file}
     done
-    sleep 120
+    sleep 240
     retry=60 ; pause=10 ; attempt=1
     while true
     do
