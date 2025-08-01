@@ -93,6 +93,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
   echo "SDDC ${sddc_id} trying ${count_retry} times to apply"
   retry_build=120 ; pause_build=300 ; attempt_build=1 ; count_retry=1
   while true ; do
+    /home/ubuntu/bash/sddc_manager/create_api_session.sh "admin@local" ''$(jq -c -r .generic_password $jsonFile)'' ${ip_vcf_installer} /tmp/token_vcfi.json
     echo "attempt $attempt_build to verify SDDC ${sddc_id} creation"
     sddc_manager_api 3 2 GET "" ${ip_vcf_installer} v1/sddcs/${sddc_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
     sddc_status=$(echo ${response_body} | jq -c -r .status)
