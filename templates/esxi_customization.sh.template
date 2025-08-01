@@ -18,12 +18,10 @@ do
       exit
     fi
 done
-# chmod u+x /home/ubuntu/cert-esxi-${esxi}.expect
-# /home/ubuntu/cert-esxi-${esxi}.expect
-# if [ -z "${SLACK_WEBHOOK_URL_LOCAL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-${basename_sddc}: nested ESXi ${name_esxi} configured and reachable with renewed cert"}' ${SLACK_WEBHOOK_URL_LOCAL} >/dev/null 2>&1; fi
 sleep 20
 govc host.storage.info -json -rescan | jq -c -r '.storageDeviceInfo.scsiLun[] | select( .deviceType == "disk" ) | .deviceName' | while read item
 do
   govc host.storage.mark -ssd ${item} > /dev/null
   if [ -z "${SLACK_WEBHOOK_URL_LOCAL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-${basename_sddc}: nested ESXi ${name_esxi} disks '${item}' marked as SSD"}' ${SLACK_WEBHOOK_URL_LOCAL} >/dev/null 2>&1; fi
 done
+exit

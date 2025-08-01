@@ -176,9 +176,9 @@ if [[ ${operation} == "apply" ]] ; then
             if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
               name_esxi="${basename_sddc}-wld$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
             fi
-            sed -e "s/\${ip_esxi}/${ip_esxi}/" \
-                -e "s/\${nested_esxi_root_password}/$(jq -c -r .generic_password $jsonFile)/" /nested-vcf/templates/esxi_cert.expect.template | tee /root/cert-esxi-$esxi.expect > /dev/null
-            scp -o StrictHostKeyChecking=no /root/cert-esxi-$esxi.expect ubuntu@${ip_gw}:/home/ubuntu/cert-esxi-$esxi.expect
+#            sed -e "s/\${ip_esxi}/${ip_esxi}/" \
+#                -e "s/\${nested_esxi_root_password}/$(jq -c -r .generic_password $jsonFile)/" /nested-vcf/templates/esxi_cert.expect.template | tee /root/cert-esxi-$esxi.expect > /dev/null
+#            scp -o StrictHostKeyChecking=no /root/cert-esxi-$esxi.expect ubuntu@${ip_gw}:/home/ubuntu/cert-esxi-$esxi.expect
             #
             sed -e "s/\${ip_esxi}/${ip_esxi}/" \
                 -e "s@\${SLACK_WEBHOOK_URL}@${SLACK_WEBHOOK_URL}@" \
@@ -244,7 +244,6 @@ if [[ ${operation} == "apply" ]] ; then
       ip_esxi="$(echo ${ips_esxi} | jq -r .[$(expr ${esxi} - 1)])"
       hostSpec='{"association":"'${folder}'-dc","ipAddressPrivate":{"ipAddress":"'${ip_esxi}'"},"hostname":"'${name_esxi}'","credentials":{"username":"root","password":"'$(jq -c -r .generic_password $jsonFile)'"},"vSwitch":"vSwitch0"}'
       hostSpecs=$(echo ${hostSpecs} | jq '. += ['${hostSpec}']')
-      echo "Building custom ESXi ISO for ESXi${esxi}" | tee -a ${log_file}
       rm -f ${iso_build_location}/ks_cust.cfg
       rm -f "${iso_location}-${esxi}.iso"
       if [[ ${esxi_trunk} == "true" ]] ; then
@@ -272,6 +271,7 @@ if [[ ${operation} == "apply" ]] ; then
       xorrisofs -relaxed-filenames -J -R -o "${iso_location}-${esxi}.iso" -b isolinux.bin -c boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e efiboot.img -no-emul-boot ${iso_build_location}
       ds=$(jq -c -r .vsphere_underlay.datastore $jsonFile)
       dc=$(jq -c -r .vsphere_underlay.datacenter $jsonFile)
+      echo "Uploading new ISO for ESXi ${esxi}" | tee -a ${log_file}
       govc datastore.upload  --ds=${ds} --dc=${dc} "${iso_location}-${esxi}.iso" nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': ISO ESXi '${esxi}' uploaded "}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
       if [[ ${esxi} -gt 4 ]] ; then
@@ -288,6 +288,7 @@ if [[ ${operation} == "apply" ]] ; then
         disk_capacity_size=$(jq -c -r .esxi.sizing_mgmt.disk_capacity_size $jsonFile)
       fi
       names="${names} ${name_esxi}"
+      echo "Creating nested ESXi ${esxi}" | tee -a ${log_file}
       govc vm.create -c ${cpu} -m ${memory} -disk ${disk_os_size} -disk.controller pvscsi -net ${net} -g vmkernel65Guest -net.adapter vmxnet3 -firmware efi -folder "${folder}" -on=false "${name_esxi}" > /dev/null
       #govc device.cdrom.add -vm "${folder}/${name_esxi}" > /dev/null
       # adding a SATA controller
@@ -370,8 +371,10 @@ if [[ ${operation} == "apply" ]] ; then
           -e "s/\${ip_gw}/${ip_gw}/" \
           -e "s@\${network_ref}@${cloud_builder_network_ref}@" /nested-vcf/templates/options-cb.json.template | tee "/tmp/options-${name_cb}.json"
       #
+      echo "Uploading Cloud Builder OVA" | tee -a ${log_file}
       govc import.ova --options="/tmp/options-${name_cb}.json" -folder "${folder}" "/root/$(basename ${cloud_builder_ova_url})" >/dev/null
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF-Cloud_Builder VM created"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+      echo "Creating Cloud Builder VM" | tee -a ${log_file}
       govc vm.power -on=true "${name_cb}"
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF-Cloud_Builder VM started"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
       count=1
@@ -404,8 +407,10 @@ if [[ ${operation} == "apply" ]] ; then
           -e "s/\${ip_gw}/${ip_gw}/" \
           -e "s@\${network_ref}@${vcf_installer_network_ref}@" /nested-vcf/templates/options-vcf-i.json.template | tee "/tmp/options-${name_vcf_installer}.json"
       #
+      echo "Uploading VCF Installer OVA" | tee -a ${log_file}
       govc import.ova --options="/tmp/options-${name_vcf_installer}.json" -folder "${folder}" "/root/$(basename ${vcf_installer_ova_url})" >/dev/null
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM created"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+      echo "Creating VCF Installer VM" | tee -a ${log_file}
       govc vm.power -on=true "${name_vcf_installer}"
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM started"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
       count=1
@@ -421,6 +426,8 @@ if [[ ${operation} == "apply" ]] ; then
       done
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM configured and reachable"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM: please patch it if needed"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+      echo "nested-'${basename_sddc}': VCF installer VM configured and reachable" | tee -a ${log_file}
+      echo "nested-'${basename_sddc}': VCF installer VM: please patch it if needed" | tee -a ${log_file}
     fi
   fi
   #
@@ -460,7 +467,8 @@ if [[ ${operation} == "apply" ]] ; then
     done
     echo "VCF installer VM patched" | tee -a ${log_file}
     if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM patched"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-    /nested-vcf/bash/sddc_manager/create_api_session.sh "admin@local" "$(jq -c -r .generic_password $jsonFile)" ${ip_vcf_installer} /tmp/token_vcfi.json
+    echo "Create VCF Installer API session" | tee -a ${log_file}
+    /nested-vcf/bash/sddc_manager/create_api_session.sh "admin@local" ''$(jq -c -r .generic_password $jsonFile)'' ${ip_vcf_installer} /tmp/token_vcfi.json
     sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"downloadToken" : "'${vcf_installer_token}'"}}' ${ip_vcf_installer} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
     retry=60 ; pause=10 ; attempt=1
     while true
