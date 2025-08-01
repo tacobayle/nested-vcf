@@ -56,6 +56,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
   # validation json
   sddc_manager_api 3 2 POST "@/home/ubuntu/json/${basename_sddc}.json" ${ip_vcf_installer} v1/sddcs/validations $(jq -c -r .accessToken /tmp/token_vcfi.json)
   sddc_validation_id=$(echo ${response_body} | jq -c -r .id)
+  echo "sddc_validation_id: ${sddc_validation_id}"
   retry=60 ; pause=10 ; attempt=1
   while true ; do
     echo "attempt $attempt to verify SDDC JSON validation"
@@ -66,7 +67,13 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       resultStatus=$(echo ${response_body} | jq -c -r .resultStatus)
       echo "SDDC JSON validation: ${resultStatus} after $attempt of ${pause} seconds"
       if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation: '${resultStatus}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
-      if [[ ${resultStatus} != "SUCCEEDED" ]] ; then exit ; fi
+      if [[ ${resultStatus} != "SUCCEEDED" ]] ; then
+        echo "resultStatus was not SUCCEEDED: ${resultStatus}"
+        echo ${response_body} | jq .
+        exit
+      fi
+      echo "resultStatus was not SUCCEEDED: ${resultStatus}"
+      echo ${response_body} | jq .
       break
     else
       sleep $pause
@@ -104,7 +111,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       fi
       if [[ ${sddc_status} == "COMPLETED_WITH_SUCCESS" ]]; then
         echo "nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_vcf_installer}'"
-        if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_cb}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+        if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_vcf_installer}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
         break
       fi
     else
