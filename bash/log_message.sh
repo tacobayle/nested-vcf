@@ -1,0 +1,15 @@
+log_message() {
+  local message="${1}"
+  local log_file="${2}"
+  local slack_url="${3}"
+  local google_url="${4}"
+  if [[ -z "${message}" ]]; then
+    echo "Error: message is missing."
+    return 1
+  fi
+  if [[ -f "${log_file}" ]]; then echo "${message}" | tee -a ${log_file}; else echo "${message}"; fi
+  # slack
+  if [ -z "${slack_url}" ] ; then echo "ignoring slack update" ; else curl -X POST -H "Content-type: application/json" -d "{\"text\":\"${message}\"}" "${slack_url}"; fi
+  # google chat
+  if [[ -z "${google_url}" ]]; then echo "ignoring google update" ; else curl -X POST -H "Content-Type: application/json" -d "{\"text\":\"${message}\"}" "${google_url}"; fi
+}

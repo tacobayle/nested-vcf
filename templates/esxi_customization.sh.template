@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-SLACK_WEBHOOK_URL_LOCAL=${SLACK_WEBHOOK_URL}
+SLACK_WEBHOOK_URL_LOCAL=${slack_webhook}
 export GOVC_PASSWORD=${ESXI_PASSWORD}
 export GOVC_INSECURE=true
 export GOVC_URL=${ip_esxi}

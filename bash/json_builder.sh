@@ -25,7 +25,7 @@ do
       count=$((count+1))
         if [[ "${count}" -eq 60 ]]; then
           echo "ERROR: Unable to connect to ESXi host at https://${ip_esxi}"
-          if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-${basename_sddc}: nested ESXi '${ip_esxi}' unable to reach"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+          if [ -z "${slack_webhook}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-${basename_sddc}: nested ESXi '${ip_esxi}' unable to reach"}' ${slack_webhook} >/dev/null 2>&1; fi
           exit
         fi
     done
@@ -150,4 +150,4 @@ while read -r line; do echo \"$line<br>\" ; done < /var/www/html/esxi_raw.html |
 sudo cp /home/ubuntu/json/${basename_sddc}.json /var/www/html/${basename_sddc}.json
 sudo chown root /var/www/html/${basename_sddc}.json
 sudo chgrp root /var/www/html/${basename_sddc}.json
-if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Details for cloud deployment available at http://'${ip_gw}'/"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+if [ -z "${slack_webhook}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Details for cloud deployment available at http://'${ip_gw}'/"}' ${slack_webhook} >/dev/null 2>&1; fi

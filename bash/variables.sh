@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-SLACK_WEBHOOK_URL=$(jq -c -r .slack_webhook $jsonFile)
+slack_webhook=$(jq -c -r .slack_webhook $jsonFile)
+google_webhook=$(jq -c -r .google_webhook $jsonFile)
 DEPOT_USERNAME=$(jq -c -r .depot.username $jsonFile)
 DEPOT_PASSWORD=$(jq -c -r .depot.password $jsonFile)
 folder=$(jq -c -r .vsphere_underlay.folder $jsonFile)
@@ -15,6 +16,8 @@ ip_nsx_vip="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | sel
 ips_avi=$(jq -c -r .sddc.avi.ips $jsonFile | jq ". | map(\"$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')\" + (. | tostring))")
 ip_avi_vip="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.avi.vip ${jsonFile})"
 ip_sddc_manager="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.manager.ip ${jsonFile})"
+mgmt_prefix_length=$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -f2 -d"/")
+ip_gw_mgmt="$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}"
 nsx_pool_range_start="$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.nsx.vtep_pool ${jsonFile}| cut -f1 -d'-')"
 nsx_pool_range_end="$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.nsx.vtep_pool ${jsonFile}| cut -f2 -d'-')"
 starting_ip_vsan="$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.vcenter.vsanPool ${jsonFile}| cut -f1 -d'-')"
@@ -55,10 +58,15 @@ nsx_config_transport_zones=$(jq -c -r .nsx.config.transport_zones $jsonFile)
 nsx_config_ip_pools=$(jq -c -r .nsx.config.ip_pools $jsonFile)
 ip_gw_edge_overlay="$(jq -c -r --arg arg "EDGE_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}"
 cidr_edge_overlay=$(jq -c -r --arg arg "EDGE_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)
-if [[ ${cidr_edge_overlay} =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.[0-9]{1,3}$ ]] ; then
+network_edge_overlay=$(jq -c -r --arg arg "EDGE_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -f1 -d"/")
+if [[ ${network_edge_overlay} =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.[0-9]{1,3}$ ]] ; then
   cidr_edge_overlay_three_octets="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
 fi
 ip_start_nsx_edge_overlay="${cidr_edge_overlay_three_octets}.$(jq -c -r .nsx.pool_start $jsonFile)"
 ip_end_nsx_edge_overlay="${cidr_edge_overlay_three_octets}.$(jq -c -r .nsx.pool_end $jsonFile)"
 nsx_config_segments=$(jq -c -r .nsx.config.segments $jsonFile)
-
+nsx_config_ips_edge=$(jq -c -r .nsx.config.ips_edge $jsonFile)
+nsx_config_edge_node_basename=$(jq -c -r .nsx.config.edge_node.basename $jsonFile)
+nsx_config_edge_node_host_switch_spec_host_switches=$(jq -c -r .nsx.config.edge_node.host_switch_spec.host_switches $jsonFile)
+nsx_config_edge_node_cpu=$(jq -c -r .nsx.config.edge_node.cpu $jsonFile)
+nsx_config_edge_node_memory=$(jq -c -r .nsx.config.edge_node.memory $jsonFile)

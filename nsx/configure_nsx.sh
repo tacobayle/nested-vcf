@@ -1,7 +1,12 @@
 #!/bin/bash
 #
-jsonFile=${1}
+jsonFile="${1}"
+resultFile="${2}"
+rm -f ${resultFile}
 source /home/ubuntu/bash/variables.sh
+source /home/ubuntu/bash/log_message.sh
+source /home/ubuntu/bash/vcenter/vcenter_api.sh
+file_path="/home/ubuntu/nsx"
 #
 # check NSX Manager
 #
@@ -33,7 +38,7 @@ while [[ "$(curl -u admin:${generic_password} -k -s  https://${ip_nsx_vip}/api/v
   fi
 done
 echo "NSX Manager ready at https://${ip_nsx_vip}"
-if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', '${basename_sddc}': NSX Manager ready at https://'${ip_nsx_vip}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+if [ -z "${slack_webhook}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', '${basename_sddc}': NSX Manager ready at https://'${ip_nsx_vip}'"}' ${slack_webhook} >/dev/null 2>&1; fi
 #
 # Transport Zones
 #
@@ -101,3 +106,180 @@ do
                 \"transport_zone_path\": \"$(jq -c -r '.'${json_key}'' ${file_json_output})\"
               }"
 done
+#
+# Update Host transport node profile with VLAN Transport Zone
+#
+api_endpoint="policy/api/v1/infra/host-transport-node-profiles"
+/bin/bash "${file_path}/get_object.sh" "${ip_nsx_vip}" "${generic_password}" \
+            "${api_endpoint}" "${file_path}/$(basename ${api_endpoint}).json"
+json_data=$(jq -c -r .results[0] "${file_path}/$(basename ${api_endpoint}).json")
+api_endpoint="policy/api/v1/infra/sites/default/enforcement-points/default/transport-zones"
+json_key="id"
+/bin/bash /home/ubuntu/nsx/retrieve_object_id.sh "${ip_nsx_vip}" "${generic_password}" \
+            "${api_endpoint}" \
+            "$(echo ${nsx_config_transport_zones} | jq -c -r .[0].display_name)" \
+            "${file_path}/$(basename ${api_endpoint}).json" \
+            "${json_key}"
+transport_zone_id="/infra/sites/default/enforcement-points/default/transport-zones/$(jq -c -r .${json_key} ${file_path}/$(basename ${api_endpoint}).json)"
+json_data=$(echo ${json_data} | jq '.host_switch_spec.host_switches[0].transport_zone_endpoints += [{"transport_zone_id": "'${transport_zone_id}'", "transport_zone_profile_ids": []}]')
+/bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" "${generic_password}" \
+            "policy/api/v1/infra/host-transport-node-profiles/$(echo ${json_data} | jq -c -r '.id')" \
+            "PUT" \
+            "$(echo ${json_data} | jq -c -r .)"
+#
+# Edge node creation
+#
+# Get compute manager id
+api_endpoint="api/v1/fabric/compute-managers"
+/bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
+            "api/v1/fabric/compute-managers" \
+            "${file_path}/$(basename ${api_endpoint}).json"
+vc_id=$(jq -c -r --arg arg1 "${api_host}" '.results[] | select(.display_name == $arg1).id' ${file_path}/$(basename ${api_endpoint}).json)
+# vCenter API session creation to retrieve various things
+token=$(/bin/bash /home/ubuntu/bash/vcenter/create_vcenter_api_session.sh "${vsphere_nested_username}" "${ssoDomain}" "${generic_password}" "${basename_sddc}-vcsa.${domain}")
+vcenter_api 2 2 "GET" ${token} '' "${basename_sddc}-vcsa.${domain}" "api/vcenter/datastore"
+storage_id=$(echo ${response_body} | jq -r .[0].datastore)
+vcenter_api 2 2 "GET" ${token} "" "${basename_sddc}-vcsa.${domain}" "api/vcenter/network"
+management_network_id=$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-pg-mgmt" '.[] | select(.name == $arg1).network')
+data_network_ids="[]"
+data_network_ids=$(echo ${data_network_ids} | jq '. += ["'$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-pg-edge-overlay" '.[] | select(.name == $arg1).network')'"]')
+data_network_ids=$(echo ${data_network_ids} | jq '. += ["'$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-pg-external" '.[] | select(.name == $arg1).network')'"]')
+vcenter_api 2 2 "GET" ${token} "" "${basename_sddc}-vcsa.${domain}" "api/vcenter/cluster"
+cluster=$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-cluster" '.[] | select(.name == $arg1).cluster')
+vcenter_api 2 2 "GET" ${token} "" "${basename_sddc}-vcsa.${domain}" "api/vcenter/cluster/${cluster}"
+compute_id=$(echo ${response_body} | jq -c -r '.resource_pool')
+#
+edge_ids="[]"
+for edge_index in $(seq 1 $(echo ${nsx_config_ips_edge} | jq -r '. | length'))
+do
+  edge_name="${nsx_config_edge_node_basename}${edge_index}"
+  edge_fqdn="${nsx_config_edge_node_basename}${edge_index}.${domain}"
+  ip_edge="${cidr_mgmt_three_octets}.$(echo ${nsx_config_ips_edge} | jq -r .[$(expr ${edge_index} - 1)])"
+  host_switch_count=0
+  json_data='{"host_switch_spec": {"host_switches": [], "resource_type": "StandardHostSwitchSpec"}}'
+  echo ${json_data} | jq . | tee /tmp/tmp.json
+  echo ${nsx_config_edge_node_host_switch_spec_host_switches} | jq -c -r .[] | while read item
+  do
+    json_data=$(jq -r -c '.host_switch_spec.host_switches |= .+ ['${item}']' /tmp/tmp.json)
+    json_data=$(echo ${json_data} | jq '.host_switch_spec.host_switches['${host_switch_count}'] += {"host_switch_profile_ids": []}')
+    json_data=$(echo ${json_data} | jq '.host_switch_spec.host_switches['${host_switch_count}'] += {"transport_zone_endpoints": []}')
+    echo ${json_data} | jq . | tee /tmp/tmp.json
+    echo ${item} | jq -c -r .host_switch_profile_names[] | while read host_switch_profile_name
+    do
+      api_endpoint="api/v1/host-switch-profiles"
+      /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
+                  "${api_endpoint}" \
+                  "${file_path}/$(basename ${api_endpoint}).json"
+      host_switch_profile_id=$(jq -c -r --arg arg1 "${host_switch_profile_name}" '.results[] | select(.display_name == $arg1).id' ${file_path}/$(basename ${api_endpoint}).json)
+      json_data=$(jq '.host_switch_spec.host_switches['${host_switch_count}'].host_switch_profile_ids += [{"key": "UplinkHostSwitchProfile", "value": "'${host_switch_profile_id}'"}]' /tmp/tmp.json)
+      echo ${json_data} | jq . | tee /tmp/tmp.json
+    done
+    echo ${item} | jq -c -r .transport_zone_names[] | while read tz
+    do
+      api_endpoint="api/v1/transport-zones"
+      /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
+                  "${api_endpoint}" \
+                  "${file_path}/$(basename ${api_endpoint}).json"
+      transport_zone_id=$(jq -c -r --arg arg1 "${tz}" '.results[] | select(.display_name == $arg1).id' ${file_path}/$(basename ${api_endpoint}).json)
+      json_data=$(jq '.host_switch_spec.host_switches['${host_switch_count}'].transport_zone_endpoints += [{"transport_zone_id": "'${transport_zone_id}'"}]' /tmp/tmp.json)
+      echo ${json_data} | jq . | tee /tmp/tmp.json
+    done
+    if $(echo ${item} | jq -e '. | has("ip_pool_name")') ; then
+      api_endpoint="api/v1/infra/ip-pools"
+      /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
+                  "${api_endpoint}" \
+                  "${file_path}/$(basename ${api_endpoint}).json"
+      ip_pool_id=$(jq -c -r --arg arg1 "$(echo ${json_data} | jq -r '.host_switch_spec.host_switches['${host_switch_count}'].ip_pool_name')" '.results[] | select(.display_name == $arg1).realization_id' ${file_path}/$(basename ${api_endpoint}).json)
+      json_data=$(jq '.host_switch_spec.host_switches['${host_switch_count}'] += {"ip_assignment_spec": {"ip_pool_id": "'${ip_pool_id}'", "resource_type": "StaticIpPoolSpec"}}' /tmp/tmp.json)
+      json_data=$(echo ${json_data} | jq 'del (.host_switch_spec.host_switches['${host_switch_count}'].ip_pool_name)')
+      echo ${json_data} | jq . | tee /tmp/tmp.json
+    fi
+    json_data=$(jq 'del (.host_switch_spec.host_switches['${host_switch_count}'].host_switch_profile_names)' /tmp/tmp.json)
+    json_data=$(echo ${json_data} | jq 'del (.host_switch_spec.host_switches['${host_switch_count}'].transport_zone_names)')
+    echo ${json_data} | jq . | tee /tmp/tmp.json
+    host_switch_count=$((host_switch_count+1))
+  done
+  json_data=$(jq '. +=  {"maintenance_mode": "DISABLED"}' /tmp/tmp.json)
+  json_data=$(echo ${json_data} | jq '. +=  {"display_name":"'${edge_name}'"}')
+  json_data=$(echo ${json_data} | jq '. +=  {"node_deployment_info": {
+                                               "resource_type":"EdgeNode",
+                                               "deployment_type": "VIRTUAL_MACHINE",
+                                               "deployment_config": {
+                                                 "vm_deployment_config": {
+                                                   "vc_id": "'${vc_id}'",
+                                                   "compute_id": "'${compute_id}'",
+                                                   "storage_id": "'${storage_id}'",
+                                                   "management_network_id": "'${management_network_id}'",
+                                                   "management_port_subnets": [
+                                                     {
+                                                       "ip_addresses": ["'${ip_edge}'"],
+                                                       "prefix_length": '${mgmt_prefix_length}'
+                                                      }
+                                                   ],
+                                                   "default_gateway_addresses": ["'${ip_gw_mgmt}'"],
+                                                   "data_network_ids": '$(echo ${data_network_ids} | jq -r -c .)',
+                                                   "reservation_info": {
+                                                     "memory_reservation" : {"reservation_percentage": 100 },
+                                                     "cpu_reservation": {
+                                                       "reservation_in_shares": "HIGH_PRIORITY",
+                                                       "reservation_in_mhz": 0
+                                                     }
+                                                   },
+                                                   "resource_allocation": {
+                                                     "cpu_count": '${nsx_config_edge_node_cpu}',
+                                                     "memory_allocation_in_mb": '${nsx_config_edge_node_memory}'
+                                                   },
+                                                   "placement_type": "VsphereDeploymentConfig"
+                                                 },
+                                                 "form_factor": "MEDIUM",
+                                                 "node_user_settings": {
+                                                   "cli_username": "admin",
+                                                   "root_password": "'${generic_password}'",
+                                                   "cli_password": "'${generic_password}'"
+                                                 }
+                                               },
+                                               "node_settings": {
+                                                 "hostname": "'${edge_fqdn}'",
+                                                 "allow_ssh_root_login": true
+                                               }}}')
+  api_endpoint="api/v1/transport-nodes"
+  /bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" "${generic_password}" \
+              "${api_endpoint}" \
+              "POST" \
+              $(echo ${json_data} | jq -c -r .)
+  edge_ids=$(echo ${edge_ids} | jq '. += ["'$(jq -r .id /home/ubuntu/nsx/response_body.json)'"]')
+done
+#
+# Check the status of Nodes (including transport node and edge nodes but filtered with edge_ids
+#
+echo "pausing for 600 seconds"
+sleep 600
+retry=240 ; pause=20 ; attempt=0
+for item in $(echo ${edge_ids} | jq -c -r '.[]')
+do
+  while true ; do
+    log_message "attempt ${attempt} to get node id ${item} ready" "" "" ""
+    api_endpoint="policy/api/v1/transport-nodes/state"
+    /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx}" "${GENERIC_PASSWORD}" \
+                "${api_endpoint}" \
+                "${file_path}/$(basename ${api_endpoint}).json"
+    for edge in $(seq 0 $(($(jq -c -r '.results | length' "${file_path}/$(basename ${api_endpoint}).json")-1)))
+    do
+      if [[ $(jq -c -r '.results['$edge'].transport_node_id' "${file_path}/$(basename ${api_endpoint}).json") == ${item} ]] && [[ $(jq -c -r '.results['$edge'].state' "${file_path}/$(basename ${api_endpoint}).json") == "success" ]] ; then
+        log_message "new edge node id ${item} state is success after ${attempt} attempts of ${pause} seconds" "" "${slack_webhook}" "${google_webhook}"
+        break 2
+      fi
+    done
+    ((attempt++))
+    if [ ${attempt} -eq ${retry} ]; then
+      log_message "Unable to get node id ${item} ready after ${attempt} of ${pause} seconds" "" "${slack_webhook}" "${google_webhook}"
+      exit 1
+    fi
+    sleep ${pause}
+  done
+done
+#
+#
+#
+log_message "End of the NSX config." "" "${slack_webhook}" "${google_webhook}"
+touch ${resultFile}

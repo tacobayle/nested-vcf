@@ -14,27 +14,74 @@
       "transport_zones":
       [
         {
-          "display_name": "VCF9-tz_vlan",
+          "display_name": "update-VCF-tz_vlan",
           "transport_type": "VLAN"
         }
       ],
       "ip_pools":
       [
         {
-          "display_name": "ip_pool_tep_edge_overlay",
+          "display_name": "update-ip_pool_tep_edge_overlay",
           "resource_type": "IpAddressPoolStaticSubnet"
         }
       ],
       "segments":
       [
         {
-          "display_name": "seg-external",
+          "display_name": "update-seg-external",
           "vlan_ids": [0],
-          "transport_zone": "VCF9-tz_vlan",
+          "transport_zone": "update-VCF-tz_vlan",
           "description": "Segment configured for tier0 external connectivity",
           "nsx_external": true
         }
-      ]
+      ],
+      "basename_edge": "edge-",
+      "ips_edge": [21, 22],
+      "edge_node": {
+        "basename": "edge-0",
+        "cpu": 4,
+        "memory": 8,
+        "data_network": "update-seg-external",
+        "host_switch_spec": {
+          "host_switches": [
+            {
+              "host_switch_name": "nsxHostSwitch_overlay",
+              "host_switch_type": "NVDS",
+              "host_switch_mode": "STANDARD",
+              "host_switch_profile_names": [
+                "uplink-profile-edge"
+              ],
+              "pnics": [
+                {
+                  "device_name": "fp-eth0",
+                  "uplink_name": "uplink-0"
+                }
+              ],
+              "ip_pool_name": "update-ip_pool_tep_edge_overlay",
+              "transport_zone_names": [
+                "VCF-Created-Overlay-Zone"
+              ]
+            },
+            {
+              "host_switch_name": "nsxHostSwitch_external",
+              "host_switch_type": "NVDS",
+              "host_switch_mode": "STANDARD",
+              "host_switch_profile_names": [
+                "uplink-profile-edge"
+              ],
+              "pnics": [
+                {
+                  "device_name": "fp-eth1",
+                  "uplink_name": "uplink-1"
+                }
+              ],
+              "transport_zone_names": [
+                "update-VCF-tz_vlan"
+              ]
+            }
+          ]
+        }
+      }
     }
   }
 }

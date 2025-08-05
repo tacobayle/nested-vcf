@@ -5,7 +5,7 @@ source /home/ubuntu/sddc_manager/sddc_manager_api.sh
 jsonFile=${1}
 ip_sddc_manager="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.manager.ip ${jsonFile})"
 basename_sddc=$(jq -c -r .sddc.basename $jsonFile)
-SLACK_WEBHOOK_URL=$(jq -c -r .slack_webhook $jsonFile)
+slack_webhook=$(jq -c -r .slack_webhook $jsonFile)
 SDDC_MANAGER_PASSWORD=$(jq -c -r .GENERIC_PASSWORD $jsonFile)
 DEPOT_USERNAME=$(jq -c -r .depot.username $jsonFile)
 DEPOT_PASSWORD=$(jq -c -r .depot.password $jsonFile)
@@ -18,7 +18,7 @@ do
   count=$((count+1))
     if [[ "${count}" -eq 60 ]]; then
       echo "ERROR: Unable to connect to SDDC Manager at https://${ip_sddc_manager}"
-      if [ -z "${SLACK_WEBHOOK_URL}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Unable to connect to SDDC Manager at https://'${ip_sddc_manager}'"}' ${SLACK_WEBHOOK_URL} >/dev/null 2>&1; fi
+      if [ -z "${slack_webhook}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Unable to connect to SDDC Manager at https://'${ip_sddc_manager}'"}' ${slack_webhook} >/dev/null 2>&1; fi
       exit
     fi
 done
