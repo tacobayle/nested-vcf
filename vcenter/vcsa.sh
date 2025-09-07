@@ -14,3 +14,6 @@ log_message "create portgroup ${basename_sddc}-pg-external in vds ${basename_sdd
 govc dvs.portgroup.add -dvs "${basename_sddc}-vds-01" -vlan "$(jq -c -r --arg arg "EXTERNAL" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)" "${basename_sddc}-pg-external" > /dev/null
 log_message "portgroups creation done" "" "${slack_webhook}" "${google_webhook}"
 touch ${resultFile}
+log_message "create content library update-cl-ubuntu" "" "" ""
+govc library.create ${vsphere_cl_name}
+govc library.import ${vsphere_cl_name} "/home/ubuntu/bin/$(basename ${ubuntu_ova_url})"

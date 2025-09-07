@@ -55,6 +55,14 @@ write_files:
         apt install -y $package
       done
       #
+      # Directories
+      #
+      directories='${directories}'
+      echo $directories | jq -c -r .[] | while read directory
+      do
+        sudo -u ubuntu mkdir -p /home/ubuntu/$directory
+      done
+      #
       # GOVC install
       #
       curl -L -o - "https://github.com/vmware/govmomi/releases/latest/download/govc_$(uname -s)_$(uname -m).tar.gz" | tar -C /usr/local/bin -xvzf - govc

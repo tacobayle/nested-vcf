@@ -7,10 +7,30 @@
   "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer"],
   "apt_packages": ["iptables-persistent", "expect", "bind9", "bind9utils", "dnsutils", "chrony", "nginx"],
   "vsphere_nested_username": "administrator",
+  "vsphere_cl_name": "cl-ubuntu",
   "nsx": {
     "pool_start": 32,
     "pool_end": 64,
+    "tier0_starting_ip": 11,
+    "tier0_vip_starting_ip": 20,
     "config": {
+      "uplink_profiles":
+      [
+        {
+          "display_name": "uplink-profile-edge",
+          "resource_type": "PolicyUplinkHostSwitchProfile",
+          "transport_vlan": 0,
+          "teaming": {
+            "policy": "FAILOVER_ORDER",
+            "active_list": [
+              {
+                "uplink_name": "uplink-1",
+                "uplink_type": "PNIC"
+              }
+            ]
+          }
+        }
+      ],
       "transport_zones":
       [
         {
@@ -54,7 +74,7 @@
               "pnics": [
                 {
                   "device_name": "fp-eth0",
-                  "uplink_name": "uplink-0"
+                  "uplink_name": "uplink-1"
                 }
               ],
               "ip_pool_name": "update-ip_pool_tep_edge_overlay",
@@ -81,7 +101,184 @@
             }
           ]
         }
-      }
+      },
+      "edge_clusters":
+      [
+        {
+          "display_name": "edge-cluster-01",
+          "members": [
+            {
+              "display_name": "edge-01"
+            },
+            {
+              "display_name": "edge-02"
+            }
+          ]
+        }
+      ],
+      "tier0s":
+      [
+        {
+          "display_name": "t0-01",
+          "edge_cluster_name": "edge-cluster-01",
+          "ha_mode": "ACTIVE_STANDBY",
+          "interfaces": [
+            {
+              "edge_name": "edge-01",
+              "segment_name": "update-seg-external",
+              "type": "EXTERNAL",
+              "display_name": "if-ext-0"
+            },
+            {
+              "edge_name": "edge-02",
+              "segment_name": "update-seg-external",
+              "type": "EXTERNAL",
+              "display_name": "if-ext-1"
+            }
+          ],
+          "static_routes": [
+            {
+              "display_name": "default-route",
+              "network": "0.0.0.0/0",
+              "next_hops": [
+                {
+                  "ip_address": "dummy"
+                }
+              ]
+            }
+          ],
+          "ha_vips": [
+            {
+              "interfaces": [
+                "if-ext-0",
+                "if-ext-1"
+              ]
+            }
+          ]
+        }
+      ],
+      "tier1s":
+      [
+        {
+          "tier0": "t0-01",
+          "display_name": "t1-01",
+          "edge_cluster_name": "edge-cluster-01",
+          "ha_mode": "ACTIVE_STANDBY",
+          "dhcp_server": "dhcp-0",
+          "route_advertisement_types": [
+            "TIER1_STATIC_ROUTES",
+            "TIER1_CONNECTED",
+            "TIER1_LB_VIP"
+          ]
+        },
+        {
+          "tier0": "t0-01",
+          "display_name": "t1-02",
+          "dhcp_server": "dhcp-0",
+          "route_advertisement_types": [
+            "TIER1_STATIC_ROUTES",
+            "TIER1_CONNECTED",
+            "TIER1_LB_VIP"
+          ]
+        },
+        {
+          "tier0": "t0-01",
+          "display_name": "t1-03",
+          "edge_cluster_name": "edge-cluster-01",
+          "ha_mode": "ACTIVE_STANDBY",
+          "dhcp_server": "dhcp-0",
+          "route_advertisement_types": [
+            "TIER1_STATIC_ROUTES",
+            "TIER1_CONNECTED",
+            "TIER1_LB_VIP"
+          ]
+        },
+        {
+          "tier0": "t0-01",
+          "display_name": "t1-04",
+          "edge_cluster_name": "edge-cluster-01",
+          "ha_mode": "ACTIVE_STANDBY",
+          "lb": true,
+          "dhcp_server": "dhcp-0",
+          "route_advertisement_types": [
+            "TIER1_STATIC_ROUTES",
+            "TIER1_CONNECTED",
+            "TIER1_LB_VIP"
+          ]
+        }
+      ],
+      "segments_overlay":
+      [
+        {
+          "display_name": "seg-mgmt-avi",
+          "tier1": "t1-01",
+          "transport_zone": "tz_overlay",
+          "dhcp_ranges": ["50-99"],
+          "avi_ipam_pool_se": "210-230",
+          "avi_mgmt": true
+        },
+        {
+          "display_name": "seg-mgmt-tanzu-supervisor",
+          "tier1": "t1-01",
+          "tanzu_supervisor_starting_ip": "130",
+          "tanzu_supervisor_count": 5,
+          "transport_zone": "tz_overlay",
+          "dhcp_ranges": ["50-99"],
+          "avi_ipam_pool_se": "210-230"
+        },
+        {
+          "display_name": "seg-server-1",
+          "tier1": "t1-01",
+          "dhcp_ranges": ["50-99"],
+          "avi_ipam_pool_se": "210-230",
+          "transport_zone": "tz_overlay",
+          "backend": true
+        },
+        {
+          "display_name": "seg-server-2-preserve-ip",
+          "tier1": "t1-03",
+          "dhcp_ranges": ["50-99"],
+          "avi_ipam_pool_se": "210-230",
+          "transport_zone": "tz_overlay",
+          "backend": true,
+          "server_preserve_ip": true
+        },
+        {
+          "display_name": "seg-vip-1",
+          "tier1": "t1-01",
+          "dhcp_ranges": ["50-99"],
+          "avi_ipam_pool_se": "210-230",
+          "avi_ipam_pool_vip": "11-99",
+          "transport_zone": "tz_overlay",
+          "kube": true,
+          "lbaas_private": true
+        },
+        {
+          "display_name": "seg-vip-2",
+          "tier1": "t1-02",
+          "dhcp_ranges": ["50-99"],
+          "avi_ipam_pool_se": "210-230",
+          "avi_ipam_pool_vip": "11-99",
+          "transport_zone": "tz_overlay",
+          "lbaas_public": true
+        },
+        {
+          "display_name": "seg-vip-3-preserve-ip",
+          "tier1": "t1-03",
+          "dhcp_ranges": ["50-99"],
+          "avi_ipam_pool_se": "210-230",
+          "avi_ipam_pool_vip": "11-99",
+          "transport_zone": "tz_overlay",
+          "vip_preserve_ip": true
+        },
+        {
+          "display_name": "seg-nsx-vip",
+          "tier1": "t1-04",
+          "dhcp_ranges": ["50-99"],
+          "lb": true,
+          "transport_zone": "tz_overlay"
+        }
+      ]
     }
   }
 }

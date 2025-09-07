@@ -49,8 +49,7 @@ if [[ ${operation} == "apply" ]] ; then
   echo '------------------------------------------------------------' | tee -a ${log_file}
   echo "Creation of an external gw on the underlay infrastructure - This should take 10 minutes" | tee -a ${log_file}
   # ova download
-  ova_url=$(jq -c -r .gw.ova_url $jsonFile)
-  download_file_from_url_to_location "${ova_url}" "/root/$(basename ${ova_url})" "Ubuntu OVA"
+  download_file_from_url_to_location "${ubuntu_ova_url}" "/root/$(basename ${ubuntu_ova_url})" "Ubuntu OVA"
   download_file_from_url_to_location "${iso_url}" "/root/$(basename ${iso_url})" "ESXi ISO" &
   if [ -z "${slack_webhook}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Ubuntu OVA downloaded"}' ${slack_webhook} >/dev/null 2>&1; fi
   #
@@ -94,6 +93,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${name_vcf_installer}@${name_vcf_installer}@" \
         -e "s@\${name_cb}@${name_cb}@" \
         -e "s/\${packages}/$(jq -c -r '.apt_packages' $jsonFile)/" \
+        -e "s@\${directories}@$(jq -c -r '.directories' $jsonFile)@" \
         -e "s/\${basename_sddc}/${basename_sddc}/" \
         -e "s/\${basename_nsx_manager}/${basename_nsx_manager}/" \
         -e "s/\${basename_avi_ctrl}/${basename_avi_ctrl}/" \
@@ -119,7 +119,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${network_ref}@${network_ref}@" \
         -e "s/\${gw_name}/${gw_name}/" /nested-vcf/templates/options-gw.json.template | tee "/tmp/options-${gw_name}.json"
     #
-    govc import.ova --options="/tmp/options-${gw_name}.json" -folder "${folder}" "/root/$(basename ${ova_url})"
+    govc import.ova --options="/tmp/options-${gw_name}.json" -folder "${folder}" "/root/$(basename ${ubuntu_ova_url})"
     govc vm.change -vm "${folder}/${gw_name}" -c $(jq -c -r .gw.cpu $jsonFile) -m $(jq -c -r .gw.memory $jsonFile)
     govc vm.disk.change -vm "${folder}/${gw_name}" -size $(jq -c -r .gw.disk $jsonFile)
     if [[ ${esxi_trunk} == "true" ]] ; then
@@ -170,6 +170,7 @@ if [[ ${operation} == "apply" ]] ; then
           do
             scp -o StrictHostKeyChecking=no -r /nested-vcf/${folder} ubuntu@${ip_gw}:/home/ubuntu
           done
+          scp -o StrictHostKeyChecking=no "/root/$(basename ${ubuntu_ova_url})" ubuntu@${ip_gw}:/home/ubuntu/bin/$(basename ${ubuntu_ova_url})
           scp -o StrictHostKeyChecking=no -r /root/${basename_sddc}_${operation}.json ubuntu@${ip_gw}:/home/ubuntu/json/${basename_sddc}_${operation}.json
           for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
           do
