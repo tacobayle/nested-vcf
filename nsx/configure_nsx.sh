@@ -424,6 +424,55 @@ do
   fi
 done
 #
+# create tier1s
+#
+echo ${nsx_config_tier1s} | jq -c -r .[] | while read item
+do
+  api_endpoint="policy/api/v1/infra/tier-0s"
+  /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
+              "${api_endpoint}" \
+              "${file_path}/$(basename ${api_endpoint}).json"
+  tier0_path=$(jq -c -r --arg arg1 "$(echo ${item} | jq -r -c .tier0)" '.results[] | select(.display_name == $arg1).path' "${file_path}/$(basename ${api_endpoint}).json")
+  api_endpoint="policy/api/v1/infra/dhcp-server-configs"
+  /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
+              "${api_endpoint}" \
+              "${file_path}/$(basename ${api_endpoint}).json"
+  dhcp_config_path=$(jq -c -r --arg arg1 "$(echo ${item} | jq -r -c .dhcp_server)" '.results[] | select(.display_name == $arg1).path' "${file_path}/$(basename ${api_endpoint}).json")
+  if $(echo ${item} | jq -e '.edge_cluster_name' > /dev/null) ; then
+    api_endpoint="api/v1/edge-clusters"
+    /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
+                "${api_endpoint}" \
+                "${file_path}/$(basename ${api_endpoint}).json"
+    edge_cluster_path="/infra/sites/default/enforcement-points/default/edge-clusters/$(jq -c -r --arg arg1 "$(echo ${item} | jq -r -c .edge_cluster_name)" '.results[] | select(.display_name == $arg1).id' "${file_path}/$(basename ${api_endpoint}).json")"
+  else
+    edge_cluster_path=""
+  fi
+  json_data='{
+                "display_name": "'$(echo ${item} | jq -c -r .display_name)'",
+                "tier0_path": "'${tier0_path}'",
+                "dhcp_config_paths": ["'${dhcp_config_path}'"],
+                "route_advertisement_types": '$(echo ${item} | jq -c -r .route_advertisement_types)'
+             }'
+  if $(echo ${item} | jq -e '.ha_mode' > /dev/null) ; then
+    json_data=$(echo ${json_data} | jq '. += {"ha_mode": "'$(echo ${item} | jq -c -r .ha_mode)'"}')
+  fi
+  /bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" "${generic_password}" \
+              "policy/api/v1/infra/tier-1s/$(echo ${item} | jq -r -c .display_name)" \
+              "PUT" \
+              "${json_data}"
+  if [[ ${edge_cluster_path} != "" ]] ; then
+    json_data='
+      {
+        "display_name": "default",
+        "edge_cluster_path": "'${edge_cluster_path}'"
+      }'
+    /bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" "${generic_password}" \
+                "policy/api/v1/infra/tier-1s/$(echo ${item} | jq -r -c .display_name)/locale-services/default" \
+                "PUT" \
+                "${json_data}"
+  fi
+done
+#
 #
 #
 log_message "End of the NSX config." "" "${slack_webhook}" "${google_webhook}"

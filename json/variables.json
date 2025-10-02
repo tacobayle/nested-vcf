@@ -170,41 +170,6 @@
             "TIER1_CONNECTED",
             "TIER1_LB_VIP"
           ]
-        },
-        {
-          "tier0": "t0-01",
-          "display_name": "t1-02",
-          "dhcp_server": "dhcp-0",
-          "route_advertisement_types": [
-            "TIER1_STATIC_ROUTES",
-            "TIER1_CONNECTED",
-            "TIER1_LB_VIP"
-          ]
-        },
-        {
-          "tier0": "t0-01",
-          "display_name": "t1-03",
-          "edge_cluster_name": "edge-cluster-01",
-          "ha_mode": "ACTIVE_STANDBY",
-          "dhcp_server": "dhcp-0",
-          "route_advertisement_types": [
-            "TIER1_STATIC_ROUTES",
-            "TIER1_CONNECTED",
-            "TIER1_LB_VIP"
-          ]
-        },
-        {
-          "tier0": "t0-01",
-          "display_name": "t1-04",
-          "edge_cluster_name": "edge-cluster-01",
-          "ha_mode": "ACTIVE_STANDBY",
-          "lb": true,
-          "dhcp_server": "dhcp-0",
-          "route_advertisement_types": [
-            "TIER1_STATIC_ROUTES",
-            "TIER1_CONNECTED",
-            "TIER1_LB_VIP"
-          ]
         }
       ],
       "segments_overlay":
