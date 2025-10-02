@@ -42,7 +42,7 @@ if [[ ${operation} == "apply" ]] ; then
     echo "ERROR: unable to create folder ${folder}: it already exists" | tee -a ${log_file}
   else
     govc folder.create /${vsphere_dc}/vm/${folder}
-    log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': vsphere external folder '${folder}' created" ${log_file} ${slack_webhook} ${google_webhook}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: vsphere external folder ${folder} created" ${log_file} ${slack_webhook} ${google_webhook}
   fi
   #
   #
@@ -51,7 +51,7 @@ if [[ ${operation} == "apply" ]] ; then
   # ova download
   download_file_from_url_to_location "${ubuntu_ova_url}" "/root/$(basename ${ubuntu_ova_url})" "Ubuntu OVA"
   download_file_from_url_to_location "${iso_url}" "/root/$(basename ${iso_url})" "ESXi ISO" &
-  log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Ubuntu OVA downloaded" ${log_file} ${slack_webhook} ${google_webhook}
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Ubuntu OVA downloaded" ${log_file} ${slack_webhook} ${google_webhook}
   #
   if [[ ${list_gw} != "null" ]] ; then
     echo "ERROR: unable to create VM ${gw_name}: it already exists" | tee -a ${log_file}
@@ -132,7 +132,7 @@ if [[ ${operation} == "apply" ]] ; then
     echo "${contents}" | tee /etc/hosts > /dev/null
     contents="${ip_gw} gw"
     echo "${contents}" | tee -a /etc/hosts > /dev/null
-    log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': external-gw '${gw_name}' VM created" ${log_file} ${slack_webhook} ${google_webhook}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: external-gw ${gw_name} VM created" ${log_file} ${slack_webhook} ${google_webhook}
     # ssh check
     retry=60 ; pause=10 ; attempt=1
     while true ; do
@@ -143,7 +143,7 @@ if [[ ${operation} == "apply" ]] ; then
         ssh -o StrictHostKeyChecking=no "ubuntu@${ip_gw}" "test -f /tmp/cloudInitDone.log" 2>/dev/null
         if [[ $? -eq 0 ]]; then
           echo "Gw ${gw_name} is ready." | tee -a ${log_file}
-          log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': external-gw '${gw_name}' VM reachable and configured" ${log_file} ${slack_webhook} ${google_webhook}
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: external-gw ${gw_name} VM reachable and configured" ${log_file} ${slack_webhook} ${google_webhook}
           if [[ ${esxi_trunk} == "false" ]] ; then
             count=3
             count_nic=0
@@ -217,7 +217,7 @@ if [[ ${operation} == "apply" ]] ; then
   if [[ ${vcf_installer_ova_url} != "null" ]]; then
     download_file_from_url_to_location "${vcf_installer_ova_url}" "/root/$(basename ${vcf_installer_ova_url})" "VFC Installer OVA" &
   fi
-  log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': ISO ESXI downloaded" ${log_file} ${slack_webhook} ${google_webhook}
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ISO ESXI downloaded" ${log_file} ${slack_webhook} ${google_webhook}
   #
   iso_mount_location="/tmp/esxi_cdrom_mount"
   iso_build_location="/tmp/esxi_cdrom"
@@ -277,7 +277,7 @@ if [[ ${operation} == "apply" ]] ; then
       dc=$(jq -c -r .vsphere_underlay.datacenter $jsonFile)
       echo "Uploading new ISO for ESXi ${esxi}" | tee -a ${log_file}
       govc datastore.upload  --ds=${ds} --dc=${dc} "${iso_location}-${esxi}.iso" nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
-      log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': ISO ESXi '${esxi}' uploaded" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ISO ESXi ${esxi} uploaded" ${log_file} ${slack_webhook} ${google_webhook}
       if [[ ${esxi} -gt 4 ]] ; then
         cpu=$(jq -c -r .esxi.sizing_workload.cpu $jsonFile)
         memory=$(jq -c -r .esxi.sizing_workload.memory $jsonFile)
@@ -330,7 +330,7 @@ if [[ ${operation} == "apply" ]] ; then
         govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
       fi
       govc vm.power -on=true "${folder}/${name_esxi}"
-      log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': nested ESXi '${esxi}' created" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${esxi} created" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   done
   # affinity rule
@@ -354,11 +354,11 @@ if [[ ${operation} == "apply" ]] ; then
   #
   if [[ ${cloud_builder_ova_url} != "null" ]]; then
     echo "Cloud Builder OVA downloaded" | tee -a ${log_file}
-    log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Cloud Builder OVA downloaded" ${log_file} ${slack_webhook} ${google_webhook}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Cloud Builder OVA downloaded" ${log_file} ${slack_webhook} ${google_webhook}
   fi
   if [[ ${vcf_installer_ova_url} != "null" ]]; then
     echo "VCF Installer OVA downloaded" | tee -a ${log_file}
-    log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF Installer OVA downloaded" ${log_file} ${slack_webhook} ${google_webhook}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF Installer OVA downloaded" ${log_file} ${slack_webhook} ${google_webhook}
   fi
   #
   # Cloud builder use case
@@ -377,10 +377,10 @@ if [[ ${operation} == "apply" ]] ; then
       #
       echo "Uploading Cloud Builder OVA" | tee -a ${log_file}
       govc import.ova --options="/tmp/options-${name_cb}.json" -folder "${folder}" "/root/$(basename ${cloud_builder_ova_url})" >/dev/null
-      log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF-Cloud_Builder VM created" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-Cloud_Builder VM created" ${log_file} ${slack_webhook} ${google_webhook}
       echo "Creating Cloud Builder VM" | tee -a ${log_file}
       govc vm.power -on=true "${name_cb}"
-      log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF-Cloud_Builder VM started" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-Cloud_Builder VM started" ${log_file} ${slack_webhook} ${google_webhook}
       count=1
       until $(curl --output /dev/null --silent --head -k https://${ip_cb})
       do
@@ -392,7 +392,7 @@ if [[ ${operation} == "apply" ]] ; then
           exit 1
         fi
       done
-      log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': nested Cloud Builder VM configured and reachable" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested Cloud Builder VM configured and reachable" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   fi
   #
@@ -413,10 +413,10 @@ if [[ ${operation} == "apply" ]] ; then
       #
       echo "Uploading VCF Installer OVA" | tee -a ${log_file}
       govc import.ova --options="/tmp/options-${name_vcf_installer}.json" -folder "${folder}" "/root/$(basename ${vcf_installer_ova_url})" >/dev/null
-      log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM created" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM created" ${log_file} ${slack_webhook} ${google_webhook}
       echo "Creating VCF Installer VM" | tee -a ${log_file}
       govc vm.power -on=true "${name_vcf_installer}"
-      log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM started" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM started" ${log_file} ${slack_webhook} ${google_webhook}
       count=1
       until $(curl --output /dev/null --silent --head -k https://${ip_vcf_installer})
       do
@@ -428,8 +428,8 @@ if [[ ${operation} == "apply" ]] ; then
           exit 1
         fi
       done
-      log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM configured and reachable" ${log_file} ${slack_webhook} ${google_webhook}
-      log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer VM: please patch it if needed" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM configured and reachable" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM: please patch it if needed" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   fi
   #
@@ -449,7 +449,7 @@ if [[ ${operation} == "apply" ]] ; then
     sleep 30
     govc vm.power -on ${name_esxi}
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "/bin/bash /home/ubuntu/esxi_customization-$esxi.sh"
-    log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': nested ESXi '${name_esxi}' ready" ${log_file} ${slack_webhook} ${google_webhook}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${name_esxi} ready" ${log_file} ${slack_webhook} ${google_webhook}
     govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
     sleep 10
     govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
@@ -464,7 +464,7 @@ if [[ ${operation} == "apply" ]] ; then
     echo '------------------------------------------------------------' | tee -a ${log_file}
     echo "VCF Installer configuration - This should take 2 minutes per nested ESXi" | tee -a ${log_file}
     while [ ! -f "/root/vcfi-${ip_vcf_installer}-patched.json" ]; do
-        log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': please patch vcf installer" ${log_file} ${slack_webhook} ${google_webhook}
+        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: please patch vcf installer" ${log_file} ${slack_webhook} ${google_webhook}
         echo "File not found yet. Sleeping for 30 seconds..." | tee -a ${log_file}
         sleep 30
     done
@@ -508,7 +508,7 @@ if [[ ${operation} == "apply" ]] ; then
         if [[ ${executionStatus} == "COMPLETED" ]]; then
           resultStatus=$(curl -k -s "https://${ip_cb}/v1/sddcs/validations/${validation_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X GET -H 'Accept: application/json' | jq -c -r .resultStatus)
           echo "SDDC JSON validation: ${resultStatus} after $attempt of ${pause} seconds"
-          log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation: '${resultStatus}'" ${log_file} ${slack_webhook} ${google_webhook}
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC JSON validation: ${resultStatus}" ${log_file} ${slack_webhook} ${google_webhook}
           if [[ ${resultStatus} != "SUCCEEDED" ]] ; then exit ; fi
           break
         else
@@ -516,7 +516,7 @@ if [[ ${operation} == "apply" ]] ; then
         fi
         ((attempt++))
         if [ $attempt -eq $retry ]; then
-          log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation not finished after '${attempt}' attempts of '${pause}' seconds" ${log_file} ${slack_webhook} ${google_webhook}
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC JSON validation not finished after ${attempt} attempts of ${pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
           exit
         fi
       done
@@ -532,7 +532,7 @@ if [[ ${operation} == "apply" ]] ; then
           if [[ ${sddc_status} != "COMPLETED_WITH_SUCCESS" ]]; then
             ((count_retry++))
             if [[ ${count_retry} == 3 ]]; then
-              log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_cb}'" ${log_file} ${slack_webhook} ${google_webhook}
+              log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: ${sddc_status}, go to https://${ip_cb}" ${log_file} ${slack_webhook} ${google_webhook}
               exit
             fi
             sleep 600
@@ -540,7 +540,7 @@ if [[ ${operation} == "apply" ]] ; then
             retry=$(curl -k -s "https://${ip_cb}/v1/sddcs/${sddc_id}" -u "admin:$(jq -c -r .generic_password $jsonFile)" -X PATCH -H 'Content-type: application/json' -d @/root/${basename_sddc}.json)
           fi
           if [[ ${sddc_status} == "COMPLETED_WITH_SUCCESS" ]]; then
-            log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_cb}'" ${log_file} ${slack_webhook} ${google_webhook}
+            log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: ${sddc_status}, go to https://${ip_cb}" ${log_file} ${slack_webhook} ${google_webhook}
             break
           fi
         else
@@ -548,7 +548,7 @@ if [[ ${operation} == "apply" ]] ; then
         fi
         ((attempt++))
         if [ $attempt -eq $retry ]; then
-          log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation not finished after '${attempt}' attempts of '${pause}' seconds" ${log_file} ${slack_webhook} ${google_webhook}
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation not finished after ${attempt} attempts of ${pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
           exit
         fi
       done
@@ -561,13 +561,13 @@ if [[ ${operation} == "apply" ]] ; then
         if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
           esxi_fqdn="${basename_sddc}-wld0$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4)).${domain}"
           ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "/home/ubuntu/sddc_manager/sddc_manager_commission_host.sh /home/ubuntu/json/$(basename ${jsonFile}) ${esxi_fqdn}" > ${log_file} 2>&1
-          log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' ESXi host commissioning of ESXi host: '${esxi_fqdn}'" ${log_file} ${slack_webhook} ${google_webhook}
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} ESXi host commissioning of ESXi host: ${esxi_fqdn}" ${log_file} ${slack_webhook} ${google_webhook}
         fi
       done
     fi
     sleep 120
     govc vm.power -off=true "${name_cb}" >> /dev/null 2>&1
-    log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': Powering off Cloud Builder VM" ${log_file} ${slack_webhook} ${google_webhook}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Powering off Cloud Builder VM" ${log_file} ${slack_webhook} ${google_webhook}
   fi
 fi
 #
@@ -581,7 +581,7 @@ if [[ ${operation} == "destroy" ]] ; then
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_cb}'")] | length') -eq 1 ]]; then
       govc vm.power -off=true "${folder}/${name_cb}"
       govc vm.destroy "${folder}/${name_cb}"
-      log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF-Cloud_Builder VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-Cloud_Builder VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   fi
   #
@@ -591,7 +591,7 @@ if [[ ${operation} == "destroy" ]] ; then
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_vcf_installer}'")] | length') -eq 1 ]]; then
       govc vm.power -off=true "${folder}/${name_vcf_installer}"
       govc vm.destroy "${folder}/${name_vcf_installer}"
-      log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF-installer VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-installer VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   fi
   #
@@ -609,7 +609,7 @@ if [[ ${operation} == "destroy" ]] ; then
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_esxi}'")] | length') -eq 1 ]]; then
       govc vm.power -off=true "${folder}/${name_esxi}"
       govc vm.destroy "${folder}/${name_esxi}"
-      log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': nested ESXi '${esxi}' destroyed" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${esxi} destroyed" ${log_file} ${slack_webhook} ${google_webhook}
     else
       echo "ERROR: unable to delete ESXi ${name_esxi}: it is already gone" | tee -a ${log_file}
     fi
@@ -621,7 +621,7 @@ if [[ ${operation} == "destroy" ]] ; then
   if [[ ${list_gw} != "null" ]] ; then
     govc vm.power -off=true "${gw_name}"
     govc vm.destroy "${gw_name}"
-    log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': external-gw '${gw_name}' VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: external-gw ${gw_name} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
   else
     echo "ERROR: unable to delete VM ${gw_name}: it already exists" | tee -a ${log_file}
   fi
@@ -632,7 +632,7 @@ if [[ ${operation} == "destroy" ]] ; then
   echo "Deletion of a folder on the underlay infrastructure - This should take less than a minute" | tee -a ${log_file}
   if $(echo ${list_folder} | jq -e '. | any(. == "./vm/'${folder}'")' >/dev/null ) ; then
     govc object.destroy /${vsphere_dc}/vm/${folder}
-    log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': vsphere external folder '${folder}' removed" ${log_file} ${slack_webhook} ${google_webhook}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: vsphere external folder ${folder} removed" ${log_file} ${slack_webhook} ${google_webhook}
   else
     echo "ERROR: unable to delete folder ${folder}: it does not exist" | tee -a ${log_file}
   fi
