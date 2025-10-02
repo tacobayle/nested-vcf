@@ -296,21 +296,32 @@ if [[ ${operation} == "apply" ]] ; then
       govc vm.create -c ${cpu} -m ${memory} -disk ${disk_os_size} -disk.controller pvscsi -net ${net} -g vmkernel65Guest -net.adapter vmxnet3 -firmware efi -folder "${folder}" -on=false "${name_esxi}"
       #govc device.cdrom.add -vm "${folder}/${name_esxi}" > /dev/null
       # adding a SATA controller
+      echo "test1" | tee -a ${log_file}
       token=$(/bin/bash /nested-vcf/bash/vcenter/create_vcenter_api_session.sh "${GOVC_USERNAME}" "" "${GOVC_PASSWORD}" "$(basename ${GOVC_URL})")
+      echo "test2" | tee -a ${log_file}
       vcenter_api 2 2 "GET" $token "" "$(basename ${GOVC_URL})" "api/vcenter/vm"
+      echo "test3" | tee -a ${log_file}
+      echo ${response_body} | jq . | tee -a ${log_file}
       esxi_nested_vm_id=$(echo ${response_body} | jq -c -r --arg arg "${name_esxi}" '.[] | select(.name == $arg).vm')
+      echo "test4" | tee -a ${log_file}
       json_data='{"type": "AHCI"}'
       vcenter_api 2 2 "POST" $token "${json_data}" "$(basename ${GOVC_URL})" "api/vcenter/vm/${esxi_nested_vm_id}/hardware/adapter/sata"
+      echo "test5" | tee -a ${log_file}
       # adding a cdrom based on sata
       json_data='{"type": "SATA", "start_connected": true, "backing": {"iso_file": "['${GOVC_DATASTORE}'] 'nested-vcf/$(basename ${iso_location}-${esxi}.iso)'","type": "ISO_FILE"}}'
       vcenter_api 2 2 "POST" $token "${json_data}" "$(basename ${GOVC_URL})" "api/vcenter/vm/${esxi_nested_vm_id}/hardware/cdrom"
+      echo "test6" | tee -a ${log_file}
 #      govc device.cdrom.insert -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
       govc vm.change -vm "${folder}/${name_esxi}" -nested-hv-enabled
+      echo "test7" | tee -a ${log_file}
       govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk1 -size ${disk_flash_size}
+      echo "test8" | tee -a ${log_file}
       govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk2 -size ${disk_capacity_size}
+      echo "test9" | tee -a ${log_file}
       if [[ ${esxi_trunk} == "true" ]] ; then
         net=$(jq -c -r .esxi.nics[1] $jsonFile)
         govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
+        echo "test10" | tee -a ${log_file}
       fi
       if [[ ${esxi_trunk} == "false" ]] ; then
         net=$(jq -c -r .esxi.nics[0] $jsonFile)
@@ -330,7 +341,9 @@ if [[ ${operation} == "apply" ]] ; then
         govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
       fi
       govc vm.power -on=true "${folder}/${name_esxi}"
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${esxi} created" ${log_file} ${slack_webhook} ${google_webhook}
+      echo "test11" | tee -a ${log_file}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${esxi} created" ${log_file} ${slack_webhook} ${google_webhook} &
+      echo "test12" | tee -a ${log_file}
     fi
   done
   # affinity rule
