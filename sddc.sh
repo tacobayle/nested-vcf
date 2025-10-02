@@ -205,7 +205,7 @@ if [[ ${operation} == "apply" ]] ; then
       sleep $pause
     done
   fi
-  names="${gw_name}"
+  affinity_members="${gw_name}"
   #
   #
   echo '------------------------------------------------------------' | tee -a ${log_file}
@@ -291,9 +291,9 @@ if [[ ${operation} == "apply" ]] ; then
         disk_flash_size=$(jq -c -r .esxi.sizing_mgmt.disk_flash_size $jsonFile)
         disk_capacity_size=$(jq -c -r .esxi.sizing_mgmt.disk_capacity_size $jsonFile)
       fi
-      names="${names} ${name_esxi}"
+      affinity_members="${affinity_members} ${name_esxi}"
       echo "Creating nested ESXi ${esxi}" | tee -a ${log_file}
-      govc vm.create -c ${cpu} -m ${memory} -disk ${disk_os_size} -disk.controller pvscsi -net ${net} -g vmkernel65Guest -net.adapter vmxnet3 -firmware efi -folder "${folder}" -on=false "${name_esxi}" > /dev/null
+      govc vm.create -c ${cpu} -m ${memory} -disk ${disk_os_size} -disk.controller pvscsi -net ${net} -g vmkernel65Guest -net.adapter vmxnet3 -firmware efi -folder "${folder}" -on=false "${name_esxi}"
       #govc device.cdrom.add -vm "${folder}/${name_esxi}" > /dev/null
       # adding a SATA controller
       token=$(/bin/bash /nested-vcf/bash/vcenter/create_vcenter_api_session.sh "${GOVC_USERNAME}" "" "${GOVC_PASSWORD}" "$(basename ${GOVC_URL})")
@@ -305,38 +305,38 @@ if [[ ${operation} == "apply" ]] ; then
       json_data='{"type": "SATA", "start_connected": true, "backing": {"iso_file": "['${GOVC_DATASTORE}'] 'nested-vcf/$(basename ${iso_location}-${esxi}.iso)'","type": "ISO_FILE"}}'
       vcenter_api 2 2 "POST" $token "${json_data}" "$(basename ${GOVC_URL})" "api/vcenter/vm/${esxi_nested_vm_id}/hardware/cdrom"
 #      govc device.cdrom.insert -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
-      govc vm.change -vm "${folder}/${name_esxi}" -nested-hv-enabled > /dev/null
-      govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk1 -size ${disk_flash_size} > /dev/null
-      govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk2 -size ${disk_capacity_size} > /dev/null
+      govc vm.change -vm "${folder}/${name_esxi}" -nested-hv-enabled
+      govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk1 -size ${disk_flash_size}
+      govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk2 -size ${disk_capacity_size}
       if [[ ${esxi_trunk} == "true" ]] ; then
         net=$(jq -c -r .esxi.nics[1] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
       fi
       if [[ ${esxi_trunk} == "false" ]] ; then
         net=$(jq -c -r .esxi.nics[0] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
         net=$(jq -c -r .esxi.nics[1] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
         net=$(jq -c -r .esxi.nics[2] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
         net=$(jq -c -r .esxi.nics[3] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
         net=$(jq -c -r .esxi.nics[4] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
         net=$(jq -c -r .esxi.nics[5] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
       fi
-      govc vm.power -on=true "${folder}/${name_esxi}" > /dev/null
+      govc vm.power -on=true "${folder}/${name_esxi}"
       log_message "'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': nested ESXi '${esxi}' created" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   done
   # affinity rule
   if [[ $(jq -c -r .vsphere_underlay.affinity $jsonFile) == "true" ]] ; then
     echo '------------------------------------------------------------' | tee -a ${log_file}
-    govc cluster.rule.create -name "${folder}-affinity-rule" -enable -affinity ${names}
+    govc cluster.rule.create -name "${folder}-affinity-rule" -enable -affinity ${affinity_members}
     echo "Affinity rules should have been configured: ${folder}-affinity-rule" | tee -a ${log_file}
   fi
   #
