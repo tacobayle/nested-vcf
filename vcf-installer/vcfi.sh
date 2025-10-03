@@ -77,7 +77,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       log_message "resultStatus was not SUCCEEDED: ${resultStatus}" "" "" ""
       break
     else
-      sleep $pause
+      sleep $pause_validation
     fi
     ((attempt_validation++))
     if [ $attempt_validation -eq $retry_validation ]; then
