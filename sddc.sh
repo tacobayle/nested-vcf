@@ -13,7 +13,7 @@ jsonFile_kube="${1}"
 if [ -s "${jsonFile_kube}" ]; then
   jq . ${jsonFile_kube} > /dev/null
 else
-  echo "ERROR: ${jsonFile_kube} file is not present" | tee -a ${log_file}
+  echo "ERROR: ${jsonFile_kube} file is not present" >> ${log_file}
   exit 255
 fi
 jsonFile_local="/nested-vcf/json/variables.json"
@@ -28,33 +28,33 @@ operation=$(jq -c -r .operation $jsonFile)
 #
 source /nested-vcf/bash/variables.sh
 #
-echo "Starting timestamp: $(date)" | tee -a ${log_file}
+echo "Starting timestamp: $(date)" >> ${log_file}
 source /nested-vcf/bash/govc/load_govc_external.sh
 govc about
 if [ $? -ne 0 ] ; then touch /root/govc.error ; fi
 list_folder=$(govc find -json . -type f)
 list_gw=$(govc find -json vm -name "${gw_name}")
 #
-echo '------------------------------------------------------------' | tee -a ${log_file}
+echo '------------------------------------------------------------' >> ${log_file}
 if [[ ${operation} == "apply" ]] ; then
-  echo "Creation of a folder on the underlay infrastructure - This should take less than a minute" | tee -a ${log_file}
+  echo "Creation of a folder on the underlay infrastructure - This should take less than a minute" >> ${log_file}
   if $(echo ${list_folder} | jq -e '. | any(. == "./vm/'${folder}'")' >/dev/null ) ; then
-    echo "ERROR: unable to create folder ${folder}: it already exists" | tee -a ${log_file}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to create folder ${folder}: it already exists" ${log_file} ${slack_webhook} ${google_webhook}
   else
-    govc folder.create /${vsphere_dc}/vm/${folder}
+    govc folder.create /${vsphere_dc}/vm/${folder} > /dev/null 2>&1
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: vsphere external folder ${folder} created" ${log_file} ${slack_webhook} ${google_webhook}
   fi
   #
   #
-  echo '------------------------------------------------------------' | tee -a ${log_file}
-  echo "Creation of an external gw on the underlay infrastructure - This should take 10 minutes" | tee -a ${log_file}
+  echo '------------------------------------------------------------' >> ${log_file}
+  echo "Creation of an external gw on the underlay infrastructure - This should take 10 minutes" >> ${log_file}
   # ova download
   download_file_from_url_to_location "${ubuntu_ova_url}" "/root/$(basename ${ubuntu_ova_url})" "Ubuntu OVA"
   download_file_from_url_to_location "${iso_url}" "/root/$(basename ${iso_url})" "ESXi ISO" &
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Ubuntu OVA downloaded" ${log_file} ${slack_webhook} ${google_webhook}
   #
   if [[ ${list_gw} != "null" ]] ; then
-    echo "ERROR: unable to create VM ${gw_name}: it already exists" | tee -a ${log_file}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to create VM ${gw_name}: it already exists" ${log_file} ${slack_webhook} ${google_webhook}
   else
     network_ref=$(jq -c -r .gw.network_ref $jsonFile)
     prefix=$(jq -c -r --arg arg "${network_ref}" '.vsphere_underlay.networks[] | select( .ref == $arg).cidr' $jsonFile | cut -d"/" -f2)
@@ -119,15 +119,15 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${network_ref}@${network_ref}@" \
         -e "s/\${gw_name}/${gw_name}/" /nested-vcf/templates/options-gw.json.template | tee "/tmp/options-${gw_name}.json"
     #
-    govc import.ova --options="/tmp/options-${gw_name}.json" -folder "${folder}" "/root/$(basename ${ubuntu_ova_url})"
-    govc vm.change -vm "${folder}/${gw_name}" -c $(jq -c -r .gw.cpu $jsonFile) -m $(jq -c -r .gw.memory $jsonFile)
-    govc vm.disk.change -vm "${folder}/${gw_name}" -size $(jq -c -r .gw.disk $jsonFile)
+    govc import.ova --options="/tmp/options-${gw_name}.json" -folder "${folder}" "/root/$(basename ${ubuntu_ova_url})" > /dev/null 2>&1
+    govc vm.change -vm "${folder}/${gw_name}" -c $(jq -c -r .gw.cpu $jsonFile) -m $(jq -c -r .gw.memory $jsonFile) > /dev/null 2>&1
+    govc vm.disk.change -vm "${folder}/${gw_name}" -size $(jq -c -r .gw.disk $jsonFile) > /dev/null 2>&1
     if [[ ${esxi_trunk} == "true" ]] ; then
       nic_to_esxi=$(jq -c -r .esxi.nics[0] $jsonFile)
       govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3
     fi
-    govc vm.power -on=true "${gw_name}"
-    echo "   +++ Updating /etc/hosts..." | tee -a ${log_file}
+    govc vm.power -on=true "${gw_name}" > /dev/null 2>&1
+    echo "   +++ Updating /etc/hosts..." >> ${log_file}
     contents=$(cat /etc/hosts | grep -v ${ip_gw})
     echo "${contents}" | tee /etc/hosts > /dev/null
     contents="${ip_gw} gw"
@@ -136,13 +136,13 @@ if [[ ${operation} == "apply" ]] ; then
     # ssh check
     retry=60 ; pause=10 ; attempt=1
     while true ; do
-      echo "attempt $attempt to verify gw ${gw_name} is ready" | tee -a ${log_file}
+      echo "attempt $attempt to verify gw ${gw_name} is ready" >> ${log_file}
       ssh -o StrictHostKeyChecking=no "ubuntu@${ip_gw}" -q >/dev/null 2>&1
       if [[ $? -eq 0 ]]; then
-        echo "Gw ${gw_name} is reachable." | tee -a ${log_file}
+        echo "Gw ${gw_name} is reachable." >> ${log_file}
         ssh -o StrictHostKeyChecking=no "ubuntu@${ip_gw}" "test -f /tmp/cloudInitDone.log" 2>/dev/null
         if [[ $? -eq 0 ]]; then
-          echo "Gw ${gw_name} is ready." | tee -a ${log_file}
+          echo "Gw ${gw_name} is ready." >> ${log_file}
           log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: external-gw ${gw_name} VM reachable and configured" ${log_file} ${slack_webhook} ${google_webhook}
           if [[ ${esxi_trunk} == "false" ]] ; then
             count=3
@@ -152,7 +152,7 @@ if [[ ${operation} == "apply" ]] ; then
             echo ${networks} | jq -c -r .[] | while read net
             do
               nic_to_esxi=$(jq -c -r .esxi.nics[${count_nic}] $jsonFile)
-              govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3
+              govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 > /dev/null 2>&1
               ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"        \$(ip -o link show | awk -F': ' '{print \$2}' | head -${count} | tail -1):\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
               ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            dhcp4: false\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
               ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            addresses: [$(echo $net | jq -c -r .cidr | awk -F'0/' '{print $1}')${ip_gw_last_octet}/$(echo $net | jq -c -r .cidr | cut -f2 -d'/')]\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
@@ -194,12 +194,12 @@ if [[ ${operation} == "apply" ]] ; then
           done
           break
         else
-          echo "Gw ${gw_name}: cloud init is not finished." | tee -a ${log_file}
+          echo "Gw ${gw_name}: cloud init is not finished." >> ${log_file}
         fi
       fi
       ((attempt++))
       if [ $attempt -eq $retry ]; then
-        echo "Gw ${gw_name} is unreachable after $attempt attempt" | tee -a ${log_file}
+        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Gw ${gw_name} is unreachable after $attempt attempt" ${log_file} ${slack_webhook} ${google_webhook}
         exit
       fi
       sleep $pause
@@ -208,8 +208,8 @@ if [[ ${operation} == "apply" ]] ; then
   affinity_members="${gw_name}"
   #
   #
-  echo '------------------------------------------------------------' | tee -a ${log_file}
-  echo "Creation of an ESXi hosts on the underlay infrastructure - This should take 10 minutes" | tee -a ${log_file}
+  echo '------------------------------------------------------------' >> ${log_file}
+  echo "Creation of an ESXi hosts on the underlay infrastructure - This should take 10 minutes" >> ${log_file}
   wait
   if [[ ${cloud_builder_ova_url} != "null" ]]; then
     download_file_from_url_to_location "${cloud_builder_ova_url}" "/root/$(basename ${cloud_builder_ova_url})" "VFC-Cloud_Builder OVA" &
@@ -224,12 +224,12 @@ if [[ ${operation} == "apply" ]] ; then
   boot_cfg_location="efi/boot/boot.cfg"
   iso_location="/tmp/esxi"
   xorriso -ecma119_map lowercase -osirrox on -indev "/root/$(basename ${iso_url})" -extract / ${iso_mount_location}
-  echo "Copying source ESXi ISO to Build directory" | tee -a ${log_file}
+  echo "Copying source ESXi ISO to Build directory" >> ${log_file}
   rm -fr ${iso_build_location}
   mkdir -p ${iso_build_location}
   cp -r ${iso_mount_location}/* ${iso_build_location}
   rm -fr ${iso_mount_location}
-  echo "Modifying ${iso_build_location}/${boot_cfg_location}" | tee -a ${log_file}
+  echo "Modifying ${iso_build_location}/${boot_cfg_location}" >> ${log_file}
   echo "kernelopt=runweasel ks=cdrom:/KS_CUST.CFG" | tee -a ${iso_build_location}/${boot_cfg_location}
   #
   for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
@@ -241,7 +241,7 @@ if [[ ${operation} == "apply" ]] ; then
       name_esxi="${basename_sddc}-wld0$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
     fi
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_esxi}'")] | length') -eq 1 ]]; then
-      echo "ERROR: unable to create nested ESXi ${name_esxi}: it already exists" | tee -a ${log_file}
+      echo "ERROR: unable to create nested ESXi ${name_esxi}: it already exists" >> ${log_file}
       exit
     else
       net=$(jq -c -r .esxi.nics[0] $jsonFile)
@@ -271,12 +271,12 @@ if [[ ${operation} == "apply" ]] ; then
             -e "s/\${domain}/${domain}/" \
             -e "s/\${gateway}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" /nested-vcf/templates/ks_cust-multi-nic.cfg.template | tee ${iso_build_location}/ks_cust.cfg > /dev/null
       fi
-      echo "Building new ISO for ESXi ${esxi}" | tee -a ${log_file}
+      echo "Building new ISO for ESXi ${esxi}" >> ${log_file}
       xorrisofs -relaxed-filenames -J -R -o "${iso_location}-${esxi}.iso" -b isolinux.bin -c boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e efiboot.img -no-emul-boot ${iso_build_location}
       ds=$(jq -c -r .vsphere_underlay.datastore $jsonFile)
       dc=$(jq -c -r .vsphere_underlay.datacenter $jsonFile)
-      echo "Uploading new ISO for ESXi ${esxi}" | tee -a ${log_file}
-      govc datastore.upload  --ds=${ds} --dc=${dc} "${iso_location}-${esxi}.iso" nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
+      echo "Uploading new ISO for ESXi ${esxi}" >> ${log_file}
+      govc datastore.upload  --ds=${ds} --dc=${dc} "${iso_location}-${esxi}.iso" nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null 2>&1
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ISO ESXi ${esxi} uploaded" ${log_file} ${slack_webhook} ${google_webhook}
       if [[ ${esxi} -gt 4 ]] ; then
         cpu=$(jq -c -r .esxi.sizing_workload.cpu $jsonFile)
@@ -292,8 +292,8 @@ if [[ ${operation} == "apply" ]] ; then
         disk_capacity_size=$(jq -c -r .esxi.sizing_mgmt.disk_capacity_size $jsonFile)
       fi
       affinity_members="${affinity_members} ${name_esxi}"
-      echo "Creating nested ESXi ${esxi}" | tee -a ${log_file}
-      govc vm.create -c ${cpu} -m ${memory} -disk ${disk_os_size} -disk.controller pvscsi -net ${net} -g vmkernel65Guest -net.adapter vmxnet3 -firmware efi -folder "${folder}" -on=false "${name_esxi}"
+      echo "Creating nested ESXi ${esxi}" >> ${log_file}
+      govc vm.create -c ${cpu} -m ${memory} -disk ${disk_os_size} -disk.controller pvscsi -net ${net} -g vmkernel65Guest -net.adapter vmxnet3 -firmware efi -folder "${folder}" -on=false "${name_esxi}" > /dev/null 2>&1
       #govc device.cdrom.add -vm "${folder}/${name_esxi}" > /dev/null
       # adding a SATA controller
       echo "test1" >> ${log_file}
@@ -312,35 +312,35 @@ if [[ ${operation} == "apply" ]] ; then
       vcenter_api 2 2 "POST" $token "${json_data}" "$(basename ${GOVC_URL})" "api/vcenter/vm/${esxi_nested_vm_id}/hardware/cdrom"
       echo "test6" >> ${log_file}
 #      govc device.cdrom.insert -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
-      govc vm.change -vm "${folder}/${name_esxi}" -nested-hv-enabled
+      govc vm.change -vm "${folder}/${name_esxi}" -nested-hv-enabled > /dev/null 2>&1
       echo "test7" >> ${log_file}
-      govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk1 -size ${disk_flash_size}
+      govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk1 -size ${disk_flash_size} > /dev/null 2>&1
       echo "test8" >> ${log_file}
-      govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk2 -size ${disk_capacity_size}
+      govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk2 -size ${disk_capacity_size} > /dev/null 2>&1
       echo "test9" >> ${log_file}
       if [[ ${esxi_trunk} == "true" ]] ; then
         net=$(jq -c -r .esxi.nics[1] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
         echo "test10" >> ${log_file}
       fi
       if [[ ${esxi_trunk} == "false" ]] ; then
         net=$(jq -c -r .esxi.nics[0] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
         net=$(jq -c -r .esxi.nics[1] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
         net=$(jq -c -r .esxi.nics[2] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
         net=$(jq -c -r .esxi.nics[3] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
         net=$(jq -c -r .esxi.nics[4] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
         net=$(jq -c -r .esxi.nics[5] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3
+        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
       fi
-      govc vm.power -on=true "${folder}/${name_esxi}"
+      govc vm.power -on=true "${folder}/${name_esxi}" > /dev/null 2>&1
       echo "test11" >> ${log_file}
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${esxi} created" ${log_file} ${slack_webhook} ${google_webhook} &
       echo "test12" >> ${log_file}
@@ -348,9 +348,9 @@ if [[ ${operation} == "apply" ]] ; then
   done
   # affinity rule
   if [[ $(jq -c -r .vsphere_underlay.affinity $jsonFile) == "true" ]] ; then
-    echo '------------------------------------------------------------' | tee -a ${log_file}
+    echo '------------------------------------------------------------' >> ${log_file}
     govc cluster.rule.create -name "${folder}-affinity-rule" -enable -affinity ${affinity_members}
-    echo "Affinity rules should have been configured: ${folder}-affinity-rule" | tee -a ${log_file}
+    echo "Affinity rules should have been configured: ${folder}-affinity-rule" >> ${log_file}
   fi
   #
   # json file creation
