@@ -20,7 +20,7 @@ jsonFile_local="/nested-vcf/json/variables.json"
 basename_sddc=$(jq -c -r .sddc.basename $jsonFile_kube)
 operation=$(jq -c -r .operation $jsonFile_kube)
 jsonFile="/root/${basename_sddc}_${operation}.json"
-jsonFile_remote="/home/ubuntu/${basename_sddc}_${operation}.json"
+jsonFile_remote="/home/ubuntu/json/${basename_sddc}_${operation}.json"
 jq -s '.[0] * .[1]' ${jsonFile_kube} ${jsonFile_local} | tee ${jsonFile}
 #
 #
@@ -296,11 +296,8 @@ if [[ ${operation} == "apply" ]] ; then
       govc vm.create -c ${cpu} -m ${memory} -disk ${disk_os_size} -disk.controller pvscsi -net ${net} -g vmkernel65Guest -net.adapter vmxnet3 -firmware efi -folder "${folder}" -on=false "${name_esxi}" > /dev/null 2>&1
       #govc device.cdrom.add -vm "${folder}/${name_esxi}" > /dev/null
       # adding a SATA controller
-      echo "test1" >> ${log_file}
       token=$(/bin/bash /nested-vcf/bash/vcenter/create_vcenter_api_session.sh "${GOVC_USERNAME}" "" "${GOVC_PASSWORD}" "$(basename ${GOVC_URL})")
-      echo "test2" >> ${log_file}
       vcenter_api 2 2 "GET" $token "" "$(basename ${GOVC_URL})" "api/vcenter/vm"
-      echo "test3" >> ${log_file}
       echo ${response_body} | jq . >> ${log_file}
       esxi_nested_vm_id=$(echo ${response_body} | jq -c -r --arg arg "${name_esxi}" '.[] | select(.name == $arg).vm')
       echo "${esxi_nested_vm_id}" >> ${log_file}
