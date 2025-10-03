@@ -5,7 +5,7 @@ source /nested-vcf/bash/ip.sh
 source /nested-vcf/bash/log_message.sh
 source /nested-vcf/bash/sddc_manager/sddc_manager_api.sh
 source /nested-vcf/bash/vcenter/vcenter_api.sh
-source /nested-vcf/bash/vcenter/test_remote_script.sh
+source /nested-vcf/bash/test_remote_script.sh
 #
 log_file=${2}
 rm -f /root/govc.error
@@ -301,7 +301,7 @@ if [[ ${operation} == "apply" ]] ; then
       echo "test2" >> ${log_file}
       vcenter_api 2 2 "GET" $token "" "$(basename ${GOVC_URL})" "api/vcenter/vm"
       echo "test3" >> ${log_file}
-      echo ${response_body} | jq . | tee -a ${log_file}
+      echo ${response_body} | jq . >> ${log_file}
       esxi_nested_vm_id=$(echo ${response_body} | jq -c -r --arg arg "${name_esxi}" '.[] | select(.name == $arg).vm')
       echo "${esxi_nested_vm_id}" >> ${log_file}
       json_data='{"type": "AHCI"}'
