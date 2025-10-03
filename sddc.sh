@@ -303,7 +303,6 @@ if [[ ${operation} == "apply" ]] ; then
       echo "${esxi_nested_vm_id}" >> ${log_file}
       json_data='{"type": "AHCI"}'
       vcenter_api 2 2 "POST" $token "${json_data}" "$(basename ${GOVC_URL})" "api/vcenter/vm/${esxi_nested_vm_id}/hardware/adapter/sata"
-      echo "test5" >> ${log_file}
       # adding a cdrom based on sata
       json_data='{"type": "SATA", "start_connected": true, "backing": {"iso_file": "['${GOVC_DATASTORE}'] 'nested-vcf/$(basename ${iso_location}-${esxi}.iso)'","type": "ISO_FILE"}}'
       vcenter_api 2 2 "POST" $token "${json_data}" "$(basename ${GOVC_URL})" "api/vcenter/vm/${esxi_nested_vm_id}/hardware/cdrom"
