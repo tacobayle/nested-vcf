@@ -43,8 +43,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
     depot_downloaded=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.downloadStatus == "SUCCESSFUL") and (.version | startswith("9"))) ] | length')
     if [[ ${depot_downloaded} == ${depots_to_download} ]]; then
-      log_message "all bundles downloaded" "" "" ""
-      if [ -z "${slack_webhook}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': VCF installer all bundles downloaded"}' ${slack_webhook} >/dev/null 2>&1; fi
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: all bundles downloaded" "" "${slack_webhook}" "${google_webhook}"
       break
     else
       log_message "${depot_downloaded} on ${depots_to_download} bundles have been downloaded" "" "" ""
@@ -65,11 +64,11 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     log_message "attempt $attempt_validation to verify SDDC JSON validation" "" "" ""
     sddc_manager_api 3 2 GET "" ${ip_vcf_installer} v1/sddcs/validations/${sddc_validation_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
     executionStatus=$(echo ${response_body} | jq -c -r .executionStatus)
+    echo "Execution Status is: ${executionStatus}"
     if [[ ${executionStatus} == "COMPLETED" ]]; then
       sddc_manager_api 3 2 GET "" ${ip_vcf_installer} v1/sddcs/validations/${sddc_validation_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
       resultStatus=$(echo ${response_body} | jq -c -r .resultStatus)
-      log_message "SDDC JSON validation: ${resultStatus} after $attempt of ${pause} seconds" "" "${slack_webhook}" "${google_webhook}"
-      if [ -z "${slack_webhook}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation: '${resultStatus}'"}' ${slack_webhook} >/dev/null 2>&1; fi
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC JSON validation: ${resultStatus} after $attempt of ${pause} seconds" "" "${slack_webhook}" "${google_webhook}"
       if [[ ${resultStatus} != "SUCCEEDED" ]] ; then
         echo "resultStatus was not SUCCEEDED: ${resultStatus}"
         echo ${response_body} | jq .
@@ -82,8 +81,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     fi
     ((attempt_validation++))
     if [ $attempt_validation -eq $retry_validation ]; then
-      log_message "SDDC JSON validation not finished after $attempt_validation attempts of ${pause_validation} seconds" "" "${slack_webhook}" "${google_webhook}"
-      if [ -z "${slack_webhook}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC JSON validation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${slack_webhook} >/dev/null 2>&1; fi
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC JSON validation not finished after $attempt_validation attempts of ${pause_validation} seconds" "" "${slack_webhook}" "${google_webhook}"
       exit
     fi
   done
@@ -104,8 +102,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       if [[ ${sddc_status} != "COMPLETED_WITH_SUCCESS" ]]; then
         ((count_retry++))
         if [[ ${count_retry} == 3 ]]; then
-          log_message "nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_vcf_installer}'" "" "" ""
-          if [ -z "${slack_webhook}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_vcf_installer}'"}' ${slack_webhook} >/dev/null 2>&1; fi
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: '${sddc_status}', go to https://'${ip_vcf_installer}'" "" "" ""
           exit
         fi
         sleep 600
@@ -113,8 +110,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
         sddc_manager_api 3 2 PATCH "" ${ip_vcf_installer} v1/sddcs/${sddc_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
       fi
       if [[ ${sddc_status} == "COMPLETED_WITH_SUCCESS" ]]; then
-        log_message "nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_vcf_installer}'" "" "${slack_webhook}" "${google_webhook}"
-        if [ -z "${slack_webhook}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation status: '${sddc_status}', go to https://'${ip_vcf_installer}'"}' ${slack_webhook} >/dev/null 2>&1; fi
+        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: '${sddc_status}', go to https://'${ip_vcf_installer}'" "" "${slack_webhook}" "${google_webhook}"
         break
       fi
     else
@@ -122,8 +118,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     fi
     ((attempt_build++))
     if [ $attempt_build -eq $retry_build ]; then
-      log_message "SDDC ${sddc_id} creation not finished after $attempt_build attempt of ${pause_build} seconds" "" "${slack_webhook}" "${google_webhook}"
-      if [ -z "${slack_webhook}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', nested-'${basename_sddc}': SDDC '${sddc_id}' Creation not finished after '${attempt}' attempts of '${pause}' seconds"}' ${slack_webhook} >/dev/null 2>&1; fi
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), SDDC ${sddc_id} creation not finished after $attempt_build attempt of ${pause_build} seconds" "" "${slack_webhook}" "${google_webhook}"
       exit
     fi
   done

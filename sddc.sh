@@ -307,18 +307,13 @@ if [[ ${operation} == "apply" ]] ; then
       # adding a cdrom based on sata
       json_data='{"type": "SATA", "start_connected": true, "backing": {"iso_file": "['${GOVC_DATASTORE}'] 'nested-vcf/$(basename ${iso_location}-${esxi}.iso)'","type": "ISO_FILE"}}'
       vcenter_api 2 2 "POST" $token "${json_data}" "$(basename ${GOVC_URL})" "api/vcenter/vm/${esxi_nested_vm_id}/hardware/cdrom"
-      echo "test6" >> ${log_file}
 #      govc device.cdrom.insert -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
       govc vm.change -vm "${folder}/${name_esxi}" -nested-hv-enabled > /dev/null 2>&1
-      echo "test7" >> ${log_file}
       govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk1 -size ${disk_flash_size} > /dev/null 2>&1
-      echo "test8" >> ${log_file}
       govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk2 -size ${disk_capacity_size} > /dev/null 2>&1
-      echo "test9" >> ${log_file}
       if [[ ${esxi_trunk} == "true" ]] ; then
         net=$(jq -c -r .esxi.nics[1] $jsonFile)
         govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
-        echo "test10" >> ${log_file}
       fi
       if [[ ${esxi_trunk} == "false" ]] ; then
         net=$(jq -c -r .esxi.nics[0] $jsonFile)
@@ -338,9 +333,7 @@ if [[ ${operation} == "apply" ]] ; then
         govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
       fi
       govc vm.power -on=true "${folder}/${name_esxi}" > /dev/null 2>&1
-      echo "test11" >> ${log_file}
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${esxi} created" ${log_file} ${slack_webhook} ${google_webhook} &
-      echo "test12" >> ${log_file}
     fi
   done
   # affinity rule
