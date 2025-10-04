@@ -483,6 +483,51 @@ do
   fi
 done
 #
+# create segments
+#
+echo ${nsx_segments_overlay} | jq -c -r .[] | while read item
+do
+  api_endpoint="policy/api/v1/infra/tier-1s"
+  /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
+              "${api_endpoint}" \
+              "${file_path}/$(basename ${api_endpoint}).json"
+  connectivity_path=$(jq -c -r --arg arg1 "$(echo ${item} | jq -r -c .tier1)" '.results[] | select(.display_name == $arg1).path' "${file_path}/$(basename ${api_endpoint}).json")
+  #
+  api_endpoint="api/v1/transport-zones"
+  /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
+              "${api_endpoint}" \
+              "${file_path}/$(basename ${api_endpoint}).json"
+  transport_zone_path="/infra/sites/default/enforcement-points/default/transport-zones/$(jq -c -r --arg arg1 "$(echo ${item} | jq -r -c .transport_zone)" '.results[] | select(.display_name == $arg1).id' "${file_path}/$(basename ${api_endpoint}).json")"
+  json_data='
+    {
+      "display_name": "'$(echo ${item} | jq -r -c .display_name)'",
+      "connectivity_path": "'${connectivity_path}'",
+      "transport_zone_path": "'${transport_zone_path}'",
+      "subnets": [
+        {
+          "gateway_address": "'$(echo ${item} | jq -r -c .gateway_address)'",
+          "dhcp_ranges": '$(echo ${item} | jq -r -c .dhcp_ranges)',
+          "dhcp_config": {
+            "options": {
+              "others": [
+                {
+                  "code": 42,
+                  "values": ["'${ip_gw}'"]
+                }
+              ]
+            },
+            "resource_type": "SegmentDhcpV4Config",
+            "dns_servers": ["'${ip_gw}'"]
+          }
+        }
+      ]
+    }'
+  /bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" "${generic_password}" \
+              "policy/api/v1/infra/segments/$(echo ${item} | jq -r -c .display_name)" \
+              "PUT" \
+              "${json_data}"
+done
+#
 #
 #
 log_message "End of the NSX config." "" "${slack_webhook}" "${google_webhook}"

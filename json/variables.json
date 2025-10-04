@@ -252,7 +252,8 @@
           "lb": true,
           "transport_zone": "VCF-Created-Overlay-Zone"
         }
-      ]
+      ],
+      "segment_overlay_file": "/home/ubuntu/nsx/segments_overlay.json"
     }
   }
 }

@@ -89,7 +89,39 @@ nsx_supernet_overlay=$(jq -c -r '.sddc.nsx.supernet_overlay' ${jsonFile})
 nsx_supernet_overlay_third_octet=$(echo "${nsx_supernet_overlay}" | cut -d'.' -f3)
 nsx_supernet_overlay_first_two_octets=$(echo "${nsx_supernet_overlay}" | cut -d'.' -f1-2)
 segments_overlay="[]"
-segment_count=0
-amount_of_segment=$((${nsx_supernet_overlay_third_octet} + $(jq '.nsx.config.segments_overlay | length' $jsonFile) - 1))
+nsx_segment_count=0
+nsx_amount_of_segment=$((${nsx_supernet_overlay_third_octet} + $(jq '.nsx.config.segments_overlay | length' $jsonFile) - 1))
+for seg_index in $(seq ${nsx_supernet_overlay_third_octet} ${nsx_amount_of_segment})
+do
+  cidr="${nsx_supernet_overlay_first_two_octets}.${seg_index}.0/24"
+  cidr_three_octets="${nsx_supernet_overlay_first_two_octets}.${seg_index}"
+  segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"cidr": "'${cidr}'",
+                                                   "display_name": "'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].display_name' $jsonFile)'",
+                                                   "transport_zone": "'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].transport_zone' $jsonFile)'",
+                                                   "tier1": "'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].tier1' $jsonFile)'",
+                                                   "cidr_three_octets": "'${cidr_three_octets}'",
+                                                   "gateway_address": "'${cidr_three_octets}'.1/24",
+                                                   "dhcp_ranges": ["'${cidr_three_octets}'.'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].dhcp_ranges[0]' $jsonFile | cut -d'-' -f1)'-'${cidr_three_octets}'.'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].dhcp_ranges[0]' $jsonFile | cut -d'-' -f2)'"]
+                                                   }')
 
-
+  if $(echo $(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}']' $jsonFile) | jq -e '.tanzu_supervisor_starting_ip' > /dev/null) ; then
+    segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"tanzu_supervisor_starting_ip": "'${cidr_three_octets}'.'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].tanzu_supervisor_starting_ip' $jsonFile)'"}')
+  fi
+  if $(echo $(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}']' $jsonFile) | jq -e '.tanzu_supervisor_count' > /dev/null) ; then
+    segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"tanzu_supervisor_count": "'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].tanzu_supervisor_count' $jsonFile)'"}')
+  fi
+  if $(echo $(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}']' $jsonFile) | jq -e '.avi_mgmt' > /dev/null) ; then
+    segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"avi_mgmt": '$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].avi_mgmt' $jsonFile)'}')
+  fi
+  if $(echo $(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}']' $jsonFile) | jq -e '.avi_ipam_pool_se' > /dev/null) ; then
+    segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"avi_ipam_pool_se": "'${cidr_three_octets}'.'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].avi_ipam_pool_se' $jsonFile | cut -d"-" -f1)'-'${cidr_three_octets}'.'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].avi_ipam_pool_se' $jsonFile | cut -d"-" -f2)'"}')
+  fi
+  if $(echo $(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}']' $jsonFile) | jq -e '.avi_ipam_pool_vip' > /dev/null) ; then
+    segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"avi_ipam_vip": {"cidr": "'${cidr_vip_subnet}'", "pool": "'${cidr_vip_three_octets}'.'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].avi_ipam_pool_vip' $jsonFile | cut -d"-" -f1)'-'${cidr_vip_three_octets}'.'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].avi_ipam_pool_vip' $jsonFile | cut -d"-" -f2)'"}}')
+    ((vip_subnet_index++))
+  fi
+  ((nsx_segment_count++))
+done
+nsx_config_segment_overlay_file=$(jq -c -r '.nsx.config.segment_overlay_file' $jsonFile)
+echo ${segments_overlay} | tee ${nsx_config_segment_overlay_file} > /dev/null 2>&1
+nsx_segments_overlay=$(jq -c -r . ${nsx_config_segment_overlay_file})
