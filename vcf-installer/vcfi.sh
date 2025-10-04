@@ -102,7 +102,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       if [[ ${sddc_status} != "COMPLETED_WITH_SUCCESS" ]]; then
         ((count_retry++))
         if [[ ${count_retry} == 3 ]]; then
-          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: '${sddc_status}', go to https://'${ip_vcf_installer}'" "" "" ""
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: '${sddc_status}', go to https://${ip_vcf_installer}" "" "" ""
           exit
         fi
         sleep 600
@@ -110,7 +110,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
         sddc_manager_api 3 2 PATCH "" ${ip_vcf_installer} v1/sddcs/${sddc_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
       fi
       if [[ ${sddc_status} == "COMPLETED_WITH_SUCCESS" ]]; then
-        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: '${sddc_status}', go to https://'${ip_vcf_installer}'" "" "${slack_webhook}" "${google_webhook}"
+        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: '${sddc_status}', go to https://${ip_vcf_installer}" "" "${slack_webhook}" "${google_webhook}"
         break
       fi
     else
