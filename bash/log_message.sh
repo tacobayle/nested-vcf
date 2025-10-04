@@ -9,7 +9,7 @@ log_message() {
   fi
   if [[ -f "${log_file}" ]]; then echo "${message}" | tee -a ${log_file}; else echo "${message}"; fi
   # slack
-  if [ -z "${slack_url}" ] ; then echo "ignoring slack update" ; else curl -X POST -H "Content-type: application/json" -d "{\"text\":\"${message}\"}" "${slack_url}"; fi
+  if [ -z "${slack_url}" ] ; then : ; else curl -X POST -H "Content-type: application/json" -d "{\"text\":\"${message}\"}" "${slack_url}"; fi
   # google chat
-  if [[ -z "${google_url}" ]]; then echo "ignoring google update" ; else curl -X POST -H "Content-Type: application/json" -d "{\"text\":\"${message}\"}" "${google_url}"; fi
+  if [[ -z "${google_url}" ]]; then : ; else curl -X POST -H "Content-Type: application/json" -d "{\"text\":\"${message}\"}" "${google_url}"; fi
 }

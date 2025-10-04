@@ -178,7 +178,7 @@
         {
           "display_name": "seg-mgmt-avi",
           "tier1": "t1-01",
-          "transport_zone": "tz_overlay",
+          "transport_zone": "VCF-Created-Overlay-Zone",
           "dhcp_ranges": ["50-99"],
           "avi_ipam_pool_se": "210-230",
           "avi_mgmt": true
@@ -188,7 +188,7 @@
           "tier1": "t1-01",
           "tanzu_supervisor_starting_ip": "130",
           "tanzu_supervisor_count": 5,
-          "transport_zone": "tz_overlay",
+          "transport_zone": "VCF-Created-Overlay-Zone",
           "dhcp_ranges": ["50-99"],
           "avi_ipam_pool_se": "210-230"
         },
@@ -197,7 +197,7 @@
           "tier1": "t1-01",
           "dhcp_ranges": ["50-99"],
           "avi_ipam_pool_se": "210-230",
-          "transport_zone": "tz_overlay",
+          "transport_zone": "VCF-Created-Overlay-Zone",
           "backend": true
         },
         {
@@ -205,7 +205,7 @@
           "tier1": "t1-03",
           "dhcp_ranges": ["50-99"],
           "avi_ipam_pool_se": "210-230",
-          "transport_zone": "tz_overlay",
+          "transport_zone": "VCF-Created-Overlay-Zone",
           "backend": true,
           "server_preserve_ip": true
         },
@@ -215,7 +215,7 @@
           "dhcp_ranges": ["50-99"],
           "avi_ipam_pool_se": "210-230",
           "avi_ipam_pool_vip": "11-99",
-          "transport_zone": "tz_overlay",
+          "transport_zone": "VCF-Created-Overlay-Zone",
           "kube": true,
           "lbaas_private": true
         },
@@ -225,7 +225,7 @@
           "dhcp_ranges": ["50-99"],
           "avi_ipam_pool_se": "210-230",
           "avi_ipam_pool_vip": "11-99",
-          "transport_zone": "tz_overlay",
+          "transport_zone": "VCF-Created-Overlay-Zone",
           "lbaas_public": true
         },
         {
@@ -234,7 +234,7 @@
           "dhcp_ranges": ["50-99"],
           "avi_ipam_pool_se": "210-230",
           "avi_ipam_pool_vip": "11-99",
-          "transport_zone": "tz_overlay",
+          "transport_zone": "VCF-Created-Overlay-Zone",
           "vip_preserve_ip": true
         },
         {
@@ -242,7 +242,7 @@
           "tier1": "t1-04",
           "dhcp_ranges": ["50-99"],
           "lb": true,
-          "transport_zone": "tz_overlay"
+          "transport_zone": "VCF-Created-Overlay-Zone"
         }
       ]
     }
