@@ -424,6 +424,16 @@ do
   fi
 done
 #
+# create dhcp servers
+#
+echo ${nsx_config_dhcp_servers} | jq -c -r .[] | while read item
+do
+  /bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" "${generic_password}" \
+              "policy/api/v1/infra/dhcp-server-configs/$(echo ${item} | jq -c -r '.display_name')" \
+              "PUT" \
+              "${item}"
+done
+#
 # create tier1s
 #
 echo ${nsx_config_tier1s} | jq -c -r .[] | while read item

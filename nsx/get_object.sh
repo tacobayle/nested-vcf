@@ -14,5 +14,5 @@ rm -f ${cookies_file} ${headers_file}
 #
 nsx_api 2 2 "GET" ${cookies_file} ${headers_file} "" ${nsx_nested_ip} "${nsx_api_endpoint}"
 result=$(echo $response_body | jq -c -r '.')
-echo "   +++ testing if variable projects is not empty" ; if [ -z "$result" ] ; then exit 255 ; fi
+if [ -z "$result" ] ; echo "result is empty, exiting..." ; then exit 255 ; fi
 echo ${result} | jq -c -r '.' > "${json_output_file}"

@@ -117,6 +117,14 @@
           ]
         }
       ],
+      "dhcp_servers":
+      [
+        {
+          "display_name": "dhcp-0",
+          "server_address": "100.65.222.1/30",
+          "lease_time": 86400
+        }
+      ],
       "tier0s":
       [
         {

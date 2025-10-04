@@ -83,4 +83,13 @@ nsx_config_edge_clusters=$(jq -c -r .nsx.config.edge_clusters $jsonFile)
 nsx_config_tier0s=$(jq -c -r .nsx.config.tier0s $jsonFile)
 nsx_tier0_starting_ip=$(jq -c -r .nsx.tier0_starting_ip $jsonFile)
 nsx_tier0_tier0_vip_starting_ip=$(jq -c -r .nsx.tier0_vip_starting_ip $jsonFile)
+nsx_config_dhcp_servers=$(jq -c -r '.nsx.config.dhcp_servers' $jsonFile)
 nsx_config_tier1s=$(jq -c -r .nsx.config.tier1s $jsonFile)
+nsx_supernet_overlay=$(jq -c -r '.sddc.nsx.supernet_overlay' ${jsonFile})
+nsx_supernet_overlay_third_octet=$(echo "${nsx_supernet_overlay}" | cut -d'.' -f3)
+nsx_supernet_overlay_first_two_octets=$(echo "${nsx_supernet_overlay}" | cut -d'.' -f1-2)
+segments_overlay="[]"
+segment_count=0
+amount_of_segment=$((${nsx_supernet_overlay_third_octet} + $(jq '.nsx.config.segments_overlay | length' $jsonFile) - 1))
+
+
