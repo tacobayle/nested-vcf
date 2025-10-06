@@ -209,15 +209,6 @@
           "backend": true
         },
         {
-          "display_name": "seg-server-2-preserve-ip",
-          "tier1": "t1-03",
-          "dhcp_ranges": ["50-99"],
-          "avi_ipam_pool_se": "210-230",
-          "transport_zone": "VCF-Created-Overlay-Zone",
-          "backend": true,
-          "server_preserve_ip": true
-        },
-        {
           "display_name": "seg-vip-1",
           "tier1": "t1-01",
           "dhcp_ranges": ["50-99"],
@@ -226,31 +217,6 @@
           "transport_zone": "VCF-Created-Overlay-Zone",
           "kube": true,
           "lbaas_private": true
-        },
-        {
-          "display_name": "seg-vip-2",
-          "tier1": "t1-02",
-          "dhcp_ranges": ["50-99"],
-          "avi_ipam_pool_se": "210-230",
-          "avi_ipam_pool_vip": "11-99",
-          "transport_zone": "VCF-Created-Overlay-Zone",
-          "lbaas_public": true
-        },
-        {
-          "display_name": "seg-vip-3-preserve-ip",
-          "tier1": "t1-03",
-          "dhcp_ranges": ["50-99"],
-          "avi_ipam_pool_se": "210-230",
-          "avi_ipam_pool_vip": "11-99",
-          "transport_zone": "VCF-Created-Overlay-Zone",
-          "vip_preserve_ip": true
-        },
-        {
-          "display_name": "seg-nsx-vip",
-          "tier1": "t1-04",
-          "dhcp_ranges": ["50-99"],
-          "lb": true,
-          "transport_zone": "VCF-Created-Overlay-Zone"
         }
       ],
       "segment_overlay_file": "/home/ubuntu/nsx/segments_overlay.json"

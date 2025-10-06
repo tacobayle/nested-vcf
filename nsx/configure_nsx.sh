@@ -493,11 +493,11 @@ do
               "${file_path}/$(basename ${api_endpoint}).json"
   connectivity_path=$(jq -c -r --arg arg1 "$(echo ${item} | jq -r -c .tier1)" '.results[] | select(.display_name == $arg1).path' "${file_path}/$(basename ${api_endpoint}).json")
   #
-  api_endpoint="api/v1/transport-zones"
+  api_endpoint="policy/api/v1/infra/sites/default/enforcement-points/default/transport-zones"
   /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
               "${api_endpoint}" \
               "${file_path}/$(basename ${api_endpoint}).json"
-  transport_zone_path="/infra/sites/default/enforcement-points/default/transport-zones/$(jq -c -r --arg arg1 "$(echo ${item} | jq -r -c .transport_zone)" '.results[] | select(.display_name == $arg1).id' "${file_path}/$(basename ${api_endpoint}).json")"
+  transport_zone_path="$(jq -c -r --arg arg1 "$(echo ${item} | jq -r -c .transport_zone)" '.results[] | select(.display_name == $arg1).path' "${file_path}/$(basename ${api_endpoint}).json")"
   json_data='
     {
       "display_name": "'$(echo ${item} | jq -r -c .display_name)'",

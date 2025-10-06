@@ -14,5 +14,5 @@ rm -f ${cookies_file} ${headers_file}
 #
 nsx_api 2 2 "GET" ${cookies_file} ${headers_file} "" ${nsx_nested_ip} "${nsx_api_endpoint}"
 result=$(echo $response_body | jq -c -r '.')
-if [ -z "$result" ] ; echo "result is empty, exiting..." ; then exit 255 ; fi
+if [ -z "$result" ] ; then echo "result is empty, exiting..." ; exit 255 ; fi
 echo ${result} | jq -c -r '.' > "${json_output_file}"
