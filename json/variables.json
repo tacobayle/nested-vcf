@@ -218,7 +218,218 @@
           "transport_zone": "VCF-Created-Overlay-Zone"
         }
       ],
-      "segment_overlay_file": "/home/ubuntu/nsx/segments_overlay.json"
+      "segment_overlay_file": "/home/ubuntu/nsx/segments_overlay.json",
+      "ip_blocks": [
+        {
+          "name": "ip_block_pub_project_default",
+          "visibility": "EXTERNAL"
+        },
+        {
+          "name": "ip_block_pub_project1",
+          "visibility": "EXTERNAL"
+        },
+        {
+          "name": "ip_block_pub_project2",
+          "visibility": "EXTERNAL"
+        },
+        {
+          "name": "ip_block_pub_project3",
+          "visibility": "EXTERNAL"
+        },
+        {
+          "name": "ip_block_private_default",
+          "project_ref": "default",
+          "scope": "vpc_private",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_default_tgw",
+          "project_ref": "default",
+          "scope": "vpc_tgw",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_project1",
+          "project_ref": "project1",
+          "scope": "vpc_private",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_project1_tgw",
+          "project_ref": "project1",
+          "scope": "vpc_tgw",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_project2",
+          "project_ref": "project2",
+          "scope": "vpc_private",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_project2_tgw",
+          "project_ref": "project2",
+          "scope": "vpc_tgw",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_project3",
+          "project_ref": "project3",
+          "scope": "vpc_private",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_project3_tgw",
+          "project_ref": "project3",
+          "scope": "vpc_tgw",
+          "visibility": "PRIVATE"
+        }
+      ],
+      "gw_connections": [
+        {
+          "name": "gw-connection-default",
+          "tier0_ref": "t0-01",
+          "project_ref": "default"
+        },
+        {
+          "name": "gw-connection-1",
+          "tier0_ref": "t0-01",
+          "project_ref": "project1"
+        },
+        {
+          "name": "gw-connection-2",
+          "tier0_ref": "t0-01",
+          "project_ref": "project2"
+        },
+        {
+          "name": "gw-connection-3",
+          "tier0_ref": "t0-01",
+          "project_ref": "project3"
+        }
+      ],
+      "projects": [
+        {
+          "name": "project1",
+          "ip_block_ref": "ip_block_pub_project1",
+          "tier0_ref": "t0-01",
+          "edge_cluster_ref": "edge-cluster-01",
+          "gw_connections_refs": ["gw-connection-1"]
+        },
+        {
+          "name": "project2",
+          "ip_block_ref": "ip_block_pub_project2",
+          "tier0_ref": "t0-01",
+          "edge_cluster_ref": "edge-cluster-01",
+          "gw_connections_refs": ["gw-connection-2"]
+        },
+        {
+          "name": "project3",
+          "ip_block_ref": "ip_block_pub_project3",
+          "tier0_ref": "t0-01",
+          "edge_cluster_ref": "edge-cluster-01",
+          "gw_connections_refs": ["gw-connection-3"]
+        }
+      ],
+      "transit_gateways": [
+        {
+          "name": "default",
+          "gw_connection_ref": "gw-connection-default",
+          "project_ref": "default"
+        },
+        {
+          "name": "default",
+          "gw_connection_ref": "gw-connection-1",
+          "project_ref": "project1"
+        },
+        {
+          "name": "default",
+          "gw_connection_ref": "gw-connection-2",
+          "project_ref": "project2"
+        },
+        {
+          "name": "default",
+          "gw_connection_ref": "gw-connection-3",
+          "project_ref": "project3"
+        }
+      ],
+      "vpc_connectivity_profiles" : [
+        {
+          "name": "vpc_connectivity_profile-default",
+          "project_ref": "default",
+          "external_ip_block_refs": ["ip_block_pub_project_default"],
+          "edge_cluster_refs": ["edge-cluster-01"],
+          "private_tgw_ip_block_refs": ["ip_block_private_default_tgw"]
+        },
+        {
+          "name": "vpc_connectivity_profile1",
+          "project_ref": "project1",
+          "external_ip_block_refs": ["ip_block_pub_project1"],
+          "edge_cluster_refs": ["edge-cluster-01"],
+          "private_tgw_ip_block_refs": ["ip_block_private_project1_tgw"]
+        },
+        {
+          "name": "vpc_connectivity_profile2",
+          "project_ref": "project2",
+          "external_ip_block_refs": ["ip_block_pub_project2"],
+          "edge_cluster_refs": ["edge-cluster-01"],
+          "private_tgw_ip_block_refs": ["ip_block_private_project2_tgw"]
+        },
+        {
+          "name": "vpc_connectivity_profile3",
+          "project_ref": "project3",
+          "external_ip_block_refs": ["ip_block_pub_project3"],
+          "edge_cluster_refs": ["edge-cluster-01"],
+          "private_tgw_ip_block_refs": ["ip_block_private_project3_tgw"]
+        }
+      ],
+      "vpc_service_profiles" : [
+        {
+          "name": "vpc_service_profile-default",
+          "project_ref": "default"
+        },
+        {
+          "name": "vpc_service_profile1",
+          "project_ref": "project1"
+        },
+        {
+          "name": "vpc_service_profile2",
+          "project_ref": "project2"
+        },
+        {
+          "name": "vpc_service_profile3",
+          "project_ref": "project3"
+        }
+      ],
+      "vpcs": [
+        {
+          "name": "vpc-default",
+          "project_ref": "default",
+          "private_ips_refs": ["ip_block_private_default"],
+          "vpc_service_profile_ref": "vpc_service_profile-default",
+          "connectivity_profile_ref": "vpc_connectivity_profile-default"
+        },
+        {
+          "name": "vpc1",
+          "project_ref": "project1",
+          "private_ips_refs": ["ip_block_private_project1"],
+          "vpc_service_profile_ref": "vpc_service_profile1",
+          "connectivity_profile_ref": "vpc_connectivity_profile1"
+        },
+        {
+          "name": "vpc2",
+          "project_ref": "project2",
+          "private_ips_refs": ["ip_block_private_project2"],
+          "vpc_service_profile_ref": "vpc_service_profile2",
+          "connectivity_profile_ref": "vpc_connectivity_profile2"
+        },
+        {
+          "name": "vpc3",
+          "project_ref": "project3",
+          "private_ips_refs": ["ip_block_private_project3"],
+          "vpc_service_profile_ref": "vpc_service_profile3",
+          "connectivity_profile_ref": "vpc_connectivity_profile3"
+        }
+      ]
     }
   },
   "avi":{

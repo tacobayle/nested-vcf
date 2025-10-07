@@ -131,6 +131,49 @@ done
 nsx_config_segment_overlay_file=$(jq -c -r '.nsx.config.segment_overlay_file' $jsonFile)
 echo ${segments_overlay} | tee ${nsx_config_segment_overlay_file} > /dev/null 2>&1
 nsx_segments_overlay=$(jq -c -r . ${nsx_config_segment_overlay_file})
+ip_blocks_json="[]"
+# private pool
+supernet_vpc_private=$(jq -c -r '.sddc.nsx.supernet_vpc_private' $jsonFile)
+supernet_vpc_private_third_octet=$(echo "${supernet_vpc_private}" | cut -d'.' -f3)
+supernet_vpc_private_two_octets=$(echo "${supernet_vpc_private}" | cut -d'.' -f1-2)
+private_count=0
+global_count=0
+last_private_third_octet=$((${supernet_vpc_private_third_octet} + $(jq '[.nsx.config.ip_blocks[] | select(.visibility == "PRIVATE") ] | length' $jsonFile) - 1))
+for third_octet in $(seq ${supernet_vpc_private_third_octet} ${last_private_third_octet})
+do
+  cidr="${supernet_vpc_private_two_octets}.${third_octet}.0/24"
+  # cidr_private_three_octets="${supernet_vpc_private_two_octets}.${third_octet}"
+  ip_blocks_json=$(echo ${ip_blocks_json} | jq '.['${global_count}'] += {"name": "'$(jq -c -r '[.nsx.config.ip_blocks[] | select(.visibility == "PRIVATE") ]' $jsonFile | jq -c -r .[${private_count}].name)'",
+                                                   "cidr": "'${cidr}'",
+                                                   "visibility": "'$(jq -c -r '[.nsx.config.ip_blocks[] | select(.visibility == "PRIVATE") ]' $jsonFile | jq -c -r .[${private_count}].visibility)'",
+                                                   "scope": "'$(jq -c -r '[.nsx.config.ip_blocks[] | select(.visibility == "PRIVATE") ]' $jsonFile | jq -c -r .[${private_count}].scope)'",
+                                                   "project_ref": "'$(jq -c -r '[.nsx.config.ip_blocks[] | select(.visibility == "PRIVATE") ]' $jsonFile | jq -c -r .[${private_count}].project_ref)'"}')
+  ((private_count++))
+  ((global_count++))
+done
+# public pool
+supernet_vpc_public=$(jq -c -r '.sddc.nsx.supernet_vpc_public' $jsonFile)
+supernet_vpc_public_third_octet=$(echo "${supernet_vpc_public}" | cut -d'.' -f3)
+supernet_vpc_public_two_octets=$(echo "${supernet_vpc_public}" | cut -d'.' -f1-2)
+public_count=0
+last_public_third_octet=$((${supernet_vpc_public_third_octet} + $(jq '[.nsx.config.ip_blocks[] | select(.visibility == "EXTERNAL") ] | length' $jsonFile) - 1))
+for third_octet in $(seq ${supernet_vpc_public_third_octet} ${last_public_third_octet})
+do
+  cidr="${supernet_vpc_public_two_octets}.${third_octet}.0/24"
+  # cidr_public_three_octets="${supernet_vpc_public_two_octets}.${third_octet}"
+  ip_blocks_json=$(echo ${ip_blocks_json} | jq '.['${global_count}'] += {"name": "'$(jq -c -r '[.nsx.config.ip_blocks[] | select(.visibility == "EXTERNAL") ]' $jsonFile | jq -c -r .[${public_count}].name)'",
+                                                   "cidr": "'${cidr}'",
+                                                   "visibility": "'$(jq -c -r '[.nsx.config.ip_blocks[] | select(.visibility == "EXTERNAL") ]' $jsonFile | jq -c -r .[${public_count}].visibility)'"}')
+  ((public_count++))
+  ((global_count++))
+done
+nsx_config_ip_blocks=$(echo ${ip_blocks_json} | jq -c -r '.')
+nsx_config_gw_connections=$(jq -c -r .nsx.config.gw_connections $jsonFile)
+nsx_config_projects=$(jq -c -r .nsx.config.projects $jsonFile)
+nsx_config_transit_gateways=$(jq -c -r .nsx.config.transit_gateways $jsonFile)
+nsx_config_vpc_connectivity_profiles=$(jq -c -r .nsx.config.vpc_connectivity_profiles $jsonFile)
+nsx_config_vpc_service_profiles=$(jq -c -r .nsx.config.vpc_service_profiles $jsonFile)
+nsx_config_vpcs=$(jq -c -r .nsx.config.vpcs $jsonFile)
 avi_ova_url=$(jq -c -r '.sddc.avi.ova_url' $jsonFile)
 folder_avi=$(jq -c -r '.avi.folder' $jsonFile)
 vcsa_mgmt_cluster="${basename_sddc}-cluster"

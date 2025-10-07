@@ -37,8 +37,7 @@ while [[ "$(curl -u admin:${generic_password} -k -s  https://${ip_nsx_vip}/api/v
     exit 255
   fi
 done
-echo "NSX Manager ready at https://${ip_nsx_vip}"
-if [ -z "${slack_webhook}" ] ; then echo "ignoring slack update" ; else curl -X POST -H 'Content-type: application/json' --data '{"text":"'$(date "+%Y-%m-%d,%H:%M:%S")', '${basename_sddc}': NSX Manager ready at https://'${ip_nsx_vip}'"}' ${slack_webhook} >/dev/null 2>&1; fi
+log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: NSX Manager ready at https://${ip_nsx_vip}" "" "${slack_webhook}" "${google_webhook}"
 #
 # uplink profile for edge
 #
@@ -268,7 +267,7 @@ retry=240 ; pause=20 ; attempt=0
 for item in $(echo ${edge_ids} | jq -c -r '.[]')
 do
   while true ; do
-    log_message "attempt ${attempt} to get node id ${item} ready" "" "" ""
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: attempt ${attempt} to get node id ${item} ready" "" "" ""
     api_endpoint="policy/api/v1/transport-nodes/state"
     /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
                 "${api_endpoint}" \
@@ -276,13 +275,13 @@ do
     for edge in $(seq 0 $(($(jq -c -r '.results | length' "${file_path}/$(basename ${api_endpoint}).json")-1)))
     do
       if [[ $(jq -c -r '.results['$edge'].transport_node_id' "${file_path}/$(basename ${api_endpoint}).json") == ${item} ]] && [[ $(jq -c -r '.results['$edge'].state' "${file_path}/$(basename ${api_endpoint}).json") == "success" ]] ; then
-        log_message "new edge node id ${item} state is success after ${attempt} attempts of ${pause} seconds" "" "${slack_webhook}" "${google_webhook}"
+        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: new edge node id ${item} state is success after ${attempt} attempts of ${pause} seconds" "" "${slack_webhook}" "${google_webhook}"
         break 2
       fi
     done
     ((attempt++))
     if [ ${attempt} -eq ${retry} ]; then
-      log_message "Unable to get node id ${item} ready after ${attempt} of ${pause} seconds" "" "${slack_webhook}" "${google_webhook}"
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Unable to get node id ${item} ready after ${attempt} of ${pause} seconds" "" "${slack_webhook}" "${google_webhook}"
       exit 1
     fi
     sleep ${pause}
@@ -530,5 +529,5 @@ done
 #
 #
 #
-log_message "End of the NSX config." "" "${slack_webhook}" "${google_webhook}"
+log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: End of the NSX config." "" "${slack_webhook}" "${google_webhook}"
 touch ${resultFile}
