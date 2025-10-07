@@ -50,6 +50,7 @@ if [[ ${operation} == "apply" ]] ; then
   echo "Creation of an external gw on the underlay infrastructure - This should take 10 minutes" >> ${log_file}
   # ova download
   download_file_from_url_to_location "${ubuntu_ova_url}" "/root/$(basename ${ubuntu_ova_url})" "Ubuntu OVA"
+  download_file_from_url_to_location "${avi_ova_url}" "/root/$(basename ${avi_ova_url})" "Avi OVA"
   download_file_from_url_to_location "${iso_url}" "/root/$(basename ${iso_url})" "ESXi ISO" &
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Ubuntu OVA downloaded" ${log_file} ${slack_webhook} ${google_webhook}
   #
@@ -62,7 +63,6 @@ if [[ ${operation} == "apply" ]] ; then
     ntp_masters=$(jq -c -r .gw.ntp_masters $jsonFile)
     forwarders_netplan=$(jq -c -r '.gw.dns_forwarders | join(",")' $jsonFile)
     forwarders_bind=$(jq -c -r '.gw.dns_forwarders | join(";")' $jsonFile)
-    networks=$(jq -c -r .sddc.vcenter.networks $jsonFile)
     cidr=$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f1)
     IFS="." read -r -a octets <<< "$cidr"
     count=0
@@ -170,6 +170,7 @@ if [[ ${operation} == "apply" ]] ; then
             scp -o StrictHostKeyChecking=no -r /nested-vcf/${folder} ubuntu@${ip_gw}:/home/ubuntu
           done
           scp -o StrictHostKeyChecking=no "/root/$(basename ${ubuntu_ova_url})" ubuntu@${ip_gw}:/home/ubuntu/bin/$(basename ${ubuntu_ova_url})
+          scp -o StrictHostKeyChecking=no "/root/$(basename ${avi_ova_url})" ubuntu@${ip_gw}:/home/ubuntu/bin/$(basename ${avi_ova_url})
           scp -o StrictHostKeyChecking=no -r /root/${basename_sddc}_${operation}.json ubuntu@${ip_gw}:/home/ubuntu/json/${basename_sddc}_${operation}.json
           for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
           do

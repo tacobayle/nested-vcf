@@ -125,3 +125,15 @@ done
 nsx_config_segment_overlay_file=$(jq -c -r '.nsx.config.segment_overlay_file' $jsonFile)
 echo ${segments_overlay} | tee ${nsx_config_segment_overlay_file} > /dev/null 2>&1
 nsx_segments_overlay=$(jq -c -r . ${nsx_config_segment_overlay_file})
+avi_ova_url=$(jq -c -r '.sddc.avi.ova_url' $jsonFile)
+folder_avi=$(jq -c -r '.avi.folder' $jsonFile)
+vcsa_mgmt_cluster="${basename_sddc}-cluster"
+vcsa_fqdn="${basename_sddc}-vcsa.${domain}"
+vcsa_mgmt_dc="${basename_sddc}-dc"
+avi_ctrl_name=$(jq -c -r '.avi.ctrl_name' $jsonFile)
+ip_avi=$(echo ${ips_avi} | jq -c -r '.[0]')
+networks=$(jq -c -r '.sddc.vcenter.networks' $jsonFile)
+network_vm_management_name="${basename_sddc}-pg-vm-mgmt"
+ip_gw_vm_management="$(echo ${networks} | jq -c -r --arg arg "VM_MANAGEMENT" '.[] | select(.type == $arg).cidr' | awk -F'0/' '{print $1}')${ip_gw_last_octet}"
+
+

@@ -221,5 +221,9 @@
       ],
       "segment_overlay_file": "/home/ubuntu/nsx/segments_overlay.json"
     }
+  },
+  "avi":{
+    "folder": "avi-ctrl",
+    "ctrl_name": "avi-ctrl-01"
   }
 }
