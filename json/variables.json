@@ -4,9 +4,10 @@
     "memory": 4096,
     "disk": "40G"
   },
-  "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer"],
+  "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer", "avi"],
   "directories": ["bin"],
-  "apt_packages": ["iptables-persistent", "expect", "bind9", "bind9utils", "dnsutils", "chrony", "nginx"],
+  "pip3_packages": ["ansible-core==2.18.6", "ansible==11.7.0", "avisdk", "dnspython", "netaddr"],
+  "apt_packages": ["iptables-persistent", "expect", "bind9", "bind9utils", "dnsutils", "chrony", "nginx", "python3-pip"],
   "vsphere_nested_username": "administrator",
   "vsphere_cl_name": "cl-ubuntu",
   "nsx": {
@@ -214,9 +215,7 @@
           "dhcp_ranges": ["50-99"],
           "avi_ipam_pool_se": "210-230",
           "avi_ipam_pool_vip": "11-99",
-          "transport_zone": "VCF-Created-Overlay-Zone",
-          "kube": true,
-          "lbaas_private": true
+          "transport_zone": "VCF-Created-Overlay-Zone"
         }
       ],
       "segment_overlay_file": "/home/ubuntu/nsx/segments_overlay.json"
@@ -224,6 +223,13 @@
   },
   "avi":{
     "folder": "avi-ctrl",
-    "ctrl_name": "avi-ctrl-01"
+    "ctrl_name": "avi-ctrl-01",
+    "content_library_name": "avi",
+    "nsx_cloud_name": "mgmt-domain",
+    "cloud_obj_name_prefix": "avi-auto-config",
+    "avi_subdomain": "app",
+    "ansible_config_repo": "https://github.com/tacobayle/ansibleAviConfig",
+    "ansible_config_tag": "v2.78",
+    "ansible_playbook": "nsx.yml"
   }
 }

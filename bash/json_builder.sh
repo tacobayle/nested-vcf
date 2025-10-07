@@ -141,9 +141,6 @@ if [[ ${name_vcf_installer} != "null" ]]; then
   template_html_file="/home/ubuntu/templates/index-vcfi.html.template"
   sed -e "s/\${basename_sddc}/${basename_sddc}/" \
       -e "s/\${name_vcf_installer}/${name_vcf_installer}/" \
-      -e "s/\${ip_vcf_installer}/${ip_vcf_installer}/" \
-      -e "s/\${ip_vcf_installer}/${ip_vcf_installer}/" \
-      -e "s/\${ip_vcf_installer}/${ip_vcf_installer}/" \
       -e "s/\${domain}/${domain}/" ${template_html_file} | tee /home/ubuntu/html/index.html > /dev/null
 else
   template_html_file="/home/ubuntu/templates/index.html.template"

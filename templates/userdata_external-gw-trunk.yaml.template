@@ -63,6 +63,15 @@ write_files:
         sudo -u ubuntu mkdir -p /home/ubuntu/$directory
       done
       #
+      # pip3
+      #
+      pip3 install --upgrade pip --break-system-packages
+      pip3_packages='${pip3_packages}'
+      echo $pip3_packages | jq -c -r .[] | while read pip3_package
+      do
+        sudo -u ubuntu pip3 install $pip3_package --break-system-packages
+      done
+      #
       # GOVC install
       #
       curl -L -o - "https://github.com/vmware/govmomi/releases/latest/download/govc_$(uname -s)_$(uname -m).tar.gz" | tar -C /usr/local/bin -xvzf - govc

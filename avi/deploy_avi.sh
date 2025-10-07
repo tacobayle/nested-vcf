@@ -9,8 +9,6 @@ source /home/ubuntu/bash/vcenter/vcenter_api.sh
 source /home/ubuntu/bash/load_govc_env_with_cluster.sh
 source /home/ubuntu/bash/ip_netmask_by_prefix.sh
 #
-# Avi download
-#
 # GOVC check
 #
 load_govc_env_with_cluster

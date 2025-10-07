@@ -103,6 +103,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s/\${ips_avi}/$(echo ${ips_avi} | jq -c -r .)/" \
         -e "s/\${ip_sddc_manager}/${ip_sddc_manager}/" \
         -e "s/\${ip_vcsa}/${ip_vcsa}/" \
+        -e "s/\${pip3_packages}/$(jq -c -r '.pip3_packages' $jsonFile)/" \
         -e "s/\${ip_vcf_automation}/${ip_vcf_automation}/" \
         -e "s/\${ip_vcf_installer}/${ip_vcf_installer}/" \
         -e "s/\${ip_vcf_operation}/${ip_vcf_operation}/" \
@@ -490,6 +491,22 @@ if [[ ${operation} == "apply" ]] ; then
     # VCF 9 - NSX config update
     #
     script_file="/home/ubuntu/nsx/configure_nsx.sh"
+    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
+    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+    test_remote_script "${ip_gw}" "${script_file}"
+    #
+    # Avi deployment
+    #
+    script_file="/home/ubuntu/avi/deploy_avi.sh"
+    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
+    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+    test_remote_script "${ip_gw}" "${script_file}"
+    #
+    # Avi config
+    #
+    script_file="/home/ubuntu/avi/configure_avi.sh"
     log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &

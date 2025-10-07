@@ -90,11 +90,17 @@ nsx_supernet_overlay_third_octet=$(echo "${nsx_supernet_overlay}" | cut -d'.' -f
 nsx_supernet_overlay_first_two_octets=$(echo "${nsx_supernet_overlay}" | cut -d'.' -f1-2)
 segments_overlay="[]"
 nsx_segment_count=0
+vip_subnet_index=0
+supernet_vip=$(jq -c -r '.sddc.avi.supernet_vip' $jsonFile)
+supernet_vip_first_two_octets=$(echo "${supernet_vip}" | cut -d'.' -f1-2)
+supernet_vip_third_octet=$(echo "${supernet_vip}" | cut -d'.' -f3)
 nsx_amount_of_segment=$((${nsx_supernet_overlay_third_octet} + $(jq '.nsx.config.segments_overlay | length' $jsonFile) - 1))
 for seg_index in $(seq ${nsx_supernet_overlay_third_octet} ${nsx_amount_of_segment})
 do
   cidr="${nsx_supernet_overlay_first_two_octets}.${seg_index}.0/24"
   cidr_three_octets="${nsx_supernet_overlay_first_two_octets}.${seg_index}"
+  cidr_vip_subnet="${supernet_vip_first_two_octets}.$(($supernet_vip_third_octet+$vip_subnet_index)).0/24"
+  cidr_vip_three_octets="${supernet_vip_first_two_octets}.$(($supernet_vip_third_octet+$vip_subnet_index))"
   segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"cidr": "'${cidr}'",
                                                    "display_name": "'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].display_name' $jsonFile)'",
                                                    "transport_zone": "'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].transport_zone' $jsonFile)'",
@@ -130,10 +136,75 @@ folder_avi=$(jq -c -r '.avi.folder' $jsonFile)
 vcsa_mgmt_cluster="${basename_sddc}-cluster"
 vcsa_fqdn="${basename_sddc}-vcsa.${domain}"
 vcsa_mgmt_dc="${basename_sddc}-dc"
-avi_ctrl_name=$(jq -c -r '.avi.ctrl_name' $jsonFile)
+avi_ctrl_name=${basename_sddc}${basename_avi_ctrl}1
 ip_avi=$(echo ${ips_avi} | jq -c -r '.[0]')
 networks=$(jq -c -r '.sddc.vcenter.networks' $jsonFile)
 network_vm_management_name="${basename_sddc}-pg-vm-mgmt"
 ip_gw_vm_management="$(echo ${networks} | jq -c -r --arg arg "VM_MANAGEMENT" '.[] | select(.type == $arg).cidr' | awk -F'0/' '{print $1}')${ip_gw_last_octet}"
-
-
+folder_avi=$(jq -c -r '.avi.folder' $jsonFile)
+avi_content_library_name=$(jq -c -r '.avi.content_library_name' $jsonFile)
+avi_old_password=$(jq -c -r '.sddc.avi.avi_old_password' $jsonFile)
+avi_version=$(basename ${avi_ova_url} | cut -d"-" -f2)
+import_sslkeyandcertificate_ca="[]"
+certificatemanagementprofile="[]"
+alertscriptconfig="[]"
+actiongroupconfig="[]"
+alertconfig="[]"
+sslkeyandcertificate='[
+                        {
+                          "name": "my-new-self-signed",
+                          "format": "SSL_PEM",
+                          "certificate_base64": true,
+                          "enable_ocsp_stapling": false,
+                          "import_key_to_hsm": false,
+                          "is_federated": false,
+                          "key_base64": true,
+                          "type": "SSL_CERTIFICATE_TYPE_SYSTEM",
+                          "certificate": {
+                            "days_until_expire": 365,
+                            "self_signed": true,
+                            "version": "2",
+                            "signature_algorithm": "sha256WithRSAEncryption",
+                            "subject_alt_names": ["'${ip_avi}'"],
+                            "issuer": {
+                              "common_name": "https://'${avi_ctrl_name}.${domain}'",
+                              "distinguished_name": "CN='${avi_ctrl_name}.${domain}'"
+                            },
+                            "subject": {
+                              "common_name": "'${avi_ctrl_name}.${domain}'",
+                              "distinguished_name": "CN='${avi_ctrl_name}.${domain}'"
+                            }
+                          },
+                          "key_params": {
+                            "algorithm": "SSL_KEY_ALGORITHM_RSA",
+                            "rsa_params": {
+                              "exponent": 65537,
+                              "key_size": "SSL_KEY_2048_BITS"
+                            }
+                          },
+                          "ocsp_config": {
+                            "failed_ocsp_jobs_retry_interval": 3600,
+                            "max_tries": 10,
+                            "ocsp_req_interval": 86400,
+                            "url_action": "OCSP_RESPONDER_URL_FAILOVER"
+                          }
+                         }
+                      ]'
+applicationprofile="[]"
+vsdatascriptset="[]"
+httppolicyset="[]"
+roles="[]"
+tenants="[]"
+users="[]"
+nsx_cloud_name=$(jq -c -r '.avi.nsx_cloud_name' $jsonFile)
+cloud_obj_name_prefix=$(jq -c -r '.avi.cloud_obj_name_prefix' $jsonFile)
+avi_subdomain=$(jq -c -r '.avi.avi_subdomain' $jsonFile)
+avi_nsx_transport_zone="VCF-Created-Overlay-Zone"
+service_engine_groups="[]"
+network_services="[]"
+pools="[]"
+pool_groups="[]"
+virtual_services='{"dns": [], "http": []}'
+avi_ansible_config_repo=$(jq -c -r '.avi.ansible_config_repo' $jsonFile)
+avi_ansible_config_tag=$(jq -c -r '.avi.ansible_config_tag' $jsonFile)
+avi_ansible_playbook=$(jq -c -r '.avi.ansible_playbook' $jsonFile)
