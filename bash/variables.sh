@@ -243,11 +243,24 @@ nsx_cloud_name=$(jq -c -r '.avi.nsx_cloud_name' $jsonFile)
 cloud_obj_name_prefix=$(jq -c -r '.avi.cloud_obj_name_prefix' $jsonFile)
 avi_subdomain=$(jq -c -r '.avi.avi_subdomain' $jsonFile)
 avi_nsx_transport_zone="VCF-Created-Overlay-Zone"
-service_engine_groups="[]"
+service_engine_groups=$(jq -c -r '.avi.service_engine_groups' $jsonFile)
 network_services="[]"
 pools="[]"
 pool_groups="[]"
-virtual_services='{"dns": [], "http": []}'
+avi_vip_tier1_name=$(echo ${nsx_segments_overlay} | jq -c -r '[.[] | select(has("avi_ipam_vip"))]' | jq -c -r '.[0].tier1')
+avi_vip_cidr=$(echo ${nsx_segments_overlay} | jq -c -r '[.[] | select(has("avi_ipam_vip"))]' | jq -c -r '.[0].avi_ipam_vip.cidr')
+avi_vip_network_ref=$(echo ${nsx_segments_overlay} | jq -c -r '[.[] | select(has("avi_ipam_vip"))]' | jq -c -r '.[0].display_name')
+virtual_services='{"dns": [
+                            {
+                              "name": "dns-vs",
+                              "type": "V4",
+                              "tier1": "'${avi_vip_tier1_name}'",
+                              "cidr": "'${avi_vip_cidr}'",
+                              "network_ref": "'${avi_vip_network_ref}'",
+                              "se_group_ref": "Default-Group",
+                              "services": [{"port": 53}]
+                            }
+                          ], "http": []}'
 avi_ansible_config_repo=$(jq -c -r '.avi.ansible_config_repo' $jsonFile)
 avi_ansible_config_tag=$(jq -c -r '.avi.ansible_config_tag' $jsonFile)
 avi_ansible_playbook=$(jq -c -r '.avi.ansible_playbook' $jsonFile)

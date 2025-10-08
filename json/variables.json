@@ -441,6 +441,24 @@
     "avi_subdomain": "app",
     "ansible_config_repo": "https://github.com/tacobayle/ansibleAviConfig",
     "ansible_config_tag": "v2.78",
-    "ansible_playbook": "nsx.yml"
+    "ansible_playbook": "nsx.yml",
+    "service_engine_groups": [
+      {
+        "name": "Default-Group",
+        "buffer_se": 0,
+        "ha_mode": "HA_MODE_SHARED",
+        "min_scaleout_per_vs": 1,
+        "max_vs_per_se": 100,
+        "vcenter_folder": "seg-Default-Group",
+        "extra_shared_config_memory": 0,
+        "vcpus_per_se": 1,
+        "memory_per_se": 2048,
+        "disk_per_se": 15,
+        "realtime_se_metrics": {
+          "enabled": true,
+          "duration": 0
+        }
+      }
+    ]
   }
 }
