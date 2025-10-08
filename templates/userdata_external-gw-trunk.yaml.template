@@ -321,6 +321,12 @@ write_files:
       sudo chmod 700 get_helm.sh
       ./get_helm.sh
       #
+      # VCF Installer Install
+      #
+      wget -O /tmp/$(basename ${gw_vcf_cli_url}) ${gw_vcf_cli_url}
+      tar -xvzf /tmp/$(basename ${gw_vcf_cli_url})
+      mv vcf-cli-linux_amd64 /usr/local/bin/vcf
+      #
       # HTTP config (copy DNS zones)
       #
       cp /var/lib/bind/db.${domain} /var/www/html/forward_raw.html
