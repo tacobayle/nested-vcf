@@ -94,6 +94,10 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${name_cb}@${name_cb}@" \
         -e "s/\${packages}/$(jq -c -r '.apt_packages' $jsonFile)/" \
         -e "s@\${directories}@$(jq -c -r '.directories' $jsonFile)@" \
+        -e "s@\${nsx_segments_overlay}@${nsx_segments_overlay}@" \
+        -e "s@\${cidr_external_three_octets}@${cidr_external_three_octets}@" \
+        -e "s@\${nsx_tier0_tier0_vip_starting_ip}@${nsx_tier0_tier0_vip_starting_ip}@" \
+        -e "s@\${nsx_config_ip_blocks}@${nsx_config_ip_blocks}@" \
         -e "s/\${basename_sddc}/${basename_sddc}/" \
         -e "s/\${basename_nsx_manager}/${basename_nsx_manager}/" \
         -e "s/\${basename_avi_ctrl}/${basename_avi_ctrl}/" \

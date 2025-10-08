@@ -88,6 +88,33 @@ write_files:
         echo "            id: `echo $net | jq -c -r .vlan_id`" | tee -a /etc/netplan/50-cloud-init.yaml
         echo "            link: $ifaceLastName" | tee -a /etc/netplan/50-cloud-init.yaml
         echo "            addresses: [`echo $net | jq -c -r .cidr | awk -F'0/' '{print $1}'`${ip_gw_last_octet}/`echo $net | jq -c -r .cidr | cut -f2 -d'/'`]" | tee -a /etc/netplan/50-cloud-init.yaml
+        if [[ $(echo ${net} | jq -c -r '.type') == "EXTERNAL" ]] ; then
+          # nsx segments overlay
+          nsx_segments_overlay='${nsx_segments_overlay}'
+          echo "            routes:" | tee -a /etc/netplan/50-cloud-init.yaml
+          echo $nsx_segments_overlay | jq -c -r .[] | while read segment
+          do
+            echo "            - to: $(echo $segment | jq -c -r .cidr)" | tee -a /etc/netplan/50-cloud-init.yaml
+            echo "              via: ${cidr_external_three_octets}.${nsx_tier0_tier0_vip_starting_ip}" | tee -a /etc/netplan/50-cloud-init.yaml
+            sudo iptables -t nat -A POSTROUTING -s `echo $segment | jq -c -r .cidr` -o $ifaceFirstName -j MASQUERADE
+          done
+          # avi vip
+          echo ${nsx_segments_overlay} | jq -c -r '[.[] | select(has("avi_ipam_vip"))]' | jq -c -r .[] | while read segment
+          do
+            echo "            - to: $(echo $segment | jq -c -r .avi_ipam_vip.cidr)" | tee -a /etc/netplan/50-cloud-init.yaml
+            echo "              via: ${cidr_external_three_octets}.${nsx_tier0_tier0_vip_starting_ip}" | tee -a /etc/netplan/50-cloud-init.yaml
+          done
+          # nsx external IP block
+          nsx_config_ip_blocks='${nsx_config_ip_blocks}'
+          echo $nsx_config_ip_blocks | jq -c -r .[] | while read ip_block_json
+          do
+            if [[ $(echo ${ip_block_json} | jq -r -c .visibility) == "EXTERNAL" ]]; then
+              echo "            - to: $(echo $ip_block_json | jq -c -r .cidr)" | tee -a /etc/netplan/50-cloud-init.yaml
+              echo "              via: ${cidr_external_three_octets}.${nsx_tier0_tier0_vip_starting_ip}" | tee -a /etc/netplan/50-cloud-init.yaml
+              sudo iptables -t nat -A POSTROUTING -s `echo $ip_block_json | jq -c -r .cidr` -o $ifaceFirstName -j MASQUERADE
+            fi
+          done
+        fi
         sudo iptables -t nat -A POSTROUTING -s `echo $net | jq -c -r .cidr` -o $ifaceFirstName -j MASQUERADE
         sudo iptables -A FORWARD -i vlan.`echo $net | jq -c -r .vlan_id` -o $ifaceFirstName -j ACCEPT
       done
