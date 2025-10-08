@@ -306,6 +306,21 @@ write_files:
       echo "allow 0.0.0.0/0" | tee -a /etc/chrony/chrony.conf
       systemctl restart chrony.service
       #
+      # K8s install
+      #
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/${K8s_version_short}/deb/Release.key | sudo gpg --dearmor -o /tmp/kubernetes-apt-keyring.gpg
+      echo "deb [signed-by=/tmp/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${K8s_version_short}/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+      apt update
+      apt-get install -y kubectl
+      echo "alias k=kubectl" | sudo tee -a /home/ubuntu/.profile
+      echo "source <(kubectl completion bash | sed s/kubectl/k/g)" | sudo tee -a /home/ubuntu/.profile
+      #
+      # helm install
+      #
+      curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+      sudo chmod 700 get_helm.sh
+      ./get_helm.sh
+      #
       # HTTP config (copy DNS zones)
       #
       cp /var/lib/bind/db.${domain} /var/www/html/forward_raw.html

@@ -98,6 +98,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${cidr_external_three_octets}@${cidr_external_three_octets}@" \
         -e "s@\${nsx_tier0_tier0_vip_starting_ip}@${nsx_tier0_tier0_vip_starting_ip}@" \
         -e "s@\${nsx_config_ip_blocks}@${nsx_config_ip_blocks}@" \
+        -e "s@\${K8s_version_short}@${K8s_version_short}@" \
         -e "s/\${basename_sddc}/${basename_sddc}/" \
         -e "s/\${basename_nsx_manager}/${basename_nsx_manager}/" \
         -e "s/\${basename_avi_ctrl}/${basename_avi_ctrl}/" \
