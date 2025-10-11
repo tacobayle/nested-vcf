@@ -29,19 +29,22 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     ((attempt_bundle++))
   done
   sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
-  depots_ids=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith("9"))) | .id]')
-  depots_to_download=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith("9"))) | .id ] | length')
+  depots_ids=$(echo ${response_body} | jq --arg arg ${vcf_version} '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith($arg))) | .id]')
+  depots_to_download=$(echo ${response_body} | jq --arg arg ${vcf_version} '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.version | startswith($arg))) | .id ] | length')
   echo ${depots_ids} | jq -c -r .[] | while read depot_id
   do
     sddc_manager_api 3 2 PATCH '{"bundleDownloadSpec":{"downloadNow":true}}' ${ip_vcf_installer} v1/bundles/${depot_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
     log_message "patching bundle ${depot_id} to download it" "" "" ""
   done
   sleep 240
+  #
+  # download bundles
+  #
   retry_download=60 ; pause_download=10 ; attempt_download=1
   while true
   do
     sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
-    depot_downloaded=$(echo ${response_body} | jq '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.downloadStatus == "SUCCESSFUL") and (.version | startswith("9"))) ] | length')
+    depot_downloaded=$(echo ${response_body} | jq --arg arg ${vcf_version} '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.downloadStatus == "SUCCESSFUL") and (.version | startswith($arg))) ] | length')
     if [[ ${depot_downloaded} == ${depots_to_download} ]]; then
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: all bundles downloaded" "" "${slack_webhook}" "${google_webhook}"
       break
@@ -55,7 +58,9 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     sleep ${pause_download}
     ((attempt_download++))
   done
+  #
   # validation json
+  #
   sddc_manager_api 3 2 POST "@/home/ubuntu/json/${basename_sddc}.json" ${ip_vcf_installer} v1/sddcs/validations $(jq -c -r .accessToken /tmp/token_vcfi.json)
   sddc_validation_id=$(echo ${response_body} | jq -c -r .id)
   log_message "sddc_validation_id: ${sddc_validation_id}" "" "${slack_webhook}" "${google_webhook}"

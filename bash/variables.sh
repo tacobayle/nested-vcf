@@ -32,6 +32,10 @@ gw_vcf_cli_url=$(jq -c -r .gw.vcf_cli_url $jsonFile)
 ip_vcsa="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.vcenter.ip ${jsonFile})"
 name_cb=$(jq -c -r .cloud_builder.name $jsonFile)
 name_vcf_installer=$(jq -c -r .vcf_installer.name $jsonFile)
+iso_url=$(jq -c -r .esxi.iso_url $jsonFile)
+if [[ ${name_vcf_installer} != "null" ]]; then
+  vcf_version=$(echo ${iso_url} | cut -d"-" -f4 | cut -d"." -f1-3)
+fi
 cidr_mgmt=$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f1)
 if [[ ${cidr_mgmt} =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.[0-9]{1,3}$ ]] ; then
   cidr_mgmt_three_octets="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
@@ -49,7 +53,6 @@ vcf_installer_ova_url=$(jq -c -r .vcf_installer.ova_url $jsonFile)
 vcf_installer_network_ref=$(jq -c -r .vcf_installer.network_ref $jsonFile)
 ip_cb=$(jq -c -r .cloud_builder.ip $jsonFile)
 ip_vcf_installer=$(jq -c -r .vcf_installer.ip $jsonFile)
-iso_url=$(jq -c -r .esxi.iso_url $jsonFile)
 vcf_installer_token=$(jq -c -r .vcf_installer.token $jsonFile)
 vcf_automation_node_prefix="$(jq -c -r .vcf_automation.node_prefix ${jsonFile})"
 ip_vcf_automation="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_automation.ip ${jsonFile})"
