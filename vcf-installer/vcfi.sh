@@ -40,7 +40,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
   #
   # download bundles
   #
-  retry_download=60 ; pause_download=10 ; attempt_download=1
+  retry_download=60 ; pause_download=20 ; attempt_download=1
   while true
   do
     sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
