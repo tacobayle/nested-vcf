@@ -439,7 +439,7 @@ if [[ ${operation} == "apply" ]] ; then
         fi
       done
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM configured and reachable" ${log_file} ${slack_webhook} ${google_webhook}
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM: please patch it if needed" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM: please patch it if needed:ssh vcf@${ip_vcf_installer}" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   fi
   #
