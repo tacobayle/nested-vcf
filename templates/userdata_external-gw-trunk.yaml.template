@@ -99,7 +99,7 @@ write_files:
             sudo iptables -t nat -A POSTROUTING -s `echo $segment | jq -c -r .cidr` -o $ifaceFirstName -j MASQUERADE
           done
           # avi vip
-          echo ${nsx_segments_overlay} | jq -c -r '[.[] | select(has("avi_ipam_vip"))]' | jq -c -r .[] | while read segment
+          echo $nsx_segments_overlay | jq -c -r '[.[] | select(has("avi_ipam_vip"))]' | jq -c -r .[] | while read segment
           do
             echo "            - to: $(echo $segment | jq -c -r .avi_ipam_vip.cidr)" | tee -a /etc/netplan/50-cloud-init.yaml
             echo "              via: ${cidr_external_three_octets}.${nsx_tier0_tier0_vip_starting_ip}" | tee -a /etc/netplan/50-cloud-init.yaml
