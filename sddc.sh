@@ -35,6 +35,10 @@ if [ $? -ne 0 ] ; then touch /root/govc.error ; fi
 list_folder=$(govc find -json . -type f)
 list_gw=$(govc find -json vm -name "${gw_name}")
 #
+if [[ ${name_vcf_installer} != "null" ]]; then
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of nested VCF v${vcf_version}" ${log_file} ${slack_webhook} ${google_webhook}
+fi
+#
 echo '------------------------------------------------------------' >> ${log_file}
 if [[ ${operation} == "apply" ]] ; then
   echo "Creation of a folder on the underlay infrastructure - This should take less than a minute" >> ${log_file}

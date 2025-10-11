@@ -219,7 +219,7 @@
           "transport_zone": "VCF-Created-Overlay-Zone"
         }
       ],
-      "segment_overlay_file": "/home/ubuntu/nsx/segments_overlay.json",
+      "segment_overlay_file": "/tmp/segments_overlay.json",
       "ip_blocks": [
         {
           "name": "ip_block_pub_project_default",
