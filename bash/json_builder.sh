@@ -60,6 +60,7 @@ if [[ ${esxi_trunk} == "true" && ${name_vcf_installer} != "null" ]] ; then
       -e "s/\${ip_vcf_automation_start}/${ip_vcf_automation_start}/" \
       -e "s/\${ip_vcf_automation_end}/${ip_vcf_automation_end}/" \
       -e "s/\${vcf_automation_node_prefix}/${vcf_automation_node_prefix}/" \
+      -e "s/\${vcf_version_full}/${vcf_version_full}/" \
       -e "s/\${basename_sddc}/${basename_sddc}/" \
       -e "s/\${domain}/${domain}/" \
       -e "s/\${hostSpecs}/$(echo ${hostSpecs} | jq -c -r .)/" \

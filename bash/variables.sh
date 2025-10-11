@@ -35,6 +35,7 @@ name_vcf_installer=$(jq -c -r .vcf_installer.name $jsonFile)
 iso_url=$(jq -c -r .esxi.iso_url $jsonFile)
 if [[ ${name_vcf_installer} != "null" ]]; then
   vcf_version=$(echo ${iso_url} | cut -d"-" -f4 | cut -d"." -f1-3)
+  vcf_version_full=$(echo ${iso_url} | cut -d"-" -f4 | cut -d"." -f1-4)
 fi
 cidr_mgmt=$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f1)
 if [[ ${cidr_mgmt} =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.[0-9]{1,3}$ ]] ; then

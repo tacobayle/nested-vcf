@@ -2,7 +2,7 @@
     "sddcId": "${basename_sddc}",
     "vcfInstanceName": "${basename_sddc}-instance",
     "workflowType": "VCF",
-    "version": "9.0.0.0",
+    "version": "${vcf_version_full}",
     "ceipEnabled": false,
     "dnsSpec": {
         "nameservers": [
