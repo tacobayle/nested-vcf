@@ -73,9 +73,9 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     if [[ ${executionStatus} == "COMPLETED" ]]; then
       sddc_manager_api 3 2 GET "" ${ip_vcf_installer} v1/sddcs/validations/${sddc_validation_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
       resultStatus=$(echo ${response_body} | jq -c -r .resultStatus)
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC JSON validation: ${resultStatus} after ${attempt_validation} of ${pause_validation} seconds" "" "${slack_webhook}" "${google_webhook}"
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC JSON validation: ${resultStatus} after ${attempt_validation} attempt of ${pause_validation} seconds" "" "${slack_webhook}" "${google_webhook}"
       if [[ ${resultStatus} != "SUCCEEDED" ]] ; then
-        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC JSON validation: ${resultStatus} after ${attempt_validation} of ${pause_validation} seconds - exiting the automation" "" "${slack_webhook}" "${google_webhook}"
+        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC JSON validation: ${resultStatus} after ${attempt_validation} attempt of ${pause_validation} seconds - exiting the automation" "" "${slack_webhook}" "${google_webhook}"
         exit
       fi
       break
