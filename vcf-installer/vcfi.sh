@@ -89,7 +89,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     fi
   done
   # sddc build
-  log_message "starting sddc build" "" "${slack_webhook}" "${google_webhook}"
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: starting sddc build" "" "${slack_webhook}" "${google_webhook}"
   sddc_manager_api 3 2 POST "@/home/ubuntu/json/${basename_sddc}.json" ${ip_vcf_installer} v1/sddcs $(jq -c -r .accessToken /tmp/token_vcfi.json)
   sddc_id=$(echo ${response_body} | jq -c -r .id)
   # validation_sddc creation
