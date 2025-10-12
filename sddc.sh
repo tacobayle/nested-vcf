@@ -35,12 +35,16 @@ if [ $? -ne 0 ] ; then touch /root/govc.error ; fi
 list_folder=$(govc find -json . -type f)
 list_gw=$(govc find -json vm -name "${gw_name}")
 #
-if [[ ${name_vcf_installer} != "null" ]]; then
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of nested VCF v${vcf_version}" ${log_file} ${slack_webhook} ${google_webhook}
-fi
 #
-echo '------------------------------------------------------------' >> ${log_file}
+# Apply use case
+#
+#
 if [[ ${operation} == "apply" ]] ; then
+  #
+  if [[ ${name_vcf_installer} != "null" ]]; then
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of nested VCF v${vcf_version}" ${log_file} ${slack_webhook} ${google_webhook}
+  fi
+  #
   echo "Creation of a folder on the underlay infrastructure - This should take less than a minute" >> ${log_file}
   if $(echo ${list_folder} | jq -e '. | any(. == "./vm/'${folder}'")' >/dev/null ) ; then
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to create folder ${folder}: it already exists" ${log_file} ${slack_webhook} ${google_webhook}
@@ -488,7 +492,6 @@ if [[ ${operation} == "apply" ]] ; then
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
     ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
     test_remote_script "${ip_gw}" "${script_file}"
-    exit
     #
     # VCF 9 - vCenter Network customization
     #
@@ -618,7 +621,7 @@ if [[ ${operation} == "apply" ]] ; then
 fi
 #
 #
-#
+# destroy use case
 #
 #
 if [[ ${operation} == "destroy" ]] ; then
