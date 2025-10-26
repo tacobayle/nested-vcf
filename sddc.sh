@@ -112,6 +112,8 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s/\${basename_nsx_manager}/${basename_nsx_manager}/" \
         -e "s/\${basename_avi_ctrl}/${basename_avi_ctrl}/" \
         -e "s/\${ip_nsx_vip}/${ip_nsx_vip}/" \
+        -e "s/\${ip_avi_dns}/${ip_avi_dns}/" \
+        -e "s/\${avi_subdomain}/${avi_subdomain}/" \
         -e "s/\${ips_nsx}/$(echo ${ips_nsx} | jq -c -r .)/" \
         -e "s/\${ip_avi_vip}/${ip_avi_vip}/" \
         -e "s/\${ips_avi}/$(echo ${ips_avi} | jq -c -r .)/" \
@@ -536,6 +538,15 @@ if [[ ${operation} == "apply" ]] ; then
     # Silent vCenter Warnings
     #
     script_file="/home/ubuntu/vcenter/silent_alarm.sh"
+    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
+    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+    test_remote_script "${ip_gw}" "${script_file}"
+    exit
+    #
+    # Supervisor cluster
+    #
+    script_file="/home/ubuntu/vks/configure_vks.sh"
     log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &

@@ -5,12 +5,13 @@
     "disk": "40G"
   },
   "K8s_version_short": "v1.31",
-  "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer", "avi"],
+  "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer", "avi", "vks"],
   "directories": ["bin"],
   "pip3_packages": ["ansible-core==2.18.6", "ansible==11.7.0", "avisdk", "dnspython", "netaddr"],
   "apt_packages": ["iptables-persistent", "expect", "bind9", "bind9utils", "dnsutils", "chrony", "nginx", "python3-pip"],
   "vsphere_nested_username": "administrator",
   "vsphere_cl_name": "cl-ubuntu",
+  "content_library_subscription_url": "https://wp-content.vmware.com/v2/latest/lib.json",
   "nsx": {
     "pool_start": 32,
     "pool_end": 64,
@@ -196,11 +197,12 @@
         {
           "display_name": "seg-mgmt-tanzu-supervisor",
           "tier1": "t1-01",
-          "tanzu_supervisor_starting_ip": "130",
-          "tanzu_supervisor_count": 5,
+          "supervisor_starting_ip": "130",
+          "supervisor_count": 5,
           "transport_zone": "VCF-Created-Overlay-Zone",
           "dhcp_ranges": ["50-99"],
-          "avi_ipam_pool_se": "210-230"
+          "avi_ipam_pool_se": "210-230",
+          "supervisor_mgmt": true
         },
         {
           "display_name": "seg-server-1",
@@ -459,6 +461,45 @@
           "enabled": true,
           "duration": 0
         }
+      }
+    ]
+  },
+  "supervisor_cluster": {
+    "size": "SMALL",
+    "name": "sup-admin-01",
+    "project_ref": "default",
+    "service_address": "10.96.0.0",
+    "storage_policy_ref": "vSAN Default Storage Policy",
+    "service_address_count": 512,
+    "vpc_profile_ref": "vpc_connectivity_profile-default",
+    "vpc_private_cidr_address": "172.26.0.0",
+    "vpc_private_cidr_prefix": "16"
+  },
+  "vcf_a": {
+    "region": [
+      {
+        "name": "region1",
+        "supervisor_refs": ["sup-admin-01"],
+        "storage_class_ref": "sddc01-cluster vSAN Storage Policy",
+        "nsx_manager": "sddc01-nsx.vcf9.lab",
+        "vm_classes": [
+          "best-effort-2xlarge",
+          "guaranteed-small",
+          "best-effort-4xlarge",
+          "best-effort-8xlarge",
+          "best-effort-xsmall",
+          "guaranteed-large",
+          "guaranteed-medium",
+          "best-effort-large",
+          "best-effort-medium",
+          "best-effort-xlarge",
+          "guaranteed-2xlarge",
+          "guaranteed-4xlarge",
+          "best-effort-small",
+          "guaranteed-8xlarge",
+          "guaranteed-xlarge",
+          "guaranteed-xsmall"
+        ]
       }
     ]
   }

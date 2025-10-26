@@ -67,6 +67,7 @@ K8s_version_short=$(jq -c -r '.K8s_version_short' ${jsonFile})
 ssoDomain=$(jq -c -r '.sddc.vcenter.ssoDomain' ${jsonFile})
 vsphere_nested_username=$(jq -c -r '.vsphere_nested_username' ${jsonFile})
 vsphere_cl_name=$(jq -c -r '.vsphere_cl_name' ${jsonFile})
+content_library_subscription_url=$(jq -c -r '.content_library_subscription_url' ${jsonFile})
 generic_password=$(jq -c -r '.generic_password' $jsonFile)
 nsx_config_transport_zones=$(jq -c -r .nsx.config.transport_zones $jsonFile)
 nsx_config_ip_pools=$(jq -c -r .nsx.config.ip_pools $jsonFile)
@@ -116,11 +117,14 @@ do
                                                    "dhcp_ranges": ["'${cidr_three_octets}'.'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].dhcp_ranges[0]' $jsonFile | cut -d'-' -f1)'-'${cidr_three_octets}'.'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].dhcp_ranges[0]' $jsonFile | cut -d'-' -f2)'"]
                                                    }')
 
-  if $(echo $(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}']' $jsonFile) | jq -e '.tanzu_supervisor_starting_ip' > /dev/null) ; then
-    segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"tanzu_supervisor_starting_ip": "'${cidr_three_octets}'.'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].tanzu_supervisor_starting_ip' $jsonFile)'"}')
+  if $(echo $(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}']' $jsonFile) | jq -e '.supervisor_starting_ip' > /dev/null) ; then
+    segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"supervisor_starting_ip": "'${cidr_three_octets}'.'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].supervisor_starting_ip' $jsonFile)'"}')
   fi
-  if $(echo $(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}']' $jsonFile) | jq -e '.tanzu_supervisor_count' > /dev/null) ; then
-    segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"tanzu_supervisor_count": "'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].tanzu_supervisor_count' $jsonFile)'"}')
+  if $(echo $(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}']' $jsonFile) | jq -e '.supervisor_count' > /dev/null) ; then
+    segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"supervisor_count": "'$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].supervisor_count' $jsonFile)'"}')
+  fi
+  if $(echo $(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}']' $jsonFile) | jq -e '.supervisor_mgmt' > /dev/null) ; then
+    segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"supervisor_mgmt": '$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].supervisor_mgmt' $jsonFile)'}')
   fi
   if $(echo $(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}']' $jsonFile) | jq -e '.avi_mgmt' > /dev/null) ; then
     segments_overlay=$(echo ${segments_overlay} | jq '.['${nsx_segment_count}'] += {"avi_mgmt": '$(jq -c -r '.nsx.config.segments_overlay['${nsx_segment_count}'].avi_mgmt' $jsonFile)'}')
@@ -270,3 +274,13 @@ virtual_services='{"dns": [
 avi_ansible_config_repo=$(jq -c -r '.avi.ansible_config_repo' $jsonFile)
 avi_ansible_config_tag=$(jq -c -r '.avi.ansible_config_tag' $jsonFile)
 avi_ansible_playbook=$(jq -c -r '.avi.ansible_playbook' $jsonFile)
+ip_avi_dns=$(echo ${nsx_segments_overlay} | jq -c -r '[.[] | select(has("avi_ipam_vip"))]' | jq -c -r '.[0].avi_ipam_vip.pool' | cut -d"-" -f1)
+supervisor_cluster_size=$(jq -c -r '.supervisor_cluster.size' $jsonFile)
+supervisor_cluster_name=$(jq -c -r '.supervisor_cluster.name' $jsonFile)
+supervisor_cluster_project_ref=$(jq -c -r '.supervisor_cluster.project_ref' $jsonFile)
+supervisor_cluster_storage_policy_ref=$(jq -c -r '.supervisor_cluster.storage_policy_ref' $jsonFile)
+supervisor_cluster_service_address=$(jq -c -r '.supervisor_cluster.service_address' $jsonFile)
+supervisor_cluster_service_address_count=$(jq -c -r '.supervisor_cluster.service_address_count' $jsonFile)
+supervisor_cluster_vpc_profile=$(jq -c -r '.supervisor_cluster.vpc_profile_ref' $jsonFile)
+supervisor_cluster_vpc_private_cidr_address=$(jq -c -r '.supervisor_cluster.vpc_private_cidr_address' $jsonFile)
+supervisor_cluster_vpc_private_cidr_prefix=$(jq -c -r '.supervisor_cluster.vpc_private_cidr_prefix' $jsonFile)

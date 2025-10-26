@@ -202,7 +202,6 @@ write_files:
         echo "${basename_sddc}-vcfo-fleet       IN            A       ${ip_vcf_operation_fleet}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-vcfo-collector       IN            A       ${ip_vcf_operation_collector}" | tee -a /var/lib/bind/db.${domain}
       fi
-
       #
       count_esxi=1
       echo '${ips_esxi}' | jq -c -r .[] | while read ip_esxi
@@ -229,6 +228,13 @@ write_files:
         echo "${basename_sddc}${basename_avi_ctrl}$count_avi      IN            A       ${ip_avi}" | tee -a /var/lib/bind/db.${domain}
         ((count_avi++))
       done
+      #
+      # zone delegation
+      #
+      echo "avi-dns-vs   IN            A       ${ip_avi_dns}" | tee -a /var/lib/bind/db.${domain}
+      echo "\$ORIGIN ${avi_subdomain}.${domain}." | tee -a /var/lib/bind/db.${domain}
+      echo "\$TTL 1D" | tee -a /var/lib/bind/db.${domain}
+      echo "@         IN            NS      avi-dns-vs.${domain}." | tee -a /var/lib/bind/db.${domain}
       #
       sudo tee /var/lib/bind/db.${reverse_mgmt} > /dev/null <<EOT
       \$ORIGIN .

@@ -109,6 +109,6 @@ echo '      hosts:' | tee -a hosts_avi
 echo '        '${ip_avi}':' | tee -a hosts_avi
 /home/ubuntu/.local/bin/ansible-playbook -i hosts_avi ${avi_ansible_playbook} --extra-vars @/home/ubuntu/avi/avi_values.yml
 #
-log_message "${deployment_name}: Avi ctrl configured" "" "${slack_webhook}" "${google_webhook}"
+log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Avi ctrl configured" "" "${slack_webhook}" "${google_webhook}"
 touch ${resultFile}
 exit
