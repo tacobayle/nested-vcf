@@ -1,9 +1,9 @@
 test_remote_script() {
-  local retry=60
-  local pause=10
+  local retry="${1}"
+  local pause="${2}"
   local attempt=1
-  local ip_gw="${1}"
-  local script_file="${2}"
+  local ip_gw="${3}"
+  local script_file="${4}"
   while true ; do
       echo "attempt ${attempt} to verify ${script_file} have been done properly"
       ssh -o StrictHostKeyChecking=no "ubuntu@${ip_gw}" "test -f ${script_file%.*}.done" 2>/dev/null
@@ -18,7 +18,7 @@ test_remote_script() {
       ((attempt++))
       if [ $attempt -eq $retry ]; then
         echo "${script_file} has not executed until the end after ${attempt} attempts of ${pause} seconds"
-        exit
+        return 100
       fi
       sleep ${pause}
     done

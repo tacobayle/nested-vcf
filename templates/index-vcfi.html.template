@@ -12,9 +12,9 @@
     <li><a href="https://${basename_sddc}-mgmt-esxi04.${domain}" target="_blank">ESXi 04</a></li>
     <li><a href="https://${basename_sddc}-${name_vcf_installer}.${domain}" target="_blank">VCF-Installer</a></li>
     <li><a href="https://${basename_sddc}-vcfa.${domain}" target="_blank">VCF-Automation</a></li>
-    <li><a href="https://${basename_sddc}-vcfo.${domain}" target="_blank">VCF-Automation</a></li>
-    <li><a href="https://${basename_sddc}-vcfo-fleet.${domain}" target="_blank">VCF-Automation</a></li>
-    <li><a href="https://${basename_sddc}-vcfo-collector.${domain}" target="_blank">VCF-Automation</a></li>
+    <li><a href="https://${basename_sddc}-vcfo.${domain}" target="_blank">VCF-Operations</a></li>
+    <li><a href="https://${basename_sddc}-vcfo-fleet.${domain}" target="_blank">VCF-Fleet</a></li>
+    <li><a href="https://${basename_sddc}-vcfo-collector.${domain}" target="_blank">VCF-Collector</a></li>
     <li><a href="https://${basename_sddc}-sddc-manager.${domain}" target="_blank">SDDC Manager</a></li>
     <li><a href="https://${basename_sddc}-vcsa.${domain}" target="_blank">Mgmt VCSA</a></li>
     <li><a href="https://${basename_sddc}-nsx.${domain}" target="_blank">Mgmt NSX Manager</a></li>

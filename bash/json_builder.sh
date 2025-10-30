@@ -138,6 +138,7 @@ fi
 #
 #
 #
+mkdir /home/ubuntu/html
 if [[ ${name_vcf_installer} != "null" ]]; then
   template_html_file="/home/ubuntu/templates/index-vcfi.html.template"
   sed -e "s/\${basename_sddc}/${basename_sddc}/" \
@@ -149,7 +150,6 @@ else
   sed -e "s/\${basename_sddc}/${basename_sddc}/" \
       -e "s/\${domain}/${domain}/" ${template_html_file} | tee /home/ubuntu/html/index.html > /dev/null
 fi
-mkdir /home/ubuntu/html
 sudo mv /home/ubuntu/html/index.html /var/www/html/index.html
 sudo chown root /var/www/html/index.html
 sudo chgrp root /var/www/html/index.html

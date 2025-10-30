@@ -316,9 +316,9 @@ if [[ ${operation} == "apply" ]] ; then
       # adding a SATA controller
       token=$(/bin/bash /nested-vcf/bash/vcenter/create_vcenter_api_session.sh "${GOVC_USERNAME}" "" "${GOVC_PASSWORD}" "$(basename ${GOVC_URL})")
       vcenter_api 2 2 "GET" $token "" "$(basename ${GOVC_URL})" "api/vcenter/vm"
-      echo ${response_body} | jq . >> ${log_file}
+#      echo ${response_body} | jq . >> ${log_file}
       esxi_nested_vm_id=$(echo ${response_body} | jq -c -r --arg arg "${name_esxi}" '.[] | select(.name == $arg).vm')
-      echo "${esxi_nested_vm_id}" >> ${log_file}
+#      echo "${esxi_nested_vm_id}" >> ${log_file}
       json_data='{"type": "AHCI"}'
       vcenter_api 2 2 "POST" $token "${json_data}" "$(basename ${GOVC_URL})" "api/vcenter/vm/${esxi_nested_vm_id}/hardware/adapter/sata"
       # adding a cdrom based on sata
@@ -493,7 +493,7 @@ if [[ ${operation} == "apply" ]] ; then
     log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
     ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script "${ip_gw}" "${script_file}"
+    test_remote_script 120 300 "${ip_gw}" "${script_file}"
     #
     # VCF 9 - vCenter Network customization
     #
@@ -501,7 +501,7 @@ if [[ ${operation} == "apply" ]] ; then
     log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script "${ip_gw}" "${script_file}"
+    test_remote_script 20 30 "${ip_gw}" "${script_file}"
     #
     # VCF 9 - NSX config update
     #
@@ -509,7 +509,7 @@ if [[ ${operation} == "apply" ]] ; then
     log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script "${ip_gw}" "${script_file}"
+    test_remote_script 120 30 "${ip_gw}" "${script_file}"
     #
     # Avi deployment
     #
@@ -517,7 +517,7 @@ if [[ ${operation} == "apply" ]] ; then
     log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script "${ip_gw}" "${script_file}"
+    test_remote_script 120 30 "${ip_gw}" "${script_file}"
     #
     # Avi config
     #
@@ -525,15 +525,15 @@ if [[ ${operation} == "apply" ]] ; then
     log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script "${ip_gw}" "${script_file}"
+    test_remote_script 120 30 "${ip_gw}" "${script_file}"
     #
-    # NSX VPC config
+    # NSX VPC config and register Avi
     #
     script_file="/home/ubuntu/nsx/vpc_avi.sh"
     log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script "${ip_gw}" "${script_file}"
+    test_remote_script 20 30 "${ip_gw}" "${script_file}"
     #
     # Silent vCenter Warnings
     #
@@ -541,8 +541,7 @@ if [[ ${operation} == "apply" ]] ; then
     log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script "${ip_gw}" "${script_file}"
-    exit
+    test_remote_script 20 30 "${ip_gw}" "${script_file}"
     #
     # Supervisor cluster
     #
@@ -550,7 +549,7 @@ if [[ ${operation} == "apply" ]] ; then
     log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
     ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script "${ip_gw}" "${script_file}"
+    test_remote_script 120 30 "${ip_gw}" "${script_file}"
   fi
   #
   # VCF - cloud builder use case
