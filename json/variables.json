@@ -443,7 +443,7 @@
     "cloud_obj_name_prefix": "avi-auto-config",
     "avi_subdomain": "app",
     "ansible_config_repo": "https://github.com/tacobayle/ansibleAviConfig",
-    "ansible_config_tag": "v2.78",
+    "ansible_config_tag": "v2.82",
     "ansible_playbook": "nsx.yml",
     "service_engine_groups": [
       {

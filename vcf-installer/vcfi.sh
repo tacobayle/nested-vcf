@@ -46,7 +46,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
     depot_downloaded=$(echo ${response_body} | jq --arg arg ${vcf_version} '[.elements[] | select ((.components[0].imageType == "INSTALL") and (.downloadStatus == "SUCCESSFUL") and (.version | startswith($arg))) ] | length')
     if [[ ${depot_downloaded} == ${depots_to_download} ]]; then
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: all bundles downloaded" "" "${slack_webhook}" "${google_webhook}"
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: all bundles downloaded" "" "${slack_webhook}" "${google_webhook}"
       break
     else
       log_message "${depot_downloaded} on ${depots_to_download} bundles have been downloaded" "" "" ""
@@ -73,9 +73,9 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     if [[ ${executionStatus} == "COMPLETED" ]]; then
       sddc_manager_api 3 2 GET "" ${ip_vcf_installer} v1/sddcs/validations/${sddc_validation_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
       resultStatus=$(echo ${response_body} | jq -c -r .resultStatus)
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC JSON validation: ${resultStatus} after ${attempt_validation} attempt of ${pause_validation} seconds" "" "${slack_webhook}" "${google_webhook}"
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation: ${resultStatus} after ${attempt_validation} attempt of ${pause_validation} seconds" "" "${slack_webhook}" "${google_webhook}"
       if [[ ${resultStatus} != "SUCCEEDED" ]] ; then
-        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC JSON validation: ${resultStatus} after ${attempt_validation} attempt of ${pause_validation} seconds - exiting the automation" "" "${slack_webhook}" "${google_webhook}"
+        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation: ${resultStatus} after ${attempt_validation} attempt of ${pause_validation} seconds - exiting the automation" "" "${slack_webhook}" "${google_webhook}"
         exit
       fi
       break
@@ -89,9 +89,9 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     fi
   done
   # sddc build
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: starting sddc build" "" "${slack_webhook}" "${google_webhook}"
   sddc_manager_api 3 2 POST "@/home/ubuntu/json/${basename_sddc}.json" ${ip_vcf_installer} v1/sddcs $(jq -c -r .accessToken /tmp/token_vcfi.json)
   sddc_id=$(echo ${response_body} | jq -c -r .id)
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: starting building sddc id ${sddc_id}" "" "${slack_webhook}" "${google_webhook}"
   # validation_sddc creation
   log_message "SDDC ${sddc_id} trying ${count_retry} times to apply" "" "" ""
   retry_build=120 ; pause_build=300 ; attempt_build=1 ; count_retry=1
@@ -105,7 +105,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       if [[ ${sddc_status} != "COMPLETED_WITH_SUCCESS" ]]; then
         ((count_retry++))
         if [[ ${count_retry} == 3 ]]; then
-          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: '${sddc_status}', go to https://${ip_vcf_installer} - exiting the automation" "" "${slack_webhook}" "${google_webhook}"
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: ${sddc_status}, go to https://${ip_vcf_installer} - exiting the automation" "" "${slack_webhook}" "${google_webhook}"
           exit
         fi
         sleep 600
@@ -113,7 +113,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
         sddc_manager_api 3 2 PATCH "" ${ip_vcf_installer} v1/sddcs/${sddc_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
       fi
       if [[ ${sddc_status} == "COMPLETED_WITH_SUCCESS" ]]; then
-        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: '${sddc_status}', go to https://${ip_vcf_installer}" "" "${slack_webhook}" "${google_webhook}"
+        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: ${sddc_status}, go to https://${ip_vcf_installer}" "" "${slack_webhook}" "${google_webhook}"
         break
       fi
     else
@@ -121,7 +121,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     fi
     ((attempt_build++))
     if [ ${attempt_build} -eq ${retry_build} ]; then
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: '${sddc_status}', go to https://${ip_vcf_installer} - exiting the automation" "" "${slack_webhook}" "${google_webhook}"
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: SDDC ${sddc_id} Creation status: ${sddc_status}, go to https://${ip_vcf_installer} - exiting the automation" "" "${slack_webhook}" "${google_webhook}"
       exit
     fi
   done

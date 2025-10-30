@@ -47,7 +47,7 @@ cluster_id=$(echo $response_body | jq -r --arg cluster "${basename_sddc}-cluster
 #
 token=$(/bin/bash /home/ubuntu/bash/vcenter/create_vcenter_api_session.sh "${vsphere_nested_username}" "${ssoDomain}" "${generic_password}" "${vcsa_fqdn}")
 vcenter_api 3 3 "GET" $token '' ${vcsa_fqdn} "api/vcenter/storage/policies"
-storage_policy_id=$(echo $response_body | jq -r --arg policy ${supervisor_cluster_storage_policy_ref} '.[] | select(.name == $policy) | .policy')
+storage_policy_id=$(echo $response_body | jq -r --arg policy "${supervisor_cluster_storage_policy_ref}" '.[] | select(.name == $policy) | .policy')
 #
 # Retrieve network id
 #
@@ -109,7 +109,7 @@ json_data='{
                 "ip_assignments": [ {
                     "assignee": "SERVICE",
                     "ranges": [ {
-                        "address": "'${supervisor_cluster_service_cir}'",
+                        "address": "'${supervisor_cluster_service_address}'",
                         "count": '${supervisor_cluster_service_address_count}'
                     } ]
                 } ]
@@ -141,7 +141,7 @@ json_data='{
     }
 }'
 token=$(/bin/bash /home/ubuntu/bash/vcenter/create_vcenter_api_session.sh "${vsphere_nested_username}" "${ssoDomain}" "${generic_password}" "${vcsa_fqdn}")
-vcenter_api 3 3 "POST" $token ${json_data} ${vcsa_fqdn} "api/vcenter/namespace-management/supervisors/${cluster_id}?action=enable_on_compute_cluster"
+vcenter_api 3 3 "POST" $token "${json_data}" ${vcsa_fqdn} "api/vcenter/namespace-management/supervisors/${cluster_id}?action=enable_on_compute_cluster"
 #
 #
 #
