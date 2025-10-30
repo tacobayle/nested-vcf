@@ -489,67 +489,126 @@ if [[ ${operation} == "apply" ]] ; then
         sleep 30
     done
     log_message "VCF installer VM patched" ${log_file} ${slack_webhook} ${google_webhook}
-    script_file="/home/ubuntu/vcf-installer/vcfi.sh"
-    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
-    ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script 120 300 "${ip_gw}" "${script_file}"
     #
-    # VCF 9 - vCenter Network customization
     #
-    script_file="/home/ubuntu/vcenter/vcsa.sh"
-    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script 20 30 "${ip_gw}" "${script_file}"
     #
-    # VCF 9 - NSX config update
+    echo ${vcfi_scripts} | jq -c -r .[] | while read item
+    do
+      script_file="$(echo ${item} | jq -c -r '.script_file')"
+      test_remote_script_retry=$(echo ${item} | jq -c -r '.test_remote_script_retry')
+      test_remote_script_pause=$(echo ${item} | jq -c -r '.test_remote_script_pause')
+      log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+      ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
+      ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+      test_remote_script ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+      if [ $? -eq 100 ]; then
+        log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+      fi
+    done
     #
-    script_file="/home/ubuntu/nsx/configure_nsx.sh"
-    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script 120 30 "${ip_gw}" "${script_file}"
     #
-    # Avi deployment
     #
-    script_file="/home/ubuntu/avi/deploy_avi.sh"
-    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script 120 30 "${ip_gw}" "${script_file}"
-    #
-    # Avi config
-    #
-    script_file="/home/ubuntu/avi/configure_avi.sh"
-    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script 120 30 "${ip_gw}" "${script_file}"
-    #
-    # NSX VPC config and register Avi
-    #
-    script_file="/home/ubuntu/nsx/vpc_avi.sh"
-    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script 20 30 "${ip_gw}" "${script_file}"
-    #
-    # Silent vCenter Warnings
-    #
-    script_file="/home/ubuntu/vcenter/silent_alarm.sh"
-    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script 20 30 "${ip_gw}" "${script_file}"
-    #
-    # Supervisor cluster
-    #
-    script_file="/home/ubuntu/vks/configure_vks.sh"
-    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
-    test_remote_script 120 30 "${ip_gw}" "${script_file}"
+#    script_file="/home/ubuntu/vcf-installer/vcfi.sh"
+#    test_remote_script_retry=120
+#    test_remote_script_pause=300
+#    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
+#    ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+#    test_remote_script ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+#    if [ $? -eq 100 ]; then
+#      log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+#    fi
+#    #
+#    # VCF 9 - vCenter Network customization
+#    #
+#    script_file="/home/ubuntu/vcenter/vcsa.sh"
+#    test_remote_script_retry=20
+#    test_remote_script_pause=30
+#    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+#    test_remote_script ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+#    if [ $? -eq 100 ]; then
+#      log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+#    fi
+#    #
+#    # VCF 9 - NSX config update
+#    #
+#    script_file="/home/ubuntu/nsx/configure_nsx.sh"
+#    test_remote_script_retry=120
+#    test_remote_script_pause=30
+#    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+#    test_remote_script ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+#    if [ $? -eq 100 ]; then
+#      log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+#    fi
+#    #
+#    # Avi deployment
+#    #
+#    script_file="/home/ubuntu/avi/deploy_avi.sh"
+#    test_remote_script_retry=120
+#    test_remote_script_pause=30
+#    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+#    test_remote_script ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+#    if [ $? -eq 100 ]; then
+#      log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+#    fi
+#    #
+#    # Avi config
+#    #
+#    script_file="/home/ubuntu/avi/configure_avi.sh"
+#    test_remote_script_retry=120
+#    test_remote_script_pause=30
+#    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+#    test_remote_script ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+#    if [ $? -eq 100 ]; then
+#      log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+#    fi
+#    #
+#    # NSX VPC config and register Avi
+#    #
+#    script_file="/home/ubuntu/nsx/vpc_avi.sh"
+#    test_remote_script_retry=20
+#    test_remote_script_pause=30
+#    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+#    test_remote_script ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+#    if [ $? -eq 100 ]; then
+#      log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+#    fi
+#    #
+#    # Silent vCenter Warnings
+#    #
+#    script_file="/home/ubuntu/vcenter/silent_alarm.sh"
+#    test_remote_script_retry=20
+#    test_remote_script_pause=30
+#    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+#    test_remote_script ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+#    if [ $? -eq 100 ]; then
+#      log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+#    fi
+#    #
+#    # Supervisor cluster
+#    #
+#    script_file="/home/ubuntu/vks/configure_vks.sh"
+#    test_remote_script_retry=120
+#    test_remote_script_pause=30
+#    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+#    test_remote_script ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+#    if [ $? -eq 100 ]; then
+#      log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+#    fi
   fi
   #
   # VCF - cloud builder use case

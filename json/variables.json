@@ -12,6 +12,48 @@
   "vsphere_nested_username": "administrator",
   "vsphere_cl_name": "cl-ubuntu",
   "content_library_subscription_url": "https://wp-content.vmware.com/v2/latest/lib.json",
+  "vcfi_scripts": [
+    {
+      "script_file": "/home/ubuntu/vcf-installer/vcfi.sh",
+      "test_remote_script_retry": 120,
+      "test_remote_script_pause": 300
+    },
+    {
+      "script_file": "/home/ubuntu/vcenter/vcsa.sh",
+      "test_remote_script_retry": 20,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/nsx/configure_nsx.sh",
+      "test_remote_script_retry": 120,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/avi/deploy_avi.sh",
+      "test_remote_script_retry": 120,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/avi/configure_avi.sh",
+      "test_remote_script_retry": 120,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/nsx/vpc_avi.sh",
+      "test_remote_script_retry": 20,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/vcenter/silent_alarm.sh",
+      "test_remote_script_retry": 20,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/vks/configure_vks.sh",
+      "test_remote_script_retry": 120,
+      "test_remote_script_pause": 30
+    }
+  ],
   "nsx": {
     "pool_start": 32,
     "pool_end": 64,
