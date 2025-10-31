@@ -485,7 +485,6 @@ if [[ ${operation} == "apply" ]] ; then
     echo "VCF Installer configuration - This should take 2 minutes per nested ESXi" | tee -a ${log_file}
     while [ ! -f "/root/vcfi-${ip_vcf_installer}-patched.json" ]; do
         log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: please patch vcf installer" ${log_file} ${slack_webhook} ${google_webhook}
-        echo "File not found yet. Sleeping for 30 seconds..." | tee -a ${log_file}
         sleep 30
     done
     log_message "VCF installer VM patched" ${log_file} ${slack_webhook} ${google_webhook}

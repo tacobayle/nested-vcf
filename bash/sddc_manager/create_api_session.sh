@@ -13,7 +13,7 @@ while true ; do
   http_code=$(tail -n1 <<< "$response")
   content=$(sed '$ d' <<< "$response")
   if [[ $http_code == 200 ]] ; then
-    echo ${content} | jq . -c -r | tee ${4}
+    echo ${content} | jq . -c -r | tee ${4} > /dev/null 2>&1
     break
   fi
   if [ ${attempt} -eq ${retry} ]; then
