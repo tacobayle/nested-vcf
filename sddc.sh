@@ -208,7 +208,7 @@ if [[ ${operation} == "apply" ]] ; then
                 -e "s/\${name_esxi}/${name_esxi}/" \
                 -e "s/\${basename_sddc}/${basename_sddc}/" \
                 -e "s/\${ESXI_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" /nested-vcf/templates/esxi_customization.sh.template | tee /root/esxi_customization-$esxi.sh > /dev/null
-            scp -o StrictHostKeyChecking=no /root/esxi_customization-$esxi.sh ubuntu@${ip_gw}:/home/ubuntu/esxi_customization-$esxi.sh
+            scp -o StrictHostKeyChecking=no /root/esxi_customization-$esxi.sh ubuntu@${ip_gw}:/home/ubuntu/esxi/esxi_customization-$esxi.sh
           done
           break
         else
@@ -468,13 +468,21 @@ if [[ ${operation} == "apply" ]] ; then
     govc vm.power -s ${name_esxi}
     sleep 30
     govc vm.power -on ${name_esxi}
-    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "/bin/bash /home/ubuntu/esxi_customization-$esxi.sh"
-    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${name_esxi} ready" ${log_file} ${slack_webhook} ${google_webhook}
+    script_file="/home/ubuntu/esxi/esxi_customization-$esxi.sh"
+    test_remote_script_retry=15
+    test_remote_script_pause=20
+    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+    ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+    test_remote_script ${log_file} ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+    if [ $? -eq 100 ]; then
+      log_message "ERROR while running the following command from the gw: ${script_file} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+    fi
+#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "/bin/bash /home/ubuntu/esxi/esxi_customization-$esxi.sh"
     govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
     sleep 10
     govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
     govc datastore.rm nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
-    echo "ESXI customization  - ESXi ${name_esxi} done" | tee -a ${log_file}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${name_esxi} ready" ${log_file} ${slack_webhook} ${google_webhook}
   done
   govc datastore.rm nested-vcf
   #

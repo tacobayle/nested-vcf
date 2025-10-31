@@ -138,7 +138,6 @@ fi
 #
 #
 #
-mkdir /home/ubuntu/html
 if [[ ${name_vcf_installer} != "null" ]]; then
   template_html_file="/home/ubuntu/templates/index-vcfi.html.template"
   sed -e "s/\${basename_sddc}/${basename_sddc}/" \
