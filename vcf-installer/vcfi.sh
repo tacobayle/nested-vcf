@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 jsonFile="${1}"
-resultFile="${2}"
+resultFile="${0%.*}.done"
 rm -f ${resultFile}
 source /home/ubuntu/bash/sddc_manager/sddc_manager_api.sh
 source /home/ubuntu/bash/variables.sh

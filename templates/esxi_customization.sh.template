@@ -5,7 +5,7 @@ export GOVC_PASSWORD=${ESXI_PASSWORD}
 export GOVC_INSECURE=true
 export GOVC_URL=${ip_esxi}
 export GOVC_USERNAME=root
-resultFile="${1}"
+resultFile="${0%.*}.done"
 # https check
 count=1
 until $(curl --output /dev/null --silent --head -k https://${ip_esxi})

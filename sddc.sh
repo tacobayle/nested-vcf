@@ -471,8 +471,8 @@ if [[ ${operation} == "apply" ]] ; then
     script_file="/home/ubuntu/esxi/esxi_customization-$esxi.sh"
     test_remote_script_retry=15
     test_remote_script_pause=20
-    log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
-    ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+    log_message "running the following command from the gw: ${script_file}" ${log_file} ${slack_webhook} ${google_webhook}
+    ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file}" >> ${log_file} 2>&1 &
     test_remote_script ${log_file} ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
     if [ $? -eq 100 ]; then
       log_message "ERROR while running the following command from the gw: ${script_file} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
@@ -504,12 +504,12 @@ if [[ ${operation} == "apply" ]] ; then
       script_file="$(echo ${item} | jq -c -r '.script_file')"
       test_remote_script_retry=$(echo ${item} | jq -c -r '.test_remote_script_retry')
       test_remote_script_pause=$(echo ${item} | jq -c -r '.test_remote_script_pause')
-      log_message "running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "running the following command from the gw: ${script_file} ${jsonFile_remote}" ${log_file} ${slack_webhook} ${google_webhook}
       ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "rm -f ${script_file%.*}.done"
-      ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${jsonFile_remote} ${script_file%.*}.done" >> ${log_file} 2>&1 &
+      ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${jsonFile_remote}" >> ${log_file} 2>&1 &
       test_remote_script ${log_file} ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
       if [ $? -eq 100 ]; then
-        log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+        log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
       fi
     done
     #

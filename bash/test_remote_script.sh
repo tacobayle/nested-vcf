@@ -12,7 +12,7 @@ test_remote_script() {
         echo "${script_file} has been executed until the end" >> ${log_file}
 #        process_id=$(ps -ef | grep "${script_file}" | grep -v grep | awk '{print $1}')
 #        if [[ -z "${process_id}" ]]; then echo "process associated with ${script_file} is already terminated properly" >> ${log_file} ; else kill -9 ${process_id} ; fi
-#        break
+        break
       else
         echo "${script_file} has not executed until the end" >> ${log_file}
       fi
