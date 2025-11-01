@@ -175,7 +175,7 @@ api_server_cluster_endpoint=$(echo $response_body | jq -c -r .api_server_cluster
 if [ -z "${api_server_cluster_endpoint}" ] ; then exit 255 ; fi
 echo '{"api_server_cluster_endpoint": "'${api_server_cluster_endpoint}'"}' | tee ${json_output_file}
 #
-# to be resumed.
+# Init k8s config
 #
-export VCF_CLI_VSPHERE_PASSWORD=xxx
-vcf-cli-linux_amd64 context create sup-admin-01 --username administrator@vsphere.local --endpoint=192.168.240.4 --insecure-skip-tls-verify
+export VCF_CLI_VSPHERE_PASSWORD=''${generic_password}''
+vcf context create ${supervisor_cluster_name} --username administrator@${ssoDomain} --endpoint=${api_server_cluster_endpoint} --insecure-skip-tls-verify
