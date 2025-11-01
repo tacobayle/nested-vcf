@@ -11,8 +11,8 @@
     <li><a href="https://${basename_sddc}-mgmt-esxi03.${domain}" target="_blank">ESXi 03</a></li>
     <li><a href="https://${basename_sddc}-mgmt-esxi04.${domain}" target="_blank">ESXi 04</a></li>
     <li><a href="https://${basename_sddc}-${name_vcf_installer}.${domain}" target="_blank">VCF-Installer</a></li>
+    <li><a href="${basename_sddc}.json" target="_blank">VCF-Installer json file</a></li>
     <li><a href="https://${basename_sddc}-sddc-manager.${domain}" target="_blank">SDDC Manager</a></li>
-    <li><a href="${basename_sddc}.json" target="_blank">SDDC JSON File</a></li>
     <li><a href="https://${basename_sddc}-vcsa.${domain}" target="_blank">Mgmt VCSA</a></li>
     <li><a href="https://${basename_sddc}-nsx.${domain}" target="_blank">Mgmt NSX Manager</a></li>
     <li><a href="https://${basename_sddc}${basename_avi_ctrl}1.${domain}" target="_blank">Mgmt Avi ctrl</a></li>
