@@ -73,9 +73,13 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     if [[ ${executionStatus} == "COMPLETED" ]]; then
       sddc_manager_api 3 2 GET "" ${ip_vcf_installer} v1/sddcs/validations/${sddc_validation_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
       resultStatus=$(echo ${response_body} | jq -c -r .resultStatus)
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation: ${resultStatus} after ${attempt_validation} attempt of ${pause_validation} seconds" "" "${slack_webhook}" "${google_webhook}"
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation finished, result: ${resultStatus} after ${attempt_validation} attempt of ${pause_validation} seconds" "" "${slack_webhook}" "${google_webhook}"
       if [[ ${resultStatus} != "SUCCEEDED" ]] ; then
-        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation: ${resultStatus} after ${attempt_validation} attempt of ${pause_validation} seconds - exiting the automation" "" "${slack_webhook}" "${google_webhook}"
+        echo ${response_body} | jq -c -r '[.validationChecks[] | select( .resultStatus != "SUCCEEDED").errorResponse.nestedErrors.[].message]' | jq -c -r .[] | while read item
+        do
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation not ERROR - ${item}" "" "${slack_webhook}" "${google_webhook}"
+        done
+        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation not SUCCEEDED - exiting the automation" "" "${slack_webhook}" "${google_webhook}"
         exit
       fi
       break
@@ -88,7 +92,9 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       exit
     fi
   done
+  #
   # sddc build
+  #
   sddc_manager_api 3 2 POST "@/home/ubuntu/json/${basename_sddc}.json" ${ip_vcf_installer} v1/sddcs $(jq -c -r .accessToken /tmp/token_vcfi.json)
   sddc_id=$(echo ${response_body} | jq -c -r .id)
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: starting building sddc id ${sddc_id}" "" "${slack_webhook}" "${google_webhook}"
