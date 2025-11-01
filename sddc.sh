@@ -208,6 +208,7 @@ if [[ ${operation} == "apply" ]] ; then
                 -e "s/\${name_esxi}/${name_esxi}/" \
                 -e "s/\${basename_sddc}/${basename_sddc}/" \
                 -e "s/\${ESXI_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" /nested-vcf/templates/esxi_customization.sh.template | tee /root/esxi_customization-$esxi.sh > /dev/null
+            chmod u+x /root/esxi_customization-$esxi.sh
             scp -o StrictHostKeyChecking=no /root/esxi_customization-$esxi.sh ubuntu@${ip_gw}:/home/ubuntu/esxi/esxi_customization-$esxi.sh
           done
           break
