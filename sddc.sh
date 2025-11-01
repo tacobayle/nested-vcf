@@ -107,7 +107,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${nsx_tier0_tier0_vip_starting_ip}@${nsx_tier0_tier0_vip_starting_ip}@" \
         -e "s@\${nsx_config_ip_blocks}@${nsx_config_ip_blocks}@" \
         -e "s@\${K8s_version_short}@${K8s_version_short}@" \
-        -e "s@\${gw_vcf_cli_url}@${gw_vcf_cli_url}@" \
+        -e "s@\${gw_vcf_cli_url}@${gw_vcf_cli_url}@g" \
         -e "s/\${basename_sddc}/${basename_sddc}/" \
         -e "s/\${basename_nsx_manager}/${basename_nsx_manager}/" \
         -e "s/\${basename_avi_ctrl}/${basename_avi_ctrl}/" \
