@@ -17,12 +17,12 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
     bundles_count=$(echo ${response_body} | jq -c -r '.elements | length')
     if [[ bundles_count -gt 0 ]] ; then
-      log_message "bundles are populated" "" "" ""
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: bundles are populated" "" "" ""
       sleep 30
       break
     fi
     if [ $attempt_bundle -eq $retry_bundle ]; then
-      log_message "Bundles are not populated after ${attempt_bundle} attempts of ${pause_bundle} seconds" "" "" ""
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: Bundles are not populated after ${attempt_bundle} attempts of ${pause_bundle} seconds" "" "" ""
       exit
     fi
     sleep ${pause_bundle}
@@ -34,7 +34,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
   echo ${depots_ids} | jq -c -r .[] | while read depot_id
   do
     sddc_manager_api 3 2 PATCH '{"bundleDownloadSpec":{"downloadNow":true}}' ${ip_vcf_installer} v1/bundles/${depot_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
-    log_message "patching bundle ${depot_id} to download it" "" "" ""
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: patching bundle ${depot_id} to download it" "" "" ""
   done
   sleep 240
   #
@@ -52,7 +52,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       log_message "${depot_downloaded} on ${depots_to_download} bundles have been downloaded" "" "" ""
     fi
     if [ $attempt_download -eq $retry_download ]; then
-      log_message "Bundles are not downloaded after ${attempt_download} attempts of ${pause_download} seconds" "" "" ""
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: Bundles are not downloaded after ${attempt_download} attempts of ${pause_download} seconds" "" "" ""
       exit
     fi
     sleep ${pause_download}

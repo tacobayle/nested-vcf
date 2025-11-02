@@ -179,3 +179,7 @@ echo '{"api_server_cluster_endpoint": "'${api_server_cluster_endpoint}'"}' | tee
 #
 export VCF_CLI_VSPHERE_PASSWORD=''${generic_password}''
 vcf context create ${supervisor_cluster_name} --username administrator@${ssoDomain} --endpoint=${api_server_cluster_endpoint} --insecure-skip-tls-verify
+#
+#
+#
+touch ${resultFile}
