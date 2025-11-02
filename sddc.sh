@@ -500,7 +500,7 @@ if [[ ${operation} == "apply" ]] ; then
     #
     #
     #
-    echo ${vcfi_scripts} | jq -c -r .[] | while read item
+    while read item
     do
       script_file="$(echo ${item} | jq -c -r '.script_file')"
       test_remote_script_retry=$(echo ${item} | jq -c -r '.test_remote_script_retry')
@@ -512,7 +512,7 @@ if [[ ${operation} == "apply" ]] ; then
       if [ $? -eq 100 ]; then
         log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
       fi
-    done
+    done < <(echo "${vcfi_scripts}" | jq -c -r .[])
     #
     #
     #

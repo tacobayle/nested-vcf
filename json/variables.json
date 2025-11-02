@@ -520,10 +520,29 @@
   "vcf_a": {
     "region": [
       {
-        "name": "region1",
-        "supervisor_refs": ["sup-admin-01"],
+        "name": "region-1",
+        "nsx_manager_ref": "sddc01-nsx.vcf9.lab",
+        "supervisor_refs": [
+          "sup-admin-01"
+        ],
         "storage_class_ref": "sddc01-cluster vSAN Storage Policy",
-        "nsx_manager": "sddc01-nsx.vcf9.lab",
+        "nsx_manager": "sddc01-nsx.vcf9.lab"
+      }
+    ],
+    "organizations": [
+      {
+        "name": "org-1",
+        "region_ref": "region-1",
+        "supervisor_ref": "sup-admin-01",
+        "zones": [
+          {
+            "name": "domain-c10",
+            "cpu_limit": 1000,
+            "cpu_reservation": 0,
+            "memory_limit": 1000,
+            "memory_reservation": 0
+          }
+        ],
         "vm_classes": [
           "best-effort-2xlarge",
           "guaranteed-small",
@@ -541,7 +560,27 @@
           "guaranteed-8xlarge",
           "guaranteed-xlarge",
           "guaranteed-xsmall"
-        ]
+        ],
+        "username": "admin",
+        "role": "Organization Administrator"
+      }
+    ],
+    "ip_spaces": [
+      {
+        "name": "ip_space-1",
+        "quota": {
+          "single_ip": "unlimited",
+          "number_of_cidrs": "unlimited",
+          "maximum_subnet_size": "no_restriction"
+        }
+      }
+    ],
+    "provider_gw": [
+      {
+        "name": "provider_gw-1",
+        "region_ref": "region-1",
+        "tier0_ref": "t0-01",
+        "ip_space_ref": "ip_space-1"
       }
     ]
   }
