@@ -63,6 +63,7 @@ ip_vcf_operation="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[]
 ip_vcf_operation_fleet="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_operation_fleet.ip ${jsonFile})"
 ip_vcf_operation_collector="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_operation_collector.ip ${jsonFile})"
 folders_to_copy=$(jq -c -r '.folders_to_copy' ${jsonFile})
+links=$(jq -c -r '.links' ${jsonFile})
 vcfi_scripts=$(jq -c -r '.vcfi_scripts' ${jsonFile})
 K8s_version_short=$(jq -c -r '.K8s_version_short' ${jsonFile})
 ssoDomain=$(jq -c -r '.sddc.vcenter.ssoDomain' ${jsonFile})

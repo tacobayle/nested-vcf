@@ -63,6 +63,14 @@ write_files:
         sudo -u ubuntu mkdir -p /home/ubuntu/$directory
       done
       #
+      # links
+      #
+      links='${links}'
+      echo $links | jq -c -r .[] | while read link
+      do
+        sudo -u ubuntu wget -O /home/ubuntu/sddc-manager/$(basename $link) $link
+      done
+      #
       # pip3
       #
       pip3 install --upgrade pip --break-system-packages

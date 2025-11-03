@@ -6,7 +6,12 @@
   },
   "K8s_version_short": "v1.31",
   "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer", "avi", "vks"],
-  "directories": ["bin", "esxi", "html"],
+  "directories": ["bin", "esxi", "html", "sddc-manager"],
+  "links": [
+    "https://raw.githubusercontent.com/avinetworks/devops/refs/heads/master/tools/vcf/pvc.json",
+    "http://raw.githubusercontent.com/avinetworks/devops/refs/heads/master/tools/vcf/pvc.sig",
+    "https://raw.githubusercontent.com/avinetworks/devops/refs/heads/master/tools/vcf/vcf_tools.sh"
+  ],
   "pip3_packages": ["ansible-core==2.18.6", "ansible==11.7.0", "avisdk", "dnspython", "netaddr"],
   "apt_packages": ["iptables-persistent", "expect", "bind9", "bind9utils", "dnsutils", "chrony", "nginx", "python3-pip"],
   "vsphere_nested_username": "administrator",
