@@ -2,7 +2,8 @@
 #
 jsonFile="${1}"
 resultFile="${0%.*}.done"
-rm -f ${resultFile}
+log_file="${0%.*}.log"
+touch ${log_file}
 source /home/ubuntu/bash/variables.sh
 source /home/ubuntu/bash/log_message.sh
 source /home/ubuntu/bash/vcenter/vcenter_api.sh
@@ -14,16 +15,15 @@ source /home/ubuntu/bash/ip_netmask_by_prefix.sh
 load_govc_env_with_cluster
 govc about
 if [ $? -ne 0 ] ; then
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to connect to vCenter" "" "${slack_webhook}" "${google_webhook}"
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to connect to vCenter" "${log_file}" "${slack_webhook}" "${google_webhook}"
   exit
 fi
 #
 # folder creation
 #
 list_folder=$(govc find -json . -type f)
-echo "Creation of a folder for the Avi ctrl"
 if $(echo ${list_folder} | jq -e '. | any(. == "./vm/'${folder_avi}'")' >/dev/null ) ; then
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to create folder ${folder_avi}: it already exists" "" "" ""
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to create folder ${folder_avi}: it already exists" "${log_file}" "" ""
 else
   govc folder.create /${vcsa_mgmt_dc}/vm/${folder_avi}
 fi
@@ -32,7 +32,7 @@ fi
 #
 list_vm=$(govc find -json -type m -name "${avi_ctrl_name}")
 if [[ ${list_vm} != "null" ]] ; then
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to create VM ${avi_ctrl_name}: it already exists" "" "" ""
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to create VM ${avi_ctrl_name}: it already exists" "${log_file}" "" ""
   exit
 else
   netmask_avi=$(ip_netmask_by_prefix $(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f2) "   ++++++")
@@ -53,7 +53,7 @@ else
   #
   govc import.ova --options="/home/ubuntu/json/options-${avi_ctrl_name}.json" -folder "${folder_avi}" "/home/ubuntu/bin/$(basename ${avi_ova_url})" > /dev/null
   govc vm.power -on=true "${avi_ctrl_name}" > /dev/null
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Avi ctrl deployed" "" "${slack_webhook}" "${google_webhook}"
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Avi ctrl deployed" "${log_file}" "${slack_webhook}" "${google_webhook}"
 fi
 touch ${resultFile}
 exit

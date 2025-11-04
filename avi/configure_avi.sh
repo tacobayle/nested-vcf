@@ -2,7 +2,8 @@
 #
 jsonFile="${1}"
 resultFile="${0%.*}.done"
-rm -f ${resultFile}
+log_file="${0%.*}.log"
+touch ${log_file}
 source /home/ubuntu/bash/variables.sh
 source /home/ubuntu/bash/log_message.sh
 source /home/ubuntu/bash/load_govc_env_with_cluster.sh
@@ -16,7 +17,7 @@ source /home/ubuntu/bash/load_govc_env_with_cluster.sh
 load_govc_env_with_cluster
 govc about
 if [ $? -ne 0 ] ; then
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to connect to vCenter" "" "${slack_webhook}" "${google_webhook}"
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to connect to vCenter" "${log_file}" "${slack_webhook}" "${google_webhook}"
   exit
 fi
 #
@@ -38,15 +39,15 @@ fi
 count=1
 until $(curl --output /dev/null --silent --head -k https://${ip_avi})
 do
-  log_message "  +++ Attempt ${count}: Waiting for Avi ctrl at https://${ip_avi} to be reachable..." "" "" ""
+  log_message "  +++ Attempt ${count}: Waiting for Avi ctrl at https://${ip_avi} to be reachable..." "${log_file}" "" ""
   sleep 10
   count=$((count+1))
     if [[ "${count}" -eq 60 ]]; then
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: Unable to connect to Avi ctrl at https://${ip_avi}" "" "${slack_webhook}" "${google_webhook}"
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: Unable to connect to Avi ctrl at https://${ip_avi}" "${log_file}" "${slack_webhook}" "${google_webhook}"
       exit
     fi
 done
-log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Avi ctrl reachable at https://${ip_avi}" "" "" ""
+log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Avi ctrl reachable at https://${ip_avi}" "${log_file}" "" ""
 #
 # Network mgmt
 #
@@ -109,6 +110,6 @@ echo '      hosts:' | tee -a hosts_avi
 echo '        '${ip_avi}':' | tee -a hosts_avi
 /home/ubuntu/.local/bin/ansible-playbook -i hosts_avi ${avi_ansible_playbook} --extra-vars @/home/ubuntu/avi/avi_values.yml
 #
-log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Avi ctrl configured" "" "${slack_webhook}" "${google_webhook}"
+log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Avi ctrl configured" "${log_file}" "${slack_webhook}" "${google_webhook}"
 touch ${resultFile}
 exit

@@ -2,7 +2,8 @@
 #
 jsonFile="${1}"
 resultFile="${0%.*}.done"
-rm -f ${resultFile}
+log_file="${0%.*}.log"
+touch ${log_file}
 source /home/ubuntu/bash/variables.sh
 source /home/ubuntu/bash/log_message.sh
 source /home/ubuntu/bash/vcenter/vcenter_api.sh
@@ -153,12 +154,12 @@ while true ; do
   token=$(/bin/bash /home/ubuntu/bash/vcenter/create_vcenter_api_session.sh "${vsphere_nested_username}" "${ssoDomain}" "${generic_password}" "${vcsa_fqdn}")
   vcenter_api 3 3 "GET" $token '' ${vcsa_fqdn} "api/vcenter/namespace-management/clusters"
   if [[ $(echo $response_body | jq -c -r .[0].config_status) == "RUNNING" && $(echo $response_body | jq -c -r .[0].kubernetes_status) == "READY" ]]; then
-    echo "supervisor config_status is $(echo $response_body | jq -c -r .[0].config_status) and kubernetes_status is $(echo $response_body | jq -c -r .[0].kubernetes_status) after ${attempt_tanzu_supervisor} attempts of ${pause_tanzu_supervisor} seconds"
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, supervisor config_status is $(echo $response_body | jq -c -r .[0].config_status) and kubernetes_status is $(echo $response_body | jq -c -r .[0].kubernetes_status) after ${attempt_tanzu_supervisor} attempts of ${pause_tanzu_supervisor} seconds" "${log_file}" "${slack_webhook}" "${google_webhook}"
     break 2
   fi
   ((attempt_tanzu_supervisor++))
   if [ ${attempt_tanzu_supervisor} -eq ${retry_tanzu_supervisor} ]; then
-    echo "Unable to get supervisor cluster config_status RUNNING and kubernetes_status READY after ${attempt_tanzu_supervisor} attempts of ${pause_tanzu_supervisor} seconds"
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, Unable to get supervisor cluster config_status RUNNING and kubernetes_status READY after ${attempt_tanzu_supervisor} attempts of ${pause_tanzu_supervisor} seconds" "${log_file}" "${slack_webhook}" "${google_webhook}"
     exit
   fi
   sleep ${pause_tanzu_supervisor}

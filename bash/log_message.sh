@@ -7,7 +7,7 @@ log_message() {
     echo "Error: message is missing."
     return 1
   fi
-  if [[ -f "${log_file}" ]]; then echo "${message}" | tee -a ${log_file}; else echo "${message}"; fi
+  if [[ -f "${log_file}" ]]; then echo "${message}" >> ${log_file} ; else echo "${message}"; fi
   # slack
   if [ -z "${slack_url}" ] ; then : ; else curl -X POST -H "Content-type: application/json" -d "{\"text\":\"${message}\"}" "${slack_url}" > /dev/null 2>&1; fi
   # google chat

@@ -2,7 +2,8 @@
 #
 jsonFile="${1}"
 resultFile="${0%.*}.done"
-rm -f ${resultFile}
+log_file="${0%.*}.log"
+touch ${log_file}
 source /home/ubuntu/bash/variables.sh
 source /home/ubuntu/bash/log_message.sh
 source /home/ubuntu/bash/vcenter/vcenter_api.sh
@@ -14,22 +15,22 @@ retry=10
 pause=60
 attempt=0
 while [[ "$(curl -u admin:${generic_password} -k -s  https://${ip_nsx_vip}/api/v1/cluster/status | jq -r .detailed_cluster_status.overall_status)" != "STABLE" ]]; do
-  echo "waiting for NSX Manager API to be STABLE"
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: waiting for NSX Manager API to be STABLE" "${log_file}" "" ""
   sleep ${pause}
   ((attempt++))
   if [ ${attempt} -eq ${retry} ]; then
-    echo "FAILED to get NSX Manager API to be STABLE after ${retry}"
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: FAILED to get NSX Manager API to be STABLE after ${retry}" "${log_file}" "${slack_webhook}" "${google_webhook}"
     exit 255
   fi
 done
-log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: NSX Manager ready at https://${ip_nsx_vip}" "" "${slack_webhook}" "${google_webhook}"
+log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: NSX Manager ready at https://${ip_nsx_vip}" "${log_file}" "${slack_webhook}" "${google_webhook}"
 #
 # ip block creation only for project default
 #
 echo ${nsx_config_ip_blocks} | jq -c -r .[] | while read item
 do
   if [[ $(echo ${item} | jq -r -c .project_ref) == "default" || $(echo ${item} | jq -r -c .project_ref) == "null" ]]; then
-    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of ip-block $(echo ${item} | jq -c -r .name)" "" "" ""
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of ip-block $(echo ${item} | jq -c -r .name)" "${log_file}" "" ""
     json_data='
       {
         "display_name": "'$(echo ${item} | jq -c -r .name)'",
@@ -47,7 +48,7 @@ done
 #
 echo ${nsx_config_gw_connections} | jq -c -r .[] | while read item
 do
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of gateway-connection $(echo ${item} | jq -c -r .name)" "" "" ""
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of gateway-connection $(echo ${item} | jq -c -r .name)" "${log_file}" "" ""
   # retrieve tier0_path
   file_json_output="/tmp/vpc_t0_path.json"
   json_key="t0_path"
@@ -68,13 +69,13 @@ do
         "PUT" \
         "${json_data}"
 done
-log_message "#" "" "" ""
+log_message "#" "${log_file}" "" ""
 #
 # Project creation
 #
 echo ${nsx_config_projects} | jq -c -r .[] | while read item
 do
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of project $(echo ${item} | jq -c -r .name)" "" "" ""
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of project $(echo ${item} | jq -c -r .name)" "${log_file}" "" ""
   # retrieve external ip_block_external_path
   file_json_output="/tmp/vpc_ip_block.json"
   json_key="ip_block_path"
@@ -143,13 +144,13 @@ do
         "PATCH" \
         "${json_data}"
 done
-log_message "#" "" "" ""
+log_message "#" "${log_file}" "" ""
 #
 # associate gw_connections to Default Transit Gateway
 #
 echo ${nsx_config_transit_gateways} | jq -c -r .[] | while read item
 do
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: associate gw-connection $(echo ${item} | jq -c -r .gw_connection_ref) with transit-gateways $(echo ${item} | jq -c -r .name) for project $(echo ${item} | jq -c -r .project_ref)" "" "" ""
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: associate gw-connection $(echo ${item} | jq -c -r .gw_connection_ref) with transit-gateways $(echo ${item} | jq -c -r .name) for project $(echo ${item} | jq -c -r .project_ref)" "${log_file}" "" ""
   # retrieve gw_connection_path
   file_json_output="/tmp/gw_connection_path.json"
   json_key="gw_connection_path"
@@ -170,14 +171,14 @@ do
         "PATCH" \
         "${json_data}"
 done
-log_message "#" "" "" ""
+log_message "#" "${log_file}" "" ""
 #
 # ip block creation only for project != default && .scope != "vpc" (only the inter vpc tgw cidr will be created as ip block under each project)
 #
 echo ${nsx_config_ip_blocks} | jq -c -r .[] | while read item
 do
   if [[ $(echo ${item} | jq -r -c .project_ref) != "default" && $(echo ${item} | jq -r -c .project_ref) != "null" && $(echo ${item} | jq -r -c .scope) == "vpc_tgw" ]]; then
-    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: '$(echo ${item} | jq -c -r .name)' for project $(echo ${item} | jq -c -r .project_ref)" "" "" ""
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: '$(echo ${item} | jq -c -r .name)' for project $(echo ${item} | jq -c -r .project_ref)" "${log_file}" "" ""
     # retrieve project id
     file_json_output="/tmp/vpc_project.json"
     json_key="project_id"
@@ -200,13 +201,13 @@ do
             "${json_data}"
   fi
 done
-log_message "#" "" "" ""
+log_message "#" "${log_file}" "" ""
 #
 # vpc_connectivity_profiles creation
 #
 echo ${nsx_config_vpc_connectivity_profiles} | jq -c -r .[] | while read item
 do
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of vpc-connectivity-profile $(echo ${item} | jq -c -r .name) for project $(echo ${item} | jq -c -r .project_ref)" "" "" ""
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of vpc-connectivity-profile $(echo ${item} | jq -c -r .name) for project $(echo ${item} | jq -c -r .project_ref)" "${log_file}" "" ""
   # retrieve external_ip_block_refs_paths
   external_ip_block_refs_paths="[]"
   for index_external_ip_block in $(seq 0 $(($(echo ${item} | jq '.external_ip_block_refs | length') - 1)))
@@ -278,13 +279,13 @@ do
         "PUT" \
         "${json_data}"
 done
-log_message "#" "" "" ""
+log_message "#" "${log_file}" "" ""
 #
 # vpc_service_profiles creation
 #
 echo ${nsx_config_vpc_service_profiles} | jq -c -r .[] | while read item
 do
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of vpc-service-profile $(echo ${item} | jq -c -r .name) for project $(echo ${item} | jq -c -r .project_ref)" "" "" ""
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of vpc-service-profile $(echo ${item} | jq -c -r .name) for project $(echo ${item} | jq -c -r .project_ref)" "${log_file}" "" ""
   json_data='
       {
         "display_name": "'$(echo ${item} | jq -c -r .name)'",
@@ -311,13 +312,13 @@ do
         "PUT" \
         "${json_data}"
 done
-log_message "#" "" "" ""
+log_message "#" "${log_file}" "" ""
 #
 # vpc creation
 #
 echo ${nsx_config_vpcs} | jq -c -r .[] | while read item
 do
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of vpc $(echo ${item} | jq -c -r .name) for project $(echo ${item} | jq -c -r .project_ref)" "" "" ""
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of vpc $(echo ${item} | jq -c -r .name) for project $(echo ${item} | jq -c -r .project_ref)" "${log_file}" "" ""
   private_ips="[]"
   for index_private_ips_refs in $(seq 0 $(($(echo ${item} | jq '.private_ips_refs | length') - 1)))
   do
@@ -383,5 +384,5 @@ json_data='
 #
 #
 #
-log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: End of the NSX config." "" "${slack_webhook}" "${google_webhook}"
+log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: End of the NSX config." "${log_file}" "${slack_webhook}" "${google_webhook}"
 touch ${resultFile}

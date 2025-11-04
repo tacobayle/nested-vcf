@@ -2,7 +2,8 @@
 #
 jsonFile="${1}"
 resultFile="${0%.*}.done"
-rm -f ${resultFile}
+log_file="${0%.*}.log"
+touch ${log_file}
 source /home/ubuntu/bash/variables.sh
 source /home/ubuntu/bash/log_message.sh
 #
