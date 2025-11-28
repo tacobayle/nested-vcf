@@ -6,7 +6,7 @@
   },
   "K8s_version_short": "v1.31",
   "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer", "avi", "vks"],
-  "directories": ["bin", "esxi", "html", "sddc-manager", "vault"],
+  "directories": ["bin", "esxi", "html", "sddc-manager", "vault", "yaml-files"],
   "links": [
     "https://raw.githubusercontent.com/avinetworks/devops/refs/heads/master/tools/vcf/pvc.json",
     "http://raw.githubusercontent.com/avinetworks/devops/refs/heads/master/tools/vcf/pvc.sig",

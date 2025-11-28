@@ -317,28 +317,26 @@ write_files:
       cert_conf_file="/opt/vault/tls/crt.conf"
       cert_file="/opt/vault/tls/tls.crt"
       openssl genrsa -out ${key_file} 4096
-      cat > "${cert_conf_file}" << EOF
-      [req]
-      default_bits = $KEY_SIZE
-      prompt = no
-      default_md = sha256
-      distinguished_name = dn
-      req_extensions = v3_req
-
-      [dn]
-      CN = ${domain}
-      O = Organization
-      L = City
-      ST = State
-      C = US
-
-      [v3_req]
-      basicConstraints = CA:FALSE
-      keyUsage = nonRepudiation, digitalSignature, keyEncipherment
-      subjectAltName = @alt_names
-
-      [alt_names]
-      EOF
+      echo "[req]" | tee ${cert_conf_file} >/dev/null 2>&1
+      echo "default_bits = 4096" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "prompt = no" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "default_md = sha256" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "distinguished_name = dn" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "req_extensions = v3_req" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "[dn]" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "CN = ${domain}" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "O = Organization" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "L = City" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "ST = State" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "C = US" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "[v3_req]" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "basicConstraints = CA:FALSE" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "keyUsage = nonRepudiation, digitalSignature, keyEncipherment" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "subjectAltName = @alt_names" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "[alt_names]" | tee -a ${cert_conf_file} >/dev/null 2>&1
       echo "DNS.1 = vault.${domain}" | tee -a ${cert_conf_file} >/dev/null 2>&1
       echo "IP.1 = ${ip_gw}" | tee -a ${cert_conf_file} >/dev/null 2>&1
       openssl req -new -x509 -key ${key_file} -out ${cert_file} -days 365 -config ${cert_conf_file} -extensions v3_req
@@ -364,6 +362,14 @@ write_files:
       vault operator init -key-shares=1 -key-threshold=1 -tls-skip-verify -format json | tee ${vault_secret_file_path}
       vault operator unseal -tls-skip-verify $(jq -c -r .unseal_keys_hex[0] ${vault_secret_file_path})
       vault login -tls-skip-verify $(jq -c -r .root_token ${vault_secret_file_path})
+      echo "  token: $(echo -n $(jq -c -r .root_token ${vault_secret_file_path}) | base64)" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "    server: https://${ip_gw}:8200" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "    path: ${vault_pki_intermediate_name}/sign/${vault_pki_intermediate_role_name}" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "    caBundle: $(cat /opt/vault/tls/tls.crt | base64 -w0)" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "    auth:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "      tokenSecretRef:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "        name: cert-manager-vault-token" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "        key: token" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       # root ca
       vault secrets enable -tls-skip-verify ${vault_pki_name}
       vault secrets tune -tls-skip-verify -max-lease-ttl=${vault_pki_max_lease_ttl} "${vault_pki_name}"
