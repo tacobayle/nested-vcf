@@ -12,6 +12,29 @@ basename_nsx_manager="-nsx-manager-"
 basename_avi_ctrl="-avi-ctrl-"
 ip_gw_last_octet="1"
 ubuntu_ova_url=$(jq -c -r .gw.ova_url $jsonFile)
+#
+# Vault variables
+#
+vault_secret_file_path=$(jq -c -r '.vault.secret_file_path' $jsonFile)
+vault_pki_name=$(jq -c -r '.vault.pki.name' $jsonFile)
+vault_pki_max_lease_ttl=$(jq -c -r '.vault.pki.max_lease_ttl' $jsonFile)
+vault_pki_cert_common_name=$(jq -c -r '.vault.pki.cert.common_name' $jsonFile)
+vault_pki_cert_issuer_name=$(jq -c -r '.vault.pki.cert.issuer_name' $jsonFile)
+vault_pki_cert_ttl=$(jq -c -r '.vault.pki.cert.ttl' $jsonFile)
+vault_pki_cert_path=$(jq -c -r '.vault.pki.cert.path' $jsonFile)
+vault_pki_role_name=$(jq -c -r '.vault.pki.role.name' $jsonFile)
+vault_pki_intermediate_name=$(jq -c -r '.vault.pki_intermediate.name' $jsonFile)
+vault_pki_intermediate_max_lease_ttl=$(jq -c -r '.vault.pki_intermediate.max_lease_ttl' $jsonFile)
+vault_pki_intermediate_cert_common_name=$(jq -c -r '.vault.pki_intermediate.cert.common_name' $jsonFile)
+vault_pki_intermediate_cert_issuer_name=$(jq -c -r '.vault.pki_intermediate.cert.issuer_name' $jsonFile)
+vault_pki_intermediate_cert_path=$(jq -c -r '.vault.pki_intermediate.cert.path' $jsonFile)
+vault_pki_intermediate_cert_path_signed=$(jq -c -r '.vault.pki_intermediate.cert.path_signed' $jsonFile)
+vault_pki_intermediate_role_name=$(jq -c -r '.vault.pki_intermediate.role.name' $jsonFile)
+vault_pki_intermediate_role_allow_subdomains=$(jq -c -r '.vault.pki_intermediate.role.allow_subdomains' $jsonFile)
+vault_pki_intermediate_role_max_ttl=$(jq -c -r '.vault.pki_intermediate.role.max_ttl' $jsonFile)
+#
+#
+#
 ips_nsx=$(jq -c -r .sddc.nsx.ips $jsonFile | jq ". | map(\"$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')\" + (. | tostring))")
 ip_nsx_vip="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.nsx.vip ${jsonFile})"
 ips_avi=$(jq -c -r .sddc.avi.ips $jsonFile | jq ". | map(\"$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')\" + (. | tostring))")

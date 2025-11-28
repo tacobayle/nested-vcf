@@ -1,0 +1,3 @@
+ssh vmware-system-user@sddc01-vcfa.vcf9.lab
+
+kubectl get pod -A --kubeconfig /etc/kubernetes/admin.conf

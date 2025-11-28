@@ -1,0 +1,280 @@
+token=$(curl -s -i -k --location https://sddc01-vcfa.vcf9.lab/cloudapi/1.0.0/sessions/provider --header 'Accept: application/json;version=40.0' --header "Authorization: Basic $(echo -n 'admin@system:password' | base64)" -X POST | awk -v 'IGNORECASE=1' '/x-vmware-vcloud-access-token:/ {print $2}' | tr -d '\r')
+
+
+
+curl  -s -k --location https://sddc01-vcfa.vcf9.lab/cloudapi/v1/nsxManagers -H 'accept: application/json;version=9.0.0' -H "Authorization: Bearer ${token}" | jq .
+
+{
+  "resultTotal": 1,
+  "pageCount": 1,
+  "page": 1,
+  "pageSize": 25,
+  "associations": null,
+  "values": [
+    {
+      "status": "REALIZED",
+      "id": "urn:vcloud:nsxtmanager:355d3d53-3386-479c-9076-88e7fdab9b72",
+      "name": "sddc01-nsx.vcf9.lab",
+      "description": "sddc01-nsx.vcf9.lab",
+      "url": "https://sddc01-nsx.vcf9.lab",
+      "username": "svc-vcfa_470bb107-1412-45bb-898f",
+      "password": "******",
+      "isDedicatedForClassicTenants": false,
+      "clusterId": "ab4da101-8c64-4e1d-a0e5-c73f882e3c2c",
+      "active": true
+    }
+  ]
+}
+
+curl  -s -k --location https://sddc01-vcfa.vcf9.lab/cloudapi/v1/supervisors -H 'accept: application/json;version=9.0.0' -H "Authorization: Bearer ${token}" | jq .
+
+{
+  "resultTotal": 1,
+  "pageCount": 1,
+  "page": 1,
+  "pageSize": 25,
+  "associations": null,
+  "values": [
+    {
+      "name": "sup-admin-01",
+      "virtualCenter": {
+        "name": "sddc01-vcsa.vcf9.lab",
+        "id": "urn:vcloud:vimserver:c1e57b12-2f81-4ad6-8d68-a5dd5abf42fe"
+      },
+      "supervisorId": "urn:vcloud:supervisor:eb926c19-c704-485d-bec7-6f573744368c",
+      "region": {
+        "name": "region-1",
+        "id": "urn:vcloud:region:b3065b43-56ab-4847-9a55-0ccaf341505d"
+      },
+      "loadBalancerType": "NSX_REGISTERED_AVI"
+    }
+  ]
+}
+
+curl  -s -k --location https://sddc01-vcfa.vcf9.lab/cloudapi/v1/virtualDatacenterStoragePolicies -H 'accept: application/json;version=9.0.0' -H "Authorization: Bearer ${token}" | jq .
+
+{
+  "resultTotal": 1,
+  "pageCount": 1,
+  "page": 1,
+  "pageSize": 25,
+  "associations": null,
+  "values": [
+    {
+      "id": "urn:vcloud:virtualDatacenterStoragePolicy:a1cf9353-4bda-41dd-b68d-ad2ed85c7e1a",
+      "name": "sddc01-cluster vSAN Storage Policy",
+      "virtualDatacenter": {
+        "name": "org-1_region-1",
+        "id": "urn:vcloud:virtualDatacenter:2df03f99-cc90-4e8d-a90c-0ee3ad9b9987"
+      },
+      "regionStoragePolicy": {
+        "name": "sddc01-cluster vSAN Storage Policy",
+        "id": "urn:vcloud:regionStoragePolicy:1c91b6b3-5882-440c-aadf-3ed8c7b4166c"
+      },
+      "storageUsedMiB": 400000,
+      "storageLimitMiB": 104857600
+    }
+  ]
+}
+
+
+
+curl  -s -k --location https://sddc01-vcfa.vcf9.lab/cloudapi/v1/regions -H 'accept: application/json;version=9.0.0' -H "Authorization: Bearer ${token}" | jq .
+
+{
+  "resultTotal": 1,
+  "pageCount": 1,
+  "page": 1,
+  "pageSize": 25,
+  "associations": null,
+  "values": [
+    {
+      "id": "urn:vcloud:region:b3065b43-56ab-4847-9a55-0ccaf341505d",
+      "name": "region-1",
+      "description": "",
+      "nsxManager": {
+        "name": "sddc01-nsx.vcf9.lab",
+        "id": "urn:vcloud:nsxtmanager:355d3d53-3386-479c-9076-88e7fdab9b72"
+      },
+      "supervisors": [
+        {
+          "name": "sup-admin-01",
+          "id": "urn:vcloud:supervisor:eb926c19-c704-485d-bec7-6f573744368c"
+        }
+      ],
+      "storagePolicies": [
+        "sddc01-cluster vSAN Storage Policy"
+      ],
+      "status": "READY",
+      "loadBalancerType": "NSX_REGISTERED_AVI",
+      "memoryCapacityMiB": 380079,
+      "memoryReservationCapacityMiB": 380079,
+      "cpuCapacityMHz": 168332,
+      "cpuReservationCapacityMHz": 168332
+    }
+  ]
+}
+
+
+curl -s -k --location https://sddc01-vcfa.vcf9.lab/cloudapi/1.0.0/orgs -H 'accept: application/json;version=9.0.0' -H "Authorization: Bearer ${token}" | jq .
+
+{
+  "resultTotal": 2,
+  "pageCount": 1,
+  "page": 1,
+  "pageSize": 25,
+  "associations": null,
+  "values": [
+    {
+      "id": "urn:vcloud:org:aec61a98-b28d-4f4e-82fa-f9715f9accc3",
+      "name": "org-1",
+      "displayName": "org-1",
+      "description": "",
+      "isEnabled": true,
+      "managedBy": {
+        "name": "System",
+        "id": "urn:vcloud:org:a93c9db9-7471-3192-8d09-a8f7eeda85f9"
+      },
+      "canManageOrgs": false,
+      "maskedEventTaskUsername": "system",
+      "directlyManagedOrgCount": null,
+      "isClassicTenant": false,
+      "isProviderConsumptionOrg": false,
+      "creationStatus": "READY"
+    },
+    {
+      "id": "urn:vcloud:org:a93c9db9-7471-3192-8d09-a8f7eeda85f9",
+      "name": "System",
+      "displayName": "System",
+      "description": "System Bucket",
+      "isEnabled": true,
+      "managedBy": null,
+      "canManageOrgs": true,
+      "maskedEventTaskUsername": "system",
+      "directlyManagedOrgCount": 1,
+      "isClassicTenant": false,
+      "isProviderConsumptionOrg": false,
+      "creationStatus": "READY"
+    }
+  ]
+}
+
+curl  -s -k --location https://sddc01-vcfa.vcf9.lab/cloudapi/1.0.0/orgs/urn:vcloud:org:aec61a98-b28d-4f4e-82fa-f9715f9accc3 -H 'accept: application/json;version=9.0.0' -H "Authorization: Bearer ${token}" | jq .
+
+{
+  "id": "urn:vcloud:org:aec61a98-b28d-4f4e-82fa-f9715f9accc3",
+  "name": "org-1",
+  "displayName": "org-1",
+  "description": "",
+  "isEnabled": true,
+  "managedBy": {
+    "name": "System",
+    "id": "urn:vcloud:org:a93c9db9-7471-3192-8d09-a8f7eeda85f9"
+  },
+  "canManageOrgs": false,
+  "maskedEventTaskUsername": "system",
+  "directlyManagedOrgCount": null,
+  "isClassicTenant": false,
+  "isProviderConsumptionOrg": false,
+  "creationStatus": "READY"
+}
+
+curl  -s -k --location https://sddc01-vcfa.vcf9.lab/cloudapi/v1/ipSpaces -H 'accept: application/json;version=9.0.0' -H "Authorization: Bearer ${token}" | jq .
+
+{
+  "resultTotal": 1,
+  "pageCount": 1,
+  "page": 1,
+  "pageSize": 25,
+  "associations": null,
+  "values": [
+    {
+      "status": "REALIZED",
+      "id": "urn:vcloud:ipSpace:fdd163ff-8ddc-4ac4-83e8-8484cb73d3ed",
+      "name": "ip_space-1",
+      "description": "",
+      "internalScopeCidrBlocks": [
+        {
+          "id": "ip_space-1-pnske",
+          "name": "ip_space-1-pnske",
+          "cidr": "192.168.244.0/24"
+        }
+      ],
+      "externalScopeCidr": null,
+      "regionRef": {
+        "name": "region-1",
+        "id": "urn:vcloud:region:b3065b43-56ab-4847-9a55-0ccaf341505d"
+      },
+      "defaultQuota": null
+    }
+  ]
+}
+
+curl  -s -k --location https://sddc01-vcfa.vcf9.lab/cloudapi/v1/providerGateways -H 'accept: application/json;version=9.0.0' -H "Authorization: Bearer ${token}" | jq .
+
+{
+  "resultTotal": 1,
+  "pageCount": 1,
+  "page": 1,
+  "pageSize": 25,
+  "associations": null,
+  "values": [
+    {
+      "status": "REALIZED",
+      "id": "urn:vcloud:providerGateway:5918999d-fb8a-414a-8288-3f45cc6febea",
+      "name": "provider_gw-1",
+      "description": "",
+      "regionRef": {
+        "name": "region-1",
+        "id": "urn:vcloud:region:b3065b43-56ab-4847-9a55-0ccaf341505d"
+      },
+      "backingType": "NSX_TIER0",
+      "backingRef": {
+        "id": "t0-01",
+        "name": "t0-01"
+      },
+      "ipSpaceRefs": null
+    }
+  ]
+}
+
+curl -X 'POST' \
+  'https://sddc01-vcfa.vcf9.lab/cloudapi/1.0.0/orgs/urn%3Avcloud%3Aorg%3Aa93c9db9-7471-3192-8d09-a8f7eeda85f9/networkingSettings/syncRegionalNetworkingSettings' \
+  -H 'accept: */*;version=9.0.0' \
+  -H 'Authorization: Bearer eyJraWQiOiJ1cm46dmNsb3VkOm9wZW5JZFByb3ZpZGVyS2V5OjJmYmMxYzIxLTQxZWYtNDFkZC1hZTJhLTExYjg3ZjcyY2VhNCIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiI1YTdkNDM2Ny05OTY3LTQyOWYtOWEzMC1jMDliNDhjOThmNGMiLCJyb2xlcyI6WyJTeXN0ZW0gQWRtaW5pc3RyYXRvciJdLCJpc3MiOiJodHRwczovL3NkZGMwMS12Y2ZhLnZjZjkubGFiL29pZGMiLCJudW1iZXJfb2ZfZ3JvdXBzIjowLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhZG1pbiIsImF1ZCI6IjkyMmY0YTEyLTgyYzktNDQ0MC04NDY2LWYxYjFmYWNhMDY3NSIsIm5iZiI6MTc2MzQ0NjQxMywibnVtYmVyX29mX3JvbGVzIjoxLCJvcmdfaWQiOiJhOTNjOWRiOS03NDcxLTMxOTItOGQwOS1hOGY3ZWVkYTg1ZjkiLCJzY29wZSI6WyJ2Y2RfaWRwIiwicGhvbmUiLCJvcGVuaWQiLCJwcm9maWxlIiwiZ3JvdXBzIiwiZW1haWwiLCJ0bV91aSJdLCJvcmdfZGlzcGxheV9uYW1lIjoiU3lzdGVtIiwibmFtZSI6IlNlcnZpY2UgQWRtaW5pc3RyYXRvciIsInNpdGVfaWQiOiI1MDAzODhlZi04MWQ3LTQ2MTgtOTA1YS1iY2FkODRhNjE1ZTkiLCJleHAiOjE3NjM0NTAwMTMsIm9yZ19uYW1lIjoiU3lzdGVtIiwiaWF0IjoxNzYzNDQ2NDEzLCJqdGkiOiJiOTk2MTI0YS0wZGMxLTRkNTMtOWRkZi1mOGNkZTRmODFhNzUifQ.cPCklrsJ_OihRUqbXJHFxayqZYMSjKs42cDOTUO7qk158SB0oqFLyFbfGabNr-SSGe5pOsXHsgIoYd6fJvG3SRck0v3chE4TGtTmsLtTYAIuuJJM6tLuej2Vk7nRb9kjrJzkgTNAjDNWffKM5J_1FfNnpRr6ThJsJ3GnKQoN0AuS8Mgm2R9ZyCTjLe89LR_Sq8ZE2lTZZ3TCO8DEZ5J24HKX79_fpj89ztNKAEMgJ_z13QeDZT7H1XDK8xFdoKNn0hXaRuJD7VQCuXjGbH4J5YxcZ37GF6Lj7XOMTIp7KgbpHD_2RFxthnJRiMAmTGmCT4k3LHJSNBwcXKB3RjrwwQ' \
+  -d ''
+
+curl -s -X POST -k --location https://sddc01-vcfa.vcf9.lab/cloudapi/1.0.0/orgs/urn:vcloud:org:a93c9db9-7471-3192-8d09-a8f7eeda85f9/networkingSettings/syncRegionalNetworkingSettings -H 'accept: application/json;version=9.0.0' -H "Authorization: Bearer ${token}" | jq .
+
+curl  -s -k --location https://sddc01-vcfa.vcf9.lab/cloudapi/v1/regionalNetworkingSettings -H 'accept: application/json;version=9.0.0' -H "Authorization: Bearer ${token}" | jq .
+
+{
+  "resultTotal": 1,
+  "pageCount": 1,
+  "page": 1,
+  "pageSize": 32,
+  "associations": null,
+  "values": [
+    {
+      "status": "REALIZED",
+      "id": "urn:vcloud:regionalNetworkingSetting:ef1efdf4-460c-4f66-84f0-f3d340cedece",
+      "name": "org-1region-1",
+      "regionRef": {
+        "name": "region-1",
+        "id": "urn:vcloud:region:b3065b43-56ab-4847-9a55-0ccaf341505d"
+      },
+      "orgRef": {
+        "name": "org-1",
+        "id": "urn:vcloud:org:aec61a98-b28d-4f4e-82fa-f9715f9accc3"
+      },
+      "providerGatewayRef": {
+        "name": "provider_gw-1",
+        "id": "urn:vcloud:providerGateway:5918999d-fb8a-414a-8288-3f45cc6febea"
+      },
+      "serviceEdgeClusterRef": {
+        "name": "edge-cluster-01",
+        "id": "urn:vcloud:edgeCluster:33e9d819-3165-4af0-8afd-6323742b7fe7"
+      }
+    }
+  ]
+}
