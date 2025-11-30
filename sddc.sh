@@ -89,7 +89,7 @@ if [[ ${operation} == "apply" ]] ; then
       template_userdata_file="userdata_external-gw-multi-nic.yaml.template"
     fi
     sed -e "s/\${password}/$(jq -c -r .generic_password $jsonFile)/" \
-        -e "s/\${ip_gw}/${ip_gw}/" \
+        -e "s/\${ip_gw}/${ip_gw}/g" \
         -e "s/\${prefix}/${prefix}/" \
         -e "s/\${default_gw}/${default_gw}/" \
         -e "s/\${ntp_masters}/${ntp_masters}/" \
@@ -143,7 +143,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${vault_pki_intermediate_cert_issuer_name}@${vault_pki_intermediate_cert_issuer_name}@" \
         -e "s@\${vault_pki_intermediate_cert_path}@${vault_pki_intermediate_cert_path}@" \
         -e "s@\${vault_pki_intermediate_cert_path_signed}@${vault_pki_intermediate_cert_path_signed}@" \
-        -e "s@\${vault_pki_intermediate_role_name}@${vault_pki_intermediate_role_name}@" \
+        -e "s@\${vault_pki_intermediate_role_name}@${vault_pki_intermediate_role_name}@g" \
         -e "s@\${vault_pki_intermediate_role_allow_subdomains}@${vault_pki_intermediate_role_allow_subdomains}@" \
         -e "s@\${vault_pki_intermediate_role_max_ttl}@${vault_pki_intermediate_role_max_ttl}@" \
         -e "s/\${hostname}/${gw_name}/" /nested-vcf/templates/${template_userdata_file} | tee /root/${gw_name}_userdata.yaml > /dev/null
@@ -152,7 +152,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${base64_userdata}@$(base64 /root/${gw_name}_userdata.yaml -w 0)@" \
         -e "s/\${EXTERNAL_GW_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
         -e "s@\${network_ref}@${network_ref}@" \
-        -e "s/\${gw_name}/${gw_name}/" /nested-vcf/templates/options-gw.json.template | tee "/tmp/options-${gw_name}.json"
+        -e "s/\${gw_name}/${gw_name}/" /nested-vcf/templates/options-gw.json.template | tee "/tmp/options-${gw_name}.json" > /dev/null
     #
     govc import.ova --options="/tmp/options-${gw_name}.json" -folder "${folder}" "/root/$(basename ${ubuntu_ova_url})" > /dev/null 2>&1
     govc vm.change -vm "${folder}/${gw_name}" -c $(jq -c -r .gw.cpu $jsonFile) -m $(jq -c -r .gw.memory $jsonFile) > /dev/null 2>&1
