@@ -5,7 +5,7 @@
     "disk": "40G"
   },
   "K8s_version_short": "v1.31",
-  "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer", "avi", "vks"],
+  "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer", "avi", "vks", "vcfa"],
   "directories": ["bin", "esxi", "html", "sddc-manager", "vault", "yaml-files"],
   "links": [
     "https://raw.githubusercontent.com/avinetworks/devops/refs/heads/master/tools/vcf/pvc.json",
@@ -555,17 +555,6 @@
     "vpc_private_cidr_prefix": "16"
   },
   "vcf_a": {
-    "region": [
-      {
-        "name": "region-1",
-        "nsx_manager_ref": "sddc01-nsx.vcf9.lab",
-        "supervisor_refs": [
-          "sup-admin-01"
-        ],
-        "storage_class_ref": "sddc01-cluster vSAN Storage Policy",
-        "nsx_manager": "sddc01-nsx.vcf9.lab"
-      }
-    ],
     "organizations": [
       {
         "name": "org-1",

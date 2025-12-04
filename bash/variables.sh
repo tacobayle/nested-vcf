@@ -5,9 +5,15 @@ google_webhook=$(jq -c -r .google_webhook $jsonFile)
 DEPOT_USERNAME=$(jq -c -r .depot.username $jsonFile)
 DEPOT_PASSWORD=$(jq -c -r .depot.password $jsonFile)
 folder=$(jq -c -r .vsphere_underlay.folder $jsonFile)
-gw_name="$(jq -c -r .sddc.basename $jsonFile)-external-gw"
-basename=$(jq -c -r .esxi.basename $jsonFile)
-basename_sddc=$(jq -c -r .sddc.basename $jsonFile)
+basename=$(jq -c -r '.esxi.basename' $jsonFile)
+basename_sddc=$(jq -c -r '.sddc.basename' $jsonFile)
+gw_name="${basename_sddc}-external-gw"
+domain=$(jq -c -r '.domain' $jsonFile)
+fqdn_vcfa="${basename_sddc}-vcfa.${domain}"
+cluster_name="${basename_sddc}-cluster"
+dc_name="${basename_sddc}-dc"
+ds_name="${basename_sddc}-vsan"
+default_storage_class="${cluster_name} vSAN Storage Policy"
 basename_nsx_manager="-nsx-manager-"
 basename_avi_ctrl="-avi-ctrl-"
 ip_gw_last_octet="1"
@@ -49,7 +55,6 @@ starting_ip_vsan="$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select
 ending_ip_vsan="$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.vcenter.vsanPool ${jsonFile}| cut -f2 -d'-')"
 starting_ip_vmotion="$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.vcenter.vmotionPool ${jsonFile}| cut -f1 -d'-')"
 ending_ip_vmotion="$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.vcenter.vmotionPool ${jsonFile}| cut -f2 -d'-')"
-domain=$(jq -c -r .domain $jsonFile)
 ip_gw=$(jq -c -r .gw.ip $jsonFile)
 gw_vcf_cli_url=$(jq -c -r .gw.vcf_cli_url $jsonFile)
 ip_vcsa="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.vcenter.ip ${jsonFile})"

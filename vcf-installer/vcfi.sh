@@ -38,6 +38,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: patching bundle ${depot_id} to download it" "${log_file}" "" ""
   done
   sleep 240
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: waiting 240 seconds" "${log_file}" "" ""
   #
   # download bundles
   #
