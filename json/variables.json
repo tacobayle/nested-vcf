@@ -304,19 +304,33 @@
       "ip_blocks": [
         {
           "name": "ip_block_pub_project_default",
-          "visibility": "EXTERNAL"
+          "visibility": "EXTERNAL",
+          "project_ref": "default"
         },
         {
           "name": "ip_block_pub_project1",
-          "visibility": "EXTERNAL"
+          "visibility": "EXTERNAL",
+          "project_ref": "default"
         },
         {
           "name": "ip_block_pub_project2",
-          "visibility": "EXTERNAL"
+          "visibility": "EXTERNAL",
+          "project_ref": "default"
         },
         {
           "name": "ip_block_pub_project3",
-          "visibility": "EXTERNAL"
+          "visibility": "EXTERNAL",
+          "project_ref": "default"
+        },
+        {
+          "name": "vcf_a_org_placeholder1",
+          "visibility": "EXTERNAL",
+          "description": "will not be created at NSX level because project_ref is not defined but cidr will be assigned and routing/NAT will be done"
+        },
+        {
+          "name": "vcf_a_org_placeholder2",
+          "visibility": "EXTERNAL",
+          "description": "will not be created at NSX level because project_ref is not defined but cidr will be assigned and routing/NAT will be done"
         },
         {
           "name": "ip_block_private_default",

@@ -29,7 +29,7 @@ log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: NSX Manager 
 #
 echo ${nsx_config_ip_blocks} | jq -c -r .[] | while read item
 do
-  if [[ $(echo ${item} | jq -r -c .project_ref) == "default" || $(echo ${item} | jq -r -c .project_ref) == "null" ]]; then
+  if [[ $(echo ${item} | jq -r -c .project_ref) == "default" ]]; then
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: creation of ip-block $(echo ${item} | jq -c -r .name)" "${log_file}" "" ""
     json_data='
       {
