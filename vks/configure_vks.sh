@@ -179,10 +179,15 @@ echo '{"api_server_cluster_endpoint": "'${api_server_cluster_endpoint}'"}' | tee
 # Init k8s config
 #
 export VCF_CLI_VSPHERE_PASSWORD=''${generic_password}''
-vcf context create ${supervisor_cluster_name} --username administrator@${ssoDomain} --endpoint=${api_server_cluster_endpoint} --insecure-skip-tls-verify
+vcf context create ${supervisor_cluster_name} --auth-type basic --username administrator@${ssoDomain} --endpoint=${api_server_cluster_endpoint} --insecure-skip-tls-verify
 sed -e "s/\${generic_password}/${generic_password}/" \
-    -e "s/\${supervisor_cluster_name}/${supervisor_cluster_name}/" /home/ubuntu/templates/auth_supervisor_custer.sh.template | tee /home/ubuntu/auth_supervisor_custer.sh > /dev/null
-chmod u+x /home/ubuntu/auth_supervisor_custer.sh
+    -e "s/\${supervisor_cluster_name}/${supervisor_cluster_name}/" /home/ubuntu/templates/auth_supervisor_custer.sh.template | tee /home/ubuntu/vks/auth_supervisor_custer.sh > /dev/null
+chmod u+x /home/ubuntu/vks/auth_supervisor_custer.sh
+sed -e "s/\${generic_password}/${generic_password}/" \
+    -e "s/\${api_server_cluster_endpoint}/${api_server_cluster_endpoint}/" \
+    -e "s/\${ssoDomain}/${ssoDomain}/" /home/ubuntu/templates/auth_vks_context.sh.template | tee /home/ubuntu/vks/auth_vks_context.sh > /dev/null
+chmod u+x /home/ubuntu/vks/auth_vks_context.sh
+
 #
 #
 #
