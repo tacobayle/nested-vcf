@@ -362,7 +362,21 @@ write_files:
       vault operator init -key-shares=1 -key-threshold=1 -tls-skip-verify -format json | tee ${vault_secret_file_path}
       vault operator unseal -tls-skip-verify $(jq -c -r .unseal_keys_hex[0] ${vault_secret_file_path})
       vault login -tls-skip-verify $(jq -c -r .root_token ${vault_secret_file_path})
+      echo "apiVersion: v1" | tee /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "kind: Secret" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "metadata:" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "  name: cert-manager-vault-token" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "  namespace: my-namespace" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "type: Opaque" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "data:" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
       echo "  token: $(echo -n $(jq -c -r .root_token ${vault_secret_file_path}) | base64)" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "apiVersion: cert-manager.io/v1" | tee /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "kind: Issuer" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "metadata:" | tee /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "  name: vault-issuer" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "  namespace: my-namespace" | tee /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "spec:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "  vault:" | tee /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "    server: https://${ip_gw}:8200" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "    path: ${vault_pki_intermediate_name}/sign/${vault_pki_intermediate_role_name}" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "    caBundle: $(cat /opt/vault/tls/tls.crt | base64 -w0)" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
