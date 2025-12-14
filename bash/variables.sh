@@ -196,13 +196,14 @@ supernet_vpc_public=$(jq -c -r '.sddc.nsx.supernet_vpc_public' $jsonFile)
 supernet_vpc_public_third_octet=$(echo "${supernet_vpc_public}" | cut -d'.' -f3)
 supernet_vpc_public_two_octets=$(echo "${supernet_vpc_public}" | cut -d'.' -f1-2)
 public_count=0
-last_public_third_octet=$((${supernet_vpc_public_third_octet} + $(jq '[.nsx.config.ip_blocks[] | select(.visibility == "EXTERNAL") ] | length' $jsonFile) - 1))
+last_public_third_octet=$((${supernet_vpc_public_third_octet} + $(jq '[.nsx.config.ip_blocks[] | select(.visibility == "EXTERNAL" and .project_ref == "default") ] | length' $jsonFile) - 1))
 for third_octet in $(seq ${supernet_vpc_public_third_octet} ${last_public_third_octet})
 do
   cidr="${supernet_vpc_public_two_octets}.${third_octet}.0/24"
   # cidr_public_three_octets="${supernet_vpc_public_two_octets}.${third_octet}"
   ip_blocks_json=$(echo ${ip_blocks_json} | jq '.['${global_count}'] += {"name": "'$(jq -c -r '[.nsx.config.ip_blocks[] | select(.visibility == "EXTERNAL") ]' $jsonFile | jq -c -r .[${public_count}].name)'",
                                                    "cidr": "'${cidr}'",
+                                                   "project_ref": "'$(jq -c -r '[.nsx.config.ip_blocks[] | select(.visibility == "EXTERNAL") ]' $jsonFile | jq -c -r .[${public_count}].project_ref)'",
                                                    "visibility": "'$(jq -c -r '[.nsx.config.ip_blocks[] | select(.visibility == "EXTERNAL") ]' $jsonFile | jq -c -r .[${public_count}].visibility)'"}')
   ((public_count++))
   ((global_count++))
