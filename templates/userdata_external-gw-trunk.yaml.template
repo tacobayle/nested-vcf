@@ -372,11 +372,11 @@ write_files:
       echo "  token: $(echo -n $(jq -c -r .root_token ${vault_secret_file_path}) | base64)" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
       echo "apiVersion: cert-manager.io/v1" | tee /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "kind: Issuer" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "metadata:" | tee /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "metadata:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "  name: vault-issuer" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "  namespace: my-namespace" | tee /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "  namespace: my-namespace" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "spec:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "  vault:" | tee /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "  vault:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "    server: https://${ip_gw}:8200" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "    path: ${vault_pki_intermediate_name}/sign/${vault_pki_intermediate_role_name}" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "    caBundle: $(cat /opt/vault/tls/tls.crt | base64 -w0)" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
