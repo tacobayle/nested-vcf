@@ -152,6 +152,12 @@ fi
 sudo mv /home/ubuntu/html/index.html /var/www/html/index.html
 sudo chown root /var/www/html/index.html
 sudo chgrp root /var/www/html/index.html
+sudo mv /home/ubuntu/vcf-automation/blueprint.yaml /var/www/html/blueprint.yaml
+sudo chown root /var/www/html/blueprint.yaml
+sudo chgrp root /var/www/html/blueprint.yaml
+sudo mv /home/ubuntu/vcf-automation/blueprint-cert-manager.yaml /var/www/html/blueprint-cert-manager.yaml
+sudo chown root /var/www/html/blueprint-cert-manager.yaml
+sudo chgrp root /var/www/html/blueprint-cert-manager.yaml
 sudo cat /var/lib/bind/db.${domain} | grep avi | sudo tee /var/www/html/avi_raw.html
 while read -r line; do echo \"\$line<br>\" ; done < /var/www/html/avi_raw.html | sudo tee /var/www/html/avi.html
 sudo cat /var/lib/bind/db.${domain} | grep wld | sudo tee /var/www/html/esxi_raw.html

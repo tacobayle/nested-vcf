@@ -175,16 +175,16 @@ resources:
         metadata:
           annotations:
             cert-manager.io/issuer: vault-issuer
-            cert-manager.io/common-name: ${env.deploymentName}-web.app.vcf9.lab
+            cert-manager.io/common-name: ${env.deploymentName}.app.vcf9.lab
           name: ${env.deploymentName}-ingress
           namespace: ${resource.CCI_Supervisor_Namespace_1.name}
         spec:
           tls:
             - hosts:
-                - ${env.deploymentName}-web.app.vcf9.lab
+                - ${env.deploymentName}.app.vcf9.lab
               secretName: cert-${env.deploymentName}-web
           rules:
-            - host: ${env.deploymentName}-web.app.vcf9.lab
+            - host: ${env.deploymentName}.app.vcf9.lab
               http:
                 paths:
                   - path: /

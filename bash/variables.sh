@@ -220,6 +220,7 @@ folder_avi=$(jq -c -r '.avi.folder' $jsonFile)
 vcsa_mgmt_cluster="${basename_sddc}-cluster"
 vcsa_fqdn="${basename_sddc}-vcsa.${domain}"
 vcsa_mgmt_dc="${basename_sddc}-dc"
+vcsa_mgmt_datastore="${basename_sddc}-vsan"
 avi_ctrl_name=${basename_sddc}${basename_avi_ctrl}1
 ip_avi=$(echo ${ips_avi} | jq -c -r '.[0]')
 networks=$(jq -c -r '.sddc.vcenter.networks' $jsonFile)

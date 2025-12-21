@@ -179,10 +179,6 @@ resources:
           name: ${env.deploymentName}-ingress
           namespace: ${resource.CCI_Supervisor_Namespace_1.name}
         spec:
-          tls:
-            - hosts:
-                - ${env.deploymentName}-web.app.vcf9.lab
-              secretName: cert01
           rules:
             - host: ${env.deploymentName}-web.app.vcf9.lab
               http:

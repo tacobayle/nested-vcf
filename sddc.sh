@@ -204,6 +204,9 @@ if [[ ${operation} == "apply" ]] ; then
           do
             scp -o StrictHostKeyChecking=no -r /nested-vcf/${folder} ubuntu@${ip_gw}:/home/ubuntu
           done
+          ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo mv /home/ubuntu/html/* /var/www/html/" >> ${log_file}
+          ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo chown root /var/www/html/*" >> ${log_file}
+          ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo chgrp root /var/www/html/*" >> ${log_file}
           scp -o StrictHostKeyChecking=no "/root/$(basename ${ubuntu_ova_url})" ubuntu@${ip_gw}:/home/ubuntu/bin/$(basename ${ubuntu_ova_url})
           scp -o StrictHostKeyChecking=no "/root/$(basename ${avi_ova_url})" ubuntu@${ip_gw}:/home/ubuntu/bin/$(basename ${avi_ova_url})
           scp -o StrictHostKeyChecking=no -r /root/${basename_sddc}_${operation}.json ubuntu@${ip_gw}:/home/ubuntu/json/${basename_sddc}_${operation}.json

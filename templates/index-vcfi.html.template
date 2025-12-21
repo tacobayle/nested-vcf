@@ -24,5 +24,13 @@
     <li><a href="ptr_mgmt.html" target="_blank">Initial PTR MANAGEMENT network - this is not refreshed - this includes ESXi hosts</a></li>
     <li><a href="ptr_vm_network.html" target="_blank">Initial PTR VM_MANAGEMENT network - this is not refreshed - this includes NSX and Avi</a></li>
 </ul>
+<h1>Manual Configuration</h1>
+<ul>
+    <li><a href="configure.html" target="_blank">Manual Configuration</a></li>
+</ul>
+<h1>Demos</h1>
+<ul>
+    <li><a href="demos.html" target="_blank">Demos</a></li>
+</ul>
 </body>
 </html>
