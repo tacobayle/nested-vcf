@@ -173,14 +173,11 @@ resources:
         apiVersion: networking.k8s.io/v1
         kind: Ingress
         metadata:
-          #annotations:
-          #  cert-manager.io/issuer: vault-issuer
-          #  cert-manager.io/common-name: ${env.deploymentName}-web.vault.avidemo.com
           name: ${env.deploymentName}-ingress
           namespace: ${resource.CCI_Supervisor_Namespace_1.name}
         spec:
           rules:
-            - host: ${env.deploymentName}-web.app.vcf9.lab
+            - host: ${env.deploymentName}.app.vcf9.lab
               http:
                 paths:
                   - path: /
