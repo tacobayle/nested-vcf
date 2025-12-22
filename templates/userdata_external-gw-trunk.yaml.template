@@ -366,7 +366,7 @@ write_files:
       echo "kind: Secret" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
       echo "metadata:" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
       echo "  name: cert-manager-vault-token" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
-      echo "  namespace: my-namespace" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "  namespace: ----------TO_BE_REPLACED----------" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
       echo "type: Opaque" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
       echo "data:" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
       echo "  token: $(echo -n $(jq -c -r .root_token ${vault_secret_file_path}) | base64)" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
@@ -374,7 +374,7 @@ write_files:
       echo "kind: Issuer" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "metadata:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "  name: vault-issuer" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "  namespace: my-namespace" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "  namespace: ----------TO_BE_REPLACED----------" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "spec:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "  vault:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       echo "    server: https://${ip_gw}:8200" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1

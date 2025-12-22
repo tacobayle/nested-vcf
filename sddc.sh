@@ -200,6 +200,10 @@ if [[ ${operation} == "apply" ]] ; then
             ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"    version: 2\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
             ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo netplan apply"
           fi
+          sed -e "s@\${avi_subdomain}@${avi_subdomain}@" \
+              -e "s/\${domain}/${domain}/" /nested-vcf/templates/blueprint.yaml.template | tee "/nested-vcf/vcf-automation/blueprint.yaml" > /dev/null
+          sed -e "s@\${avi_subdomain}@${avi_subdomain}@" \
+              -e "s/\${domain}/${domain}/" /nested-vcf/templates/blueprint-cert-manager.yaml.template | tee "/nested-vcf/vcf-automation/blueprint-cert-manager.yaml" > /dev/null
           echo $folders_to_copy | jq -c -r .[] | while read folder
           do
             scp -o StrictHostKeyChecking=no -r /nested-vcf/${folder} ubuntu@${ip_gw}:/home/ubuntu

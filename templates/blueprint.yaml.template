@@ -39,20 +39,11 @@ inputs:
   dns:
     title: DNS Record
     type: boolean
-  ssl:
-    title: Enable SSL
-    type: boolean
-  ssl_cert:
-    type: string
-    title: SSL Certificate Type
-    enum:
-      - Internal CA
-      - External CA
 resources:
   CCI_Supervisor_Namespace_1:
     type: CCI.Supervisor.Namespace
     properties:
-      name: ns-1-7ycjv
+      name: ----------TO_BE_REPLACED----------
       existing: true
   Username_Secret:
     type: CCI.Supervisor.Resource
@@ -81,8 +72,7 @@ resources:
             vm-lb-selector: ${env.deploymentName}-lb
         spec:
           className: best-effort-small
-          # Friendly image name: ubuntu-24.04-server-cloudimg-amd64
-          imageName: vmi-c54f20f17d906f897
+          imageName: ----------TO_BE_REPLACED----------
           storageClass: sddc01-cluster-vsan-storage-policy-latebinding
           powerState: PoweredOn
           bootstrap:
@@ -118,8 +108,7 @@ resources:
             vm-lb-selector: ${env.deploymentName}-lb
         spec:
           className: best-effort-small
-          # Friendly image name: ubuntu-24.04-server-cloudimg-amd64
-          imageName: vmi-c54f20f17d906f897
+          imageName: ----------TO_BE_REPLACED----------
           storageClass: sddc01-cluster-vsan-storage-policy-latebinding
           powerState: PoweredOn
           bootstrap:
@@ -154,7 +143,6 @@ resources:
           selector:
             vm-lb-selector: ${env.deploymentName}-lb
           type: ClusterIP
-          #type: LoadBalancer
           ports:
             - name: http
               protocol: TCP
@@ -177,7 +165,7 @@ resources:
           namespace: ${resource.CCI_Supervisor_Namespace_1.name}
         spec:
           rules:
-            - host: ${env.deploymentName}.app.vcf9.lab
+            - host: ${env.deploymentName}.${avi_subdomain}.${domain}
               http:
                 paths:
                   - path: /
