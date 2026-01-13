@@ -1,0 +1,629 @@
+{
+  "gw": {
+    "cpu": 4,
+    "memory": 4096,
+    "disk": "40G"
+  },
+  "K8s_version_short": "v1.31",
+  "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer", "avi", "vks", "vcf-automation", "html", "sddc-manager"],
+  "directories": ["bin", "esxi", "vault", "yaml-files"],
+  "vault": {
+    "secret_file_path": "/home/ubuntu/vault/secret.json",
+    "pki": {
+      "name": "pki",
+      "max_lease_ttl": "87600h",
+      "cert":{
+        "common_name": "vault.com",
+        "issuer_name": "vault_demoavi",
+        "ttl": "87600h",
+        "path": "/home/ubuntu/vault/ca.crt"
+      },
+      "issuers_file": "/home/ubuntu/vault/ca_issuers.json",
+      "role": {
+        "name": "role-pki-ca"
+      }
+    },
+    "pki_intermediate": {
+      "name": "pki_int",
+      "max_lease_ttl": "43800h",
+      "cert":{
+        "common_name": "intermediate-vault.com",
+        "issuer_name": "demoavi",
+        "path": "/home/ubuntu/vault/pki_intermediate.csr",
+        "path_signed": "/home/ubuntu/vault/pki_intermediate.cert.pem"
+      },
+      "role": {
+        "name": "pki_intermediate_role",
+        "allow_subdomains": true,
+        "max_ttl": "1440h"
+      }
+    }
+  },
+  "pip3_packages": ["ansible-core==2.18.6", "ansible==11.7.0", "avisdk", "dnspython", "netaddr"],
+  "apt_packages": ["iptables-persistent", "expect", "bind9", "bind9utils", "dnsutils", "chrony", "nginx", "python3-pip", "vault", "sshpass"],
+  "vsphere_nested_username": "administrator",
+  "vsphere_cl_name": "cl-ubuntu",
+  "content_library_subscription_url": "https://wp-content.vmware.com/v2/latest/lib.json",
+  "vcfi_scripts": [
+    {
+      "script_file": "/home/ubuntu/vcf-installer/vcfi.sh",
+      "test_remote_script_retry": 120,
+      "test_remote_script_pause": 300
+    },
+    {
+      "script_file": "/home/ubuntu/vcenter/vcsa.sh",
+      "test_remote_script_retry": 20,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/nsx/configure_nsx.sh",
+      "test_remote_script_retry": 120,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/avi/deploy_avi.sh",
+      "test_remote_script_retry": 120,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/sddc-manager/avi-sddc.sh",
+      "test_remote_script_retry": 20,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/avi/configure_avi.sh",
+      "test_remote_script_retry": 120,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/nsx/vpc_avi.sh",
+      "test_remote_script_retry": 20,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/vcenter/silent_alarm.sh",
+      "test_remote_script_retry": 20,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/vks/configure_vks.sh",
+      "test_remote_script_retry": 120,
+      "test_remote_script_pause": 30
+    }
+  ],
+  "nsx": {
+    "pool_start": 32,
+    "pool_end": 64,
+    "tier0_starting_ip": 11,
+    "tier0_vip_starting_ip": 20,
+    "config": {
+      "uplink_profiles":
+      [
+        {
+          "display_name": "uplink-profile-edge",
+          "resource_type": "PolicyUplinkHostSwitchProfile",
+          "transport_vlan": 0,
+          "teaming": {
+            "policy": "FAILOVER_ORDER",
+            "active_list": [
+              {
+                "uplink_name": "uplink-1",
+                "uplink_type": "PNIC"
+              }
+            ]
+          }
+        }
+      ],
+      "transport_zones":
+      [
+        {
+          "display_name": "update-VCF-tz_vlan",
+          "transport_type": "VLAN"
+        }
+      ],
+      "ip_pools":
+      [
+        {
+          "display_name": "update-ip_pool_tep_edge_overlay",
+          "resource_type": "IpAddressPoolStaticSubnet"
+        }
+      ],
+      "segments":
+      [
+        {
+          "display_name": "update-seg-external",
+          "vlan_ids": [0],
+          "transport_zone": "update-VCF-tz_vlan",
+          "description": "Segment configured for tier0 external connectivity",
+          "nsx_external": true
+        }
+      ],
+      "basename_edge": "edge-",
+      "ips_edge": [21, 22],
+      "edge_node": {
+        "basename": "edge-0",
+        "cpu": 4,
+        "memory": 8,
+        "data_network": "update-seg-external",
+        "host_switch_spec": {
+          "host_switches": [
+            {
+              "host_switch_name": "nsxHostSwitch_overlay",
+              "host_switch_type": "NVDS",
+              "host_switch_mode": "STANDARD",
+              "host_switch_profile_names": [
+                "uplink-profile-edge"
+              ],
+              "pnics": [
+                {
+                  "device_name": "fp-eth0",
+                  "uplink_name": "uplink-1"
+                }
+              ],
+              "ip_pool_name": "update-ip_pool_tep_edge_overlay",
+              "transport_zone_names": [
+                "VCF-Created-Overlay-Zone"
+              ]
+            },
+            {
+              "host_switch_name": "nsxHostSwitch_external",
+              "host_switch_type": "NVDS",
+              "host_switch_mode": "STANDARD",
+              "host_switch_profile_names": [
+                "uplink-profile-edge"
+              ],
+              "pnics": [
+                {
+                  "device_name": "fp-eth1",
+                  "uplink_name": "uplink-1"
+                }
+              ],
+              "transport_zone_names": [
+                "update-VCF-tz_vlan"
+              ]
+            }
+          ]
+        }
+      },
+      "edge_clusters":
+      [
+        {
+          "display_name": "edge-cluster-01",
+          "members": [
+            {
+              "display_name": "edge-01"
+            },
+            {
+              "display_name": "edge-02"
+            }
+          ]
+        }
+      ],
+      "dhcp_servers":
+      [
+        {
+          "display_name": "dhcp-0",
+          "server_address": "100.65.222.1/30",
+          "lease_time": 86400
+        }
+      ],
+      "tier0s":
+      [
+        {
+          "display_name": "t0-01",
+          "edge_cluster_name": "edge-cluster-01",
+          "ha_mode": "ACTIVE_STANDBY",
+          "interfaces": [
+            {
+              "edge_name": "edge-01",
+              "segment_name": "update-seg-external",
+              "type": "EXTERNAL",
+              "display_name": "if-ext-0"
+            },
+            {
+              "edge_name": "edge-02",
+              "segment_name": "update-seg-external",
+              "type": "EXTERNAL",
+              "display_name": "if-ext-1"
+            }
+          ],
+          "static_routes": [
+            {
+              "display_name": "default-route",
+              "network": "0.0.0.0/0",
+              "next_hops": [
+                {
+                  "ip_address": "dummy"
+                }
+              ]
+            }
+          ],
+          "ha_vips": [
+            {
+              "interfaces": [
+                "if-ext-0",
+                "if-ext-1"
+              ]
+            }
+          ]
+        }
+      ],
+      "tier1s":
+      [
+        {
+          "tier0": "t0-01",
+          "display_name": "t1-01",
+          "edge_cluster_name": "edge-cluster-01",
+          "ha_mode": "ACTIVE_STANDBY",
+          "dhcp_server": "dhcp-0",
+          "route_advertisement_types": [
+            "TIER1_STATIC_ROUTES",
+            "TIER1_CONNECTED",
+            "TIER1_LB_VIP"
+          ]
+        }
+      ],
+      "segments_overlay":
+      [
+        {
+          "display_name": "seg-mgmt-avi",
+          "tier1": "t1-01",
+          "transport_zone": "VCF-Created-Overlay-Zone",
+          "dhcp_ranges": ["50-99"],
+          "avi_ipam_pool_se": "210-230",
+          "avi_mgmt": true
+        },
+        {
+          "display_name": "seg-mgmt-tanzu-supervisor",
+          "tier1": "t1-01",
+          "supervisor_starting_ip": "130",
+          "supervisor_count": 5,
+          "transport_zone": "VCF-Created-Overlay-Zone",
+          "dhcp_ranges": ["50-99"],
+          "avi_ipam_pool_se": "210-230",
+          "supervisor_mgmt": true
+        },
+        {
+          "display_name": "seg-server-1",
+          "tier1": "t1-01",
+          "dhcp_ranges": ["50-99"],
+          "avi_ipam_pool_se": "210-230",
+          "transport_zone": "VCF-Created-Overlay-Zone",
+          "backend": true
+        },
+        {
+          "display_name": "seg-vip-1",
+          "tier1": "t1-01",
+          "dhcp_ranges": ["50-99"],
+          "avi_ipam_pool_se": "210-230",
+          "avi_ipam_pool_vip": "11-99",
+          "transport_zone": "VCF-Created-Overlay-Zone"
+        }
+      ],
+      "segment_overlay_file": "/tmp/segments_overlay.json",
+      "ip_blocks": [
+        {
+          "name": "ip_block_pub_project_default",
+          "visibility": "EXTERNAL",
+          "project_ref": "default"
+        },
+        {
+          "name": "ip_block_pub_project1",
+          "visibility": "EXTERNAL",
+          "project_ref": "default"
+        },
+        {
+          "name": "ip_block_pub_project2",
+          "visibility": "EXTERNAL",
+          "project_ref": "default"
+        },
+        {
+          "name": "ip_block_pub_project3",
+          "visibility": "EXTERNAL",
+          "project_ref": "default"
+        },
+        {
+          "name": "vcf_a_org_placeholder1",
+          "visibility": "EXTERNAL",
+          "description": "will not be created at NSX level because project_ref is not defined but cidr will be assigned and routing/NAT will be done"
+        },
+        {
+          "name": "vcf_a_org_placeholder2",
+          "visibility": "EXTERNAL",
+          "description": "will not be created at NSX level because project_ref is not defined but cidr will be assigned and routing/NAT will be done"
+        },
+        {
+          "name": "ip_block_private_default",
+          "project_ref": "default",
+          "scope": "vpc_private",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_default_tgw",
+          "project_ref": "default",
+          "scope": "vpc_tgw",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_project1",
+          "project_ref": "project1",
+          "scope": "vpc_private",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_project1_tgw",
+          "project_ref": "project1",
+          "scope": "vpc_tgw",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_project2",
+          "project_ref": "project2",
+          "scope": "vpc_private",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_project2_tgw",
+          "project_ref": "project2",
+          "scope": "vpc_tgw",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_project3",
+          "project_ref": "project3",
+          "scope": "vpc_private",
+          "visibility": "PRIVATE"
+        },
+        {
+          "name": "ip_block_private_project3_tgw",
+          "project_ref": "project3",
+          "scope": "vpc_tgw",
+          "visibility": "PRIVATE"
+        }
+      ],
+      "gw_connections": [
+        {
+          "name": "gw-connection-default",
+          "tier0_ref": "t0-01",
+          "project_ref": "default"
+        },
+        {
+          "name": "gw-connection-1",
+          "tier0_ref": "t0-01",
+          "project_ref": "project1"
+        },
+        {
+          "name": "gw-connection-2",
+          "tier0_ref": "t0-01",
+          "project_ref": "project2"
+        },
+        {
+          "name": "gw-connection-3",
+          "tier0_ref": "t0-01",
+          "project_ref": "project3"
+        }
+      ],
+      "projects": [
+        {
+          "name": "project1",
+          "ip_block_ref": "ip_block_pub_project1",
+          "tier0_ref": "t0-01",
+          "edge_cluster_ref": "edge-cluster-01",
+          "gw_connections_refs": ["gw-connection-1"]
+        },
+        {
+          "name": "project2",
+          "ip_block_ref": "ip_block_pub_project2",
+          "tier0_ref": "t0-01",
+          "edge_cluster_ref": "edge-cluster-01",
+          "gw_connections_refs": ["gw-connection-2"]
+        },
+        {
+          "name": "project3",
+          "ip_block_ref": "ip_block_pub_project3",
+          "tier0_ref": "t0-01",
+          "edge_cluster_ref": "edge-cluster-01",
+          "gw_connections_refs": ["gw-connection-3"]
+        }
+      ],
+      "transit_gateways": [
+        {
+          "name": "default",
+          "gw_connection_ref": "gw-connection-default",
+          "project_ref": "default"
+        },
+        {
+          "name": "default",
+          "gw_connection_ref": "gw-connection-1",
+          "project_ref": "project1"
+        },
+        {
+          "name": "default",
+          "gw_connection_ref": "gw-connection-2",
+          "project_ref": "project2"
+        },
+        {
+          "name": "default",
+          "gw_connection_ref": "gw-connection-3",
+          "project_ref": "project3"
+        }
+      ],
+      "vpc_connectivity_profiles" : [
+        {
+          "name": "vpc_connectivity_profile-default",
+          "project_ref": "default",
+          "external_ip_block_refs": ["ip_block_pub_project_default"],
+          "edge_cluster_refs": ["edge-cluster-01"],
+          "private_tgw_ip_block_refs": ["ip_block_private_default_tgw"]
+        },
+        {
+          "name": "vpc_connectivity_profile1",
+          "project_ref": "project1",
+          "external_ip_block_refs": ["ip_block_pub_project1"],
+          "edge_cluster_refs": ["edge-cluster-01"],
+          "private_tgw_ip_block_refs": ["ip_block_private_project1_tgw"]
+        },
+        {
+          "name": "vpc_connectivity_profile2",
+          "project_ref": "project2",
+          "external_ip_block_refs": ["ip_block_pub_project2"],
+          "edge_cluster_refs": ["edge-cluster-01"],
+          "private_tgw_ip_block_refs": ["ip_block_private_project2_tgw"]
+        },
+        {
+          "name": "vpc_connectivity_profile3",
+          "project_ref": "project3",
+          "external_ip_block_refs": ["ip_block_pub_project3"],
+          "edge_cluster_refs": ["edge-cluster-01"],
+          "private_tgw_ip_block_refs": ["ip_block_private_project3_tgw"]
+        }
+      ],
+      "vpc_service_profiles" : [
+        {
+          "name": "vpc_service_profile-default",
+          "project_ref": "default"
+        },
+        {
+          "name": "vpc_service_profile1",
+          "project_ref": "project1"
+        },
+        {
+          "name": "vpc_service_profile2",
+          "project_ref": "project2"
+        },
+        {
+          "name": "vpc_service_profile3",
+          "project_ref": "project3"
+        }
+      ],
+      "vpcs": [
+        {
+          "name": "vpc-default",
+          "project_ref": "default",
+          "private_ips_refs": ["ip_block_private_default"],
+          "vpc_service_profile_ref": "vpc_service_profile-default",
+          "connectivity_profile_ref": "vpc_connectivity_profile-default"
+        },
+        {
+          "name": "vpc1",
+          "project_ref": "project1",
+          "private_ips_refs": ["ip_block_private_project1"],
+          "vpc_service_profile_ref": "vpc_service_profile1",
+          "connectivity_profile_ref": "vpc_connectivity_profile1"
+        },
+        {
+          "name": "vpc2",
+          "project_ref": "project2",
+          "private_ips_refs": ["ip_block_private_project2"],
+          "vpc_service_profile_ref": "vpc_service_profile2",
+          "connectivity_profile_ref": "vpc_connectivity_profile2"
+        },
+        {
+          "name": "vpc3",
+          "project_ref": "project3",
+          "private_ips_refs": ["ip_block_private_project3"],
+          "vpc_service_profile_ref": "vpc_service_profile3",
+          "connectivity_profile_ref": "vpc_connectivity_profile3"
+        }
+      ]
+    }
+  },
+  "avi":{
+    "folder": "avi-ctrl",
+    "ctrl_name": "avi-ctrl-01",
+    "content_library_name": "avi",
+    "nsx_cloud_name": "mgmt-domain",
+    "cloud_obj_name_prefix": "avi-auto-config",
+    "avi_subdomain": "app",
+    "ansible_config_repo": "https://github.com/tacobayle/ansibleAviConfig",
+    "ansible_config_tag": "v2.84",
+    "ansible_playbook": "nsx.yml",
+    "service_engine_groups": [
+      {
+        "name": "Default-Group",
+        "buffer_se": 0,
+        "ha_mode": "HA_MODE_SHARED",
+        "min_scaleout_per_vs": 1,
+        "max_vs_per_se": 100,
+        "vcenter_folder": "seg-Default-Group",
+        "extra_shared_config_memory": 0,
+        "vcpus_per_se": 1,
+        "memory_per_se": 2048,
+        "disk_per_se": 15,
+        "realtime_se_metrics": {
+          "enabled": true,
+          "duration": 0
+        }
+      }
+    ]
+  },
+  "supervisor_cluster": {
+    "size": "SMALL",
+    "name": "sup-admin-01",
+    "project_ref": "default",
+    "service_address": "10.96.0.0",
+    "storage_policy_ref": "vSAN Default Storage Policy",
+    "service_address_count": 512,
+    "vpc_profile_ref": "vpc_connectivity_profile-default",
+    "vpc_private_cidr_address": "172.26.0.0",
+    "vpc_private_cidr_prefix": "16"
+  },
+  "vcf_a": {
+    "organizations": [
+      {
+        "name": "org-1",
+        "region_ref": "region-1",
+        "supervisor_ref": "sup-admin-01",
+        "zones": [
+          {
+            "name": "domain-c10",
+            "cpu_limit": 1000,
+            "cpu_reservation": 0,
+            "memory_limit": 1000,
+            "memory_reservation": 0
+          }
+        ],
+        "vm_classes": [
+          "best-effort-2xlarge",
+          "guaranteed-small",
+          "best-effort-4xlarge",
+          "best-effort-8xlarge",
+          "best-effort-xsmall",
+          "guaranteed-large",
+          "guaranteed-medium",
+          "best-effort-large",
+          "best-effort-medium",
+          "best-effort-xlarge",
+          "guaranteed-2xlarge",
+          "guaranteed-4xlarge",
+          "best-effort-small",
+          "guaranteed-8xlarge",
+          "guaranteed-xlarge",
+          "guaranteed-xsmall"
+        ],
+        "storage_class_ref": "sddc01-cluster vSAN Storage Policy",
+        "storage_limit": 102400,
+        "username": "admin",
+        "role": "Organization Administrator"
+      }
+    ],
+    "ip_spaces": [
+      {
+        "name": "ip_space-1",
+        "quota": {
+          "single_ip": "unlimited",
+          "number_of_cidrs": "unlimited",
+          "maximum_subnet_size": "no_restriction"
+        }
+      }
+    ],
+    "provider_gw": [
+      {
+        "name": "provider_gw-1",
+        "region_ref": "region-1",
+        "tier0_ref": "t0-01",
+        "ip_space_ref": "ip_space-1"
+      }
+    ]
+  }
+}

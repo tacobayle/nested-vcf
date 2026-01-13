@@ -1,0 +1,5 @@
+#!/bin/bash
+#
+export VCF_CLI_VSPHERE_PASSWORD='${generic_password}'
+vcf context use ${supervisor_cluster_name}
+kubectl config use-context ${supervisor_cluster_name}

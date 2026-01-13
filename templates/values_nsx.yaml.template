@@ -1,0 +1,76 @@
+---
+avi_version: ${avi_version}
+controllerPrivateIps: |
+  ["${controllerPrivateIp}"]
+avi_old_password: ${avi_old_password}
+avi_password: ${avi_password}
+avi_username: ${avi_username}
+controller:
+  backup_server: ${ip_backup_server}
+  backup_username: ubuntu
+  backup_password: ${backup_password}
+  backup_remote_directory: /home/ubuntu/avi
+  aviCredsJsonFile: ~/.creds.json
+  environment: vCenter
+  cluster: false
+  ntp: |
+    ["${ntp}"]
+  dns: |
+    ["${dns}"]
+nsx_username: ${nsx_username}
+nsx_password: ${nsx_password}
+nsx_server: ${nsx_server}
+import_sslkeyandcertificate_ca: |
+  ${import_sslkeyandcertificate_ca}
+sslkeyandcertificate: |
+  ${sslkeyandcertificate}
+portal_configuration:
+  sslkeyandcertificate_ref: ${sslkeyandcertificate_ref}
+certificatemanagementprofile: |
+  ${certificatemanagementprofile}
+alertscriptconfig: |
+  ${alertscriptconfig}
+actiongroupconfig: |
+  ${actiongroupconfig}
+alertconfig: |
+  ${alertconfig}
+tenants: |
+  ${tenants}
+users: |
+  ${users}
+roles: |
+  ${roles}
+applicationprofile: |
+  ${applicationprofile}
+vsdatascriptset: |
+  ${vsdatascriptset}
+httppolicyset: |
+  ${httppolicyset}
+nsxt:
+  cloud:
+    name: ${cloud_name}
+    obj_name_prefix: ${cloud_obj_name_prefix}
+    vpc_mode: ${vpc_mode}
+    dhcp_enabled: true
+  domains:
+    - name: ${domain}
+  transport_zone:
+    name: ${transport_zone_name}
+  network_management: ${network_management}
+  networks_data: |
+    ${networks_data}
+  vcenters_details:
+    - username: ${vsphere_username}
+      password: ${vsphere_password}
+      vsphere_server: ${vsphere_server}
+      content_library: ${content_library_name}
+  service_engine_groups: |
+    ${service_engine_groups}
+  network_services: |
+    ${network_services}
+  pools: |
+    ${pools}
+  pool_groups: |
+    ${pool_groups}
+  virtual_services: |
+    ${virtual_services}

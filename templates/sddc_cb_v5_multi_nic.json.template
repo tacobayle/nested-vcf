@@ -1,0 +1,344 @@
+{
+    "deployWithoutLicenseKeys": true,
+    "skipEsxThumbprintValidation": true,
+    "managementPoolName": "${basename_sddc}-mgmt-pool",
+    "sddcManagerSpec": {
+      "secondUserCredentials": {
+        "username": "vcf",
+        "password": "${SDDC_MANAGER_PASSWORD}"
+      },
+      "ipAddress": "${ip_sddc_manager}",
+      "hostname": "${basename_sddc}-sddc-manager",
+      "rootUserCredentials": {
+        "username": "root",
+        "password": "${SDDC_MANAGER_PASSWORD}"
+      },
+      "localUserPassword": "${SDDC_MANAGER_PASSWORD}"
+    },
+    "sddcId": "${basename_sddc}",
+    "esxLicense": null,
+    "workflowType": "VCF",
+    "ceipEnabled": false,
+    "fipsEnabled": false,
+    "ntpServers": ["${ip_gw}"],
+    "dnsSpec": {
+      "subdomain": "${domain}",
+      "domain": "${domain}",
+      "nameserver": "${ip_gw}"
+    },
+    "networkSpecs": [
+      {
+        "networkType": "MANAGEMENT",
+        "subnet": "${subnet_mgmt}",
+        "gateway": "${gw_mgmt}",
+        "vlanId": "0",
+        "mtu": "9000",
+        "portGroupKey": "${basename_sddc}-pg-mgmt"
+      },
+      {
+        "networkType": "VMOTION",
+        "subnet": "${subnet_vmotion}",
+        "gateway": "${gw_vmotion}",
+        "vlanId": "0",
+        "mtu": "9000",
+        "portGroupKey": "${basename_sddc}-pg-vmotion",
+        "includeIpAddressRanges": [
+          {
+            "endIpAddress": "${ending_ip_vmotion}",
+            "startIpAddress": "${starting_ip_vmotion}"
+          }
+        ]
+      },
+      {
+        "networkType": "VSAN",
+        "subnet": "${subnet_vsan}",
+        "gateway": "${gw_vsan}",
+        "vlanId": "0",
+        "mtu": "9000",
+        "portGroupKey": "${basename_sddc}-pg-vsan",
+        "includeIpAddressRanges": [
+          {
+            "endIpAddress": "${ending_ip_vsan}",
+            "startIpAddress": "${starting_ip_vsan}"
+          }
+        ]
+      },
+      {
+        "networkType": "VM_MANAGEMENT",
+        "subnet": "${subnet_vm_mgmt}",
+        "gateway": "${gw_vm_mgmt}",
+        "vlanId": "0",
+        "mtu": "9000",
+        "portGroupKey": "${basename_sddc}-pg-vm-mgmt"
+      }
+    ],
+    "nsxtSpec": {
+      "nsxtManagerSize": "${nsxtManagerSize}",
+      "nsxtManagers": ${nsxtManagers},
+      "rootNsxtManagerPassword": "${NSX_PASSWORD}",
+      "nsxtAdminPassword": "${NSX_PASSWORD}",
+      "nsxtAuditPassword": "${NSX_PASSWORD}",
+      "vip": "${ip_nsx_vip}",
+      "vipFqdn": "${basename_sddc}-nsx",
+      "nsxtLicense": null,
+      "transportVlanId": "${transportVlanId}",
+      "ipAddressPoolSpec": {
+        "name": "${basename_sddc}-ip-addr-pool",
+        "description": "ESXi Host Overlay TEP IP Pool",
+        "subnets": [
+          {
+            "ipAddressPoolRanges": [
+              {
+                "start": "${nsx_pool_range_start}",
+                "end": "${nsx_pool_range_end}"
+              }
+            ],
+            "cidr": "${nsx_subnet_cidr}",
+            "gateway": "${nsx_subnet_gw}"
+          }
+        ]
+      }
+    },
+    "vsanSpec":
+    {
+      "vsanDedup": "false",
+      "esaConfig":
+      {
+        "enabled": false
+      },
+      "datastoreName": "${basename_sddc}-vsan"
+    },
+    "dvsSpecs": [
+      {
+        "dvsName": "${basename_sddc}-vds-01-mgmt",
+        "vmnics": [
+          "vmnic0", "vmnic1"
+        ],
+        "mtu": 9000,
+        "networks": [
+          "MANAGEMENT"
+        ],
+        "niocSpecs": [
+          {
+            "trafficType": "VSAN",
+            "value": "HIGH"
+          },
+          {
+            "trafficType": "VMOTION",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "VDP",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "VIRTUALMACHINE",
+            "value": "HIGH"
+          },
+          {
+            "trafficType": "MANAGEMENT",
+            "value": "NORMAL"
+          },
+          {
+            "trafficType": "NFS",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "HBR",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "FAULTTOLERANCE",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "ISCSI",
+            "value": "LOW"
+          }
+        ]
+      },
+      {
+        "dvsName": "${basename_sddc}-vds-02-vsan",
+        "vmnics": [
+          "vmnic2", "vmnic3"
+        ],
+        "mtu": 9000,
+        "networks": [
+          "VSAN"
+        ],
+        "niocSpecs": [
+          {
+            "trafficType": "VSAN",
+            "value": "HIGH"
+          },
+          {
+            "trafficType": "VMOTION",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "VDP",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "VIRTUALMACHINE",
+            "value": "HIGH"
+          },
+          {
+            "trafficType": "MANAGEMENT",
+            "value": "NORMAL"
+          },
+          {
+            "trafficType": "NFS",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "HBR",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "FAULTTOLERANCE",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "ISCSI",
+            "value": "LOW"
+          }
+        ]
+      },
+      {
+        "dvsName": "${basename_sddc}-vds-03-vmotion",
+        "vmnics": [
+          "vmnic4", "vmnic5"
+        ],
+        "mtu": 9000,
+        "networks": [
+          "VMOTION"
+        ],
+        "niocSpecs": [
+          {
+            "trafficType": "VSAN",
+            "value": "HIGH"
+          },
+          {
+            "trafficType": "VMOTION",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "VDP",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "VIRTUALMACHINE",
+            "value": "HIGH"
+          },
+          {
+            "trafficType": "MANAGEMENT",
+            "value": "NORMAL"
+          },
+          {
+            "trafficType": "NFS",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "HBR",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "FAULTTOLERANCE",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "ISCSI",
+            "value": "LOW"
+          }
+        ]
+      },
+      {
+        "dvsName": "${basename_sddc}-vds-04-vm-management",
+        "vmnics": [
+          "vmnic6", "vmnic7"
+        ],
+        "mtu": 9000,
+        "networks": [
+          "VM_MANAGEMENT"
+        ],
+        "niocSpecs": [
+          {
+            "trafficType": "VSAN",
+            "value": "HIGH"
+          },
+          {
+            "trafficType": "VMOTION",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "VDP",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "VIRTUALMACHINE",
+            "value": "HIGH"
+          },
+          {
+            "trafficType": "MANAGEMENT",
+            "value": "NORMAL"
+          },
+          {
+            "trafficType": "NFS",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "HBR",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "FAULTTOLERANCE",
+            "value": "LOW"
+          },
+          {
+            "trafficType": "ISCSI",
+            "value": "LOW"
+          }
+        ],
+        "nsxtSwitchConfig": {
+          "transportZones": [
+            {
+              "name": "${basename_sddc}-tz-overlay",
+              "transportType": "OVERLAY"
+            },
+            {
+              "name": "${basename_sddc}-tz-vlan",
+              "transportType": "VLAN"
+            }
+          ]
+        }
+      }
+    ],
+    "clusterSpec":
+    {
+      "clusterName": "${basename_sddc}-cluster",
+      "clusterEvcMode": null,
+      "clusterImageEnabled": true,
+      "vmFolders": {
+        "MANAGEMENT": "${basename_sddc}-folder-mgmt",
+        "NETWORKING": "${basename_sddc}-folder-nsx",
+        "EDGENODES": "${basename_sddc}-folder-edge"
+      }
+    },
+    "pscSpecs": [
+      {
+        "adminUserSsoPassword": "${VCENTER_PASSWORD}",
+        "pscSsoSpec": {
+          "ssoDomain": "${ssoDomain}"
+        }
+      }
+    ],
+    "vcenterSpec": {
+      "vcenterIp": "${ip_vcsa}",
+      "vcenterHostname": "${basename_sddc}-vcsa",
+      "vmSize": "${vmSize}",
+      "storageSize": null,
+      "rootVcenterPassword": "${VCENTER_PASSWORD}"
+    },
+    "hostSpecs": ${hostSpecs}
+}

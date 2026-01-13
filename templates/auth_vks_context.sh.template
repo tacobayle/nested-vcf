@@ -1,0 +1,45 @@
+#!/bin/bash
+#
+# Function to display help message
+show_help() {
+    cat << EOF
+Usage: $0 <namespace> <cluster_name>
+
+This script requires two arguments:
+  $1  - namespace: The namespace to use
+  $2  - cluster_name: The cluster name to use
+
+Options:
+  -h, --help    Show this help message and exit
+
+Examples:
+  $0 my-namespace my-cluster
+EOF
+}
+
+# Check for help flag
+if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+# Validate that both arguments are provided
+if [ -z "$1" ] || [ -z "$2" ]; then
+    echo "Error: Missing required arguments" >&2
+    echo ""
+    show_help
+    exit 1
+fi
+
+ns="${1}"
+cluster_name="${2}"
+export VCF_CLI_VSPHERE_PASSWORD='${generic_password}'
+
+if [[ $(vcf context list -o json | jq -c -r --arg arg "${ns}:${cluster_name}" '[.[] | select( .name == $arg)] | if length > 0 then .[0] else null end') == "null" ]] ; then
+  vcf context create ${ns} --endpoint=${api_server_cluster_endpoint} --username administrator@${ssoDomain} --workload-cluster-name ${cluster_name} --workload-cluster-namespace ${ns} --insecure-skip-tls-verify
+  vcf context use ${ns}:${cluster_name} --insecure-skip-tls-verify
+  kubectl config use-context ${ns}:${cluster_name}
+else
+  vcf context use ${ns}:${cluster_name} --insecure-skip-tls-verify
+  kubectl config use-context ${ns}:${cluster_name}
+fi

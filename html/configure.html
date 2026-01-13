@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Configure VCF-Automation</title>
+<style>
+table, th, td {
+  border: 1px solid black;
+  border-collapse: collapse;
+  text-align: left;
+}
+.code-box {
+  border: 1px solid black;
+  overflow-x: auto;
+  padding: 10px;
+  white-space: pre-wrap;
+}
+</style>
+</head>
+<body>
+<h1>Configure VCF-Automation</h1>
+<ul>
+    <li>Configure VCF-Automation - System org</a></li>
+    <p><iframe width="560" height="315" src="https://www.youtube.com/embed/UEK68k-e_Pw?si=rA4kfQ8DnP-YbQNj" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></p>
+    <li>Configure VCF-Automation - org1</a></li>
+    <p><iframe width="560" height="315" src="https://www.youtube.com/embed/a-cvi6SD2xc?si=Kn3BVGD7w6N0-jaJ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></p>
+    <li>Integrate Cert Manager with Vault</a></li>
+    <br>
+    <p><table>
+        <tr>
+            <th>Replace namespace in /home/ubuntu/yaml-files/secret_vault.yaml</th>
+            <td><pre><code>vi /home/ubuntu/yaml-files/secret_vault.yaml</code></pre>
+                <button onclick="copyToClipboard(0)">Copy Code</button>
+            </td>
+        </tr>
+        <tr>
+            <th>Create secret</th>
+            <td><pre><code>kubectl apply -f  /home/ubuntu/yaml-files/secret_vault.yaml</code></pre>
+                <button onclick="copyToClipboard(1)">Copy Code</button>
+            </td>
+        </tr>
+        <tr>
+            <th>Replace namespace in /home/ubuntu/yaml-files/vault_issuer.yaml</th>
+            <td><pre><code>vi /home/ubuntu/yaml-files/vault_issuer.yaml</code></pre>
+                <button onclick="copyToClipboard(2)">Copy Code</button>
+            </td>
+        </tr>
+        <tr>
+            <th>Create Issuer</th>
+            <td><pre><code>kubectl apply -f  /home/ubuntu/yaml-files/vault_issuer.yaml</code></pre>
+                <button onclick="copyToClipboard(3)">Copy Code</button>
+            </td>
+        </tr>
+    </table><br></p>
+    <li>Configure VCF-Automation - blueprint without SSL</li>
+    <p><a href="blueprint.yaml" target="_blank">blueprint without SSL</a><br><br>
+        <iframe width="560" height="315" src="https://www.youtube.com/embed/-3hIrM4t1tw?si=GvKYuXuOwzFLFONs" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></p>
+    <li>Configure VCF-Automation - blueprint with SSL</li>
+    <p><a href="blueprint-cert-manager.yaml" target="_blank">blueprint with SSL</a><br><br>
+        <iframe width="560" height="315" src="https://www.youtube.com/embed/Gn8NOgkNZBE?si=eEwRVT8XYIoRrkTB" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></p>
+    <li>Configure VKS</li>
+    <p></p><iframe width="560" height="315" src="https://www.youtube.com/embed/6xcGJEjZGRA?si=arDSzujBWLGRZf6R" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></p>
+    <li>Onboard AKO</li>
+    <p><a href="values.yaml" target="_blank">values.yaml</a><br><br>
+        <br>
+    <p><table>
+    <tr>
+        <th>Authenticate to the new VKS cluster</th>
+        <td><pre><code>/home/ubuntu/vks/auth_vks_context.sh ns-1-63xzf kubernetes-cluster-zily</code></pre>
+            <button onclick="copyToClipboard(5)">Copy Code</button>
+        </td>
+    </tr>
+    <tr>
+        <th>Generate values.yaml</th>
+        <td><pre><code>vi /home/ubuntu/yaml-files/secret_vault.yaml</code></pre>
+            <button onclick="copyToClipboard(6)">Copy Code</button>
+        </td>
+    </tr>
+    <tr>
+        <th>Create secret</th>
+        <td><pre><code>kubectl apply -f  /home/ubuntu/yaml-files/secret_vault.yaml</code></pre>
+            <button onclick="copyToClipboard(7)">Copy Code</button>
+        </td>
+    </tr>
+    </table><br></p>
+</ul>
+<script>
+function copyToClipboard(boxIndex) {
+  const codeBoxes = document.querySelectorAll('.code-box');
+  const codeBox = codeBoxes[boxIndex];
+  const codeElement = codeBox.querySelector('code');
+
+  const tempTextarea = document.createElement('textarea');
+  tempTextarea.value = codeElement.textContent;
+  document.body.appendChild(tempTextarea);
+
+  tempTextarea.select();
+  document.execCommand('copy');
+
+  document.body.removeChild(tempTextarea);
+
+}
+</script>
+</body>
+</body>
+</html>

@@ -1,0 +1,194 @@
+formatVersion: 1
+inputs:
+  target_port:
+    type: integer
+    title: Target Port
+    description: Destination port for insecure communications
+    default: 80
+  webfarm_size:
+    type: string
+    title: Webfarm Size
+    enum:
+      - Small (1 node)
+      - Medium (3 node)
+      - Large (5 node)
+  loadbalancer:
+    title: Load Balancer
+    type: boolean
+  loadbalancer_size:
+    title: Load Balancer Performance
+    type: string
+    enum:
+      - No HA (dev-only)
+      - HA
+      - High Performance HA
+  environment:
+    title: Environment
+    type: string
+    enum:
+      - Prod
+      - Pre-Prod
+      - Dev
+  region:
+    title: Region
+    type: string
+    enum:
+      - us-north1
+      - us-east3
+      - eu-central1
+  dns:
+    title: DNS Record
+    type: boolean
+  ssl:
+    title: Enable SSL
+    type: boolean
+  ssl_cert:
+    type: string
+    title: SSL Certificate Type
+    enum:
+      - Internal CA
+      - External CA
+resources:
+  CCI_Supervisor_Namespace_1:
+    type: CCI.Supervisor.Namespace
+    properties:
+      name: ----------TO_BE_REPLACED----------
+      existing: true
+  Username_Secret:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.CCI_Supervisor_Namespace_1.id}
+      manifest:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: ${env.deploymentName}-bootstrap-secret
+          namespace: ${resource.CCI_Supervisor_Namespace_1.name}
+        stringData:
+          aviuser-passwd: $1$xITZYmhL$wz6xxzHHCnaZBJFkzfXIz0
+  Virtual_Machine_2:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.CCI_Supervisor_Namespace_1.id}
+      manifest:
+        apiVersion: vmoperator.vmware.com/v1alpha3
+        kind: VirtualMachine
+        metadata:
+          name: ${env.deploymentName}-vm2
+          namespace: ${resource.CCI_Supervisor_Namespace_1.name}
+          labels:
+            vm-selector: ${env.deploymentName}-vm2
+            vm-lb-selector: ${env.deploymentName}-lb
+        spec:
+          className: best-effort-small
+          imageName: ----------TO_BE_REPLACED----------
+          storageClass: sddc01-cluster-vsan-storage-policy-latebinding
+          powerState: PoweredOn
+          bootstrap:
+            cloudInit:
+              cloudConfig:
+                defaultUserEnabled: true
+                runcmd:
+                  - /usr/bin/apt update
+                  - /usr/bin/apt-get install -y apache2 php php-mysql libapache2-mod-php php-cli php-common php-intl php-gd php-mbstring php-xml php-zip php-curl php-xmlrpc unzip open-vm-tools
+                users:
+                  - name: aviuser
+                    passwd:
+                      name: ${env.deploymentName}-bootstrap-secret
+                      key: aviuser-passwd
+                    lock_passwd: false
+                    sudo: ALL=(ALL) NOPASSWD:ALL
+      wait:
+        conditions:
+          - type: VirtualMachineCreated
+            status: 'True'
+  Virtual_Machine_1:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.CCI_Supervisor_Namespace_1.id}
+      manifest:
+        apiVersion: vmoperator.vmware.com/v1alpha3
+        kind: VirtualMachine
+        metadata:
+          name: ${env.deploymentName}-vm1
+          namespace: ${resource.CCI_Supervisor_Namespace_1.name}
+          labels:
+            vm-selector: ${env.deploymentName}-vm2
+            vm-lb-selector: ${env.deploymentName}-lb
+        spec:
+          className: best-effort-small
+          imageName: ----------TO_BE_REPLACED----------
+          storageClass: sddc01-cluster-vsan-storage-policy-latebinding
+          powerState: PoweredOn
+          bootstrap:
+            cloudInit:
+              cloudConfig:
+                defaultUserEnabled: true
+                runcmd:
+                  - /usr/bin/apt update
+                  - /usr/bin/apt-get install -y apache2 php php-mysql libapache2-mod-php php-cli php-common php-intl php-gd php-mbstring php-xml php-zip php-curl php-xmlrpc unzip open-vm-tools
+                users:
+                  - name: aviuser
+                    passwd:
+                      name: ${env.deploymentName}-bootstrap-secret
+                      key: aviuser-passwd
+                    lock_passwd: false
+                    sudo: ALL=(ALL) NOPASSWD:ALL
+      wait:
+        conditions:
+          - type: VirtualMachineCreated
+            status: 'True'
+  VM_Service:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.CCI_Supervisor_Namespace_1.id}
+      manifest:
+        apiVersion: vmoperator.vmware.com/v1alpha3
+        kind: VirtualMachineService
+        metadata:
+          name: ${env.deploymentName}-lb
+          namespace: ${resource.CCI_Supervisor_Namespace_1.name}
+        spec:
+          selector:
+            vm-lb-selector: ${env.deploymentName}-lb
+          type: ClusterIP
+          #type: LoadBalancer
+          ports:
+            - name: http
+              protocol: TCP
+              port: 80
+              targetPort: ${input.target_port}
+      wait:
+        conditions:
+          - type: NonExistentCondition
+            status: 'True'
+            indicatesFailure: true
+  Avi_Ingress:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.CCI_Supervisor_Namespace_1.id}
+      manifest:
+        apiVersion: networking.k8s.io/v1
+        kind: Ingress
+        metadata:
+          annotations:
+            cert-manager.io/issuer: vault-issuer
+            cert-manager.io/common-name: ${env.deploymentName}.${avi_subdomain}.${domain}
+          name: ${env.deploymentName}-ingress
+          namespace: ${resource.CCI_Supervisor_Namespace_1.name}
+        spec:
+          tls:
+            - hosts:
+                - ${env.deploymentName}.${avi_subdomain}.${domain}
+              secretName: cert-${env.deploymentName}
+          rules:
+            - host: ${env.deploymentName}.${avi_subdomain}.${domain}
+              http:
+                paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: ${env.deploymentName}-lb
+                        port:
+                          number: 80

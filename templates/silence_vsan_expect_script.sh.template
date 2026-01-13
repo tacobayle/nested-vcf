@@ -1,0 +1,36 @@
+#!/usr/bin/expect
+
+set timeout 60
+
+spawn ssh -oStrictHostKeyChecking=no ${vsphere_username}@${ssoDomain}:${vsphere_password}@${vsphere_server}
+
+expect "assword:"
+send "${vsphere_password}\r"
+
+expect "and>"
+send "com.vmware.appliance.version1.access.shell.set --enabled true\r"
+expect "and> "
+send "shell \r"
+expect " ]$ "
+send "rvc ${vsphere_username}@${ssoDomain}:'${vsphere_password}'@${vsphere_server} -a -q\r"
+expect "> "
+send "vsan.health.silent_health_check_configure -a controllerdriver ${vsphere_server}/${dc}/computers/${cluster}\n"
+expect "> "
+send "vsan.health.silent_health_check_configure -a controllerdiskmode ${vsphere_server}/${dc}/computers/${cluster}\n"
+expect "> "
+send "vsan.health.silent_health_check_configure -a controllerfirmware ${vsphere_server}/${dc}/computers/${cluster}\n"
+expect "> "
+send "vsan.health.silent_health_check_configure -a controllerreleasesupport ${vsphere_server}/${dc}/computers/${cluster}\n"
+expect "> "
+send "vsan.health.silent_health_check_configure -a controlleronhcl ${vsphere_server}/${dc}/computers/${cluster}\n"
+expect "> "
+send "vsan.health.silent_health_check_configure -a upgradelowerhosts ${vsphere_server}/${dc}/computers/${cluster}\n"
+expect "> "
+send "vsan.health.silent_health_check_configure -a perfsvcstatus ${vsphere_server}/${dc}/computers/${cluster}\n"
+expect "> "
+send "exit\n"
+expect " ]$ "
+send "exit\n"
+expect "and> "
+send "exit\n"
+interact

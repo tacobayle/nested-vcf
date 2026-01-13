@@ -1,0 +1,40 @@
+# Accept VMware License agreement
+accepteula
+
+# Set root password
+rootpw "${nested_esxi_root_password}"
+
+# Install ESXi on the first disk, ignore any SSD and do not create a VMFS
+install --ignoressd --firstdisk --overwritevmfs --ignoreprereqwarnings --ignoreprereqerrors --forceunsupportedinstall
+
+# Set serial at install
+# serialnum --esx=xxxx
+
+# Set the keyboard
+keyboard 'US Default'
+
+# Set the network to fixed IP address on the first network adapter
+network --bootproto=static --device=vmnic0 --ip=${ip_mgmt} --netmask=${netmask} --nameserver=${dns_servers} --hostname=${hostname}.${domain} --gateway=${gateway}
+
+reboot
+
+%firstboot --interpreter=busybox
+
+# Network config
+esxcli network ip interface remove --interface-name=vmk0
+esxcli network ip interface add --interface-name=vmk0 --portgroup-name="Management Network"
+esxcli network ip interface ipv4 set --interface-name=vmk0 --ipv4=${ip_mgmt} --netmask=${netmask} --type=static
+esxcli network ip interface tag add -i vmk0 -t Management
+esxcli network ip route ipv4 add -g ${gateway} -n 0.0.0.0/0
+esxcli network vswitch standard portgroup set -p "Management Network" -v 0
+esxcli network vswitch standard portgroup set -p "VM Network" -v 0
+
+# ssh config.
+vim-cmd hostsvc/enable_ssh
+vim-cmd hostsvc/start_ssh
+
+# ntp config.
+esxcli system ntp set --server ${ntp_servers} --enabled true
+
+# make the disk as flash disk
+esxcli system settings advanced set -o /Disk/AllowUsbClaimedAsSSD -i 1

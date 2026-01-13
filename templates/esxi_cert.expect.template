@@ -1,0 +1,12 @@
+#!/usr/bin/expect
+set timeout 60
+spawn ssh -oStrictHostKeyChecking=no root@${ip_esxi}
+expect "assword:"
+send "${nested_esxi_root_password}\r"
+expect ":~]"
+send "/sbin/generate-certificates\r"
+expect ":~]"
+send "/etc/init.d/hostd restart && /etc/init.d/vpxa restart\r"
+expect ":~]"
+send "exit\n"
+interact

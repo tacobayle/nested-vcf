@@ -1,0 +1,17 @@
+ubuntu@sddc01-external-gw:~$ kubectl explain argocd.spec.version
+GROUP:      argocd-service.vsphere.vmware.com
+KIND:       ArgoCD
+VERSION:    v1alpha1
+
+FIELD: version <string>
+
+
+DESCRIPTION:
+    Version is the field to specify the version of the ArgoCD Carvel Package.
+    version: 2.14.15+vmware.1-vks.1 is supported.
+
+
+ubuntu@sddc01-external-gw:~$
+
+
+https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vsphere-supervisor-services-and-standalone-components/latest/using-supervisor-services/using-argo-cd-service/install-argo-cd-service.html

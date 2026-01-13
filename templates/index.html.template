@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VCF Deployment Details</title>
+</head>
+<body>
+<h1>VCF Deployment Details</h1>
+<ul>
+    <li><a href="https://${basename_sddc}-mgmt-esxi01.${domain}" target="_blank">ESXi 01</a></li>
+    <li><a href="https://${basename_sddc}-mgmt-esxi02.${domain}" target="_blank">ESXi 02</a></li>
+    <li><a href="https://${basename_sddc}-mgmt-esxi03.${domain}" target="_blank">ESXi 03</a></li>
+    <li><a href="https://${basename_sddc}-mgmt-esxi04.${domain}" target="_blank">ESXi 04</a></li>
+    <li><a href="https://${basename_sddc}-sddc-manager.${domain}" target="_blank">SDDC Manager</a></li>
+    <li><a href="https://${basename_sddc}-vcsa.${domain}" target="_blank">Mgmt VCSA</a></li>
+    <li><a href="https://${basename_sddc}-nsx.${domain}" target="_blank">Mgmt NSX Manager</a></li>
+    <li><a href="${basename_sddc}.json" target="_blank">SDDC JSON File</a></li>
+    <li><a href="forward.html" target="_blank">Initial Forward Zone - this is not refreshed</a></li>
+    <li><a href="ptr_mgmt.html" target="_blank">Initial PTR MANAGEMENT network - this is not refreshed - this includes ESXi hosts</a></li>
+    <li><a href="ptr_vm_network.html" target="_blank">Initial PTR VM_MANAGEMENT network - this is not refreshed - this includes NSX and Avi</a></li>
+</ul>
+</body>
+</html>

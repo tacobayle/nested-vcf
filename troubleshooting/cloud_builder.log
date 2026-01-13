@@ -1,0 +1,9 @@
+CloudBuilder log files
+[Source]: https://docs.vmware.com/en/VMware-Cloud-Foundation/5.2/vcf-deploy/GUID-BD989650-BB59-4352-A278-CDF1B9AB9B47.html
+
+Bringup Service
+[admin@vcf01-cb01 [ ~ ]$]
+tail -f /var/log/vmware/vcf/bringup/vcf-bringup-debug.log
+
+[admin@vcf01-cb01 [ ~ ]$]
+less /var/log/vmware/vcf/bringup/vcf-bringup-debug.log

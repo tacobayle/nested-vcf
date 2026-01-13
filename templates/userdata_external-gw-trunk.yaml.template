@@ -1,0 +1,452 @@
+#cloud-config
+users:
+  - default
+
+ssh_pwauth: True
+
+chpasswd:
+  list: |
+    ubuntu:${password}
+  expire: False
+
+hostname: ${hostname}
+
+write_files:
+  - content: |
+      #!/bin/bash
+      # retrieve the network interface names
+      ifaceFirstName=`ip -o link show | awk -F': ' '{print $2}' | head -2 | tail -1`
+      macFirst=`ip -o link show | awk -F'link/ether ' '{print $2}' | awk -F' ' '{print $1}' | head -2 | tail -1`
+      ifaceLastName=`ip -o link show | awk -F': ' '{print $2}' | head -3 | tail -1`
+      macLast=`ip -o link show | awk -F'link/ether ' '{print $2}' | awk -F' ' '{print $1}' | head -3 | tail -1`
+      hostname=${hostname}
+      echo "${ip_gw} $hostname" | tee -a /etc/hosts
+      cp /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.old
+      echo "network:" | tee /etc/netplan/50-cloud-init.yaml
+      echo "    ethernets:" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "        $ifaceFirstName:" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "            dhcp4: false" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "            addresses: [${ip_gw}/${prefix}]" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "            match:" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "                macaddress: $macFirst" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "            set-name: $ifaceFirstName" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "            routes:" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "            - to: default" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "              via: ${default_gw}" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "            nameservers:" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "              addresses: [${forwarders_netplan}]" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "        $ifaceLastName:" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "            match:" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "                macaddress: $macLast" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "            set-name: $ifaceLastName" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "            mtu: 9000" | tee -a /etc/netplan/50-cloud-init.yaml
+      echo "    version: 2" | tee -a /etc/netplan/50-cloud-init.yaml
+      netplan apply
+      #
+      # apt install
+      #
+      wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
+      apt update
+      apt install -y jq
+      packages='${packages}'
+      echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
+      echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
+      echo $packages | jq -c -r .[] | while read package
+      do
+        apt install -y $package
+      done
+      #
+      # Directories
+      #
+      directories='${directories}'
+      echo $directories | jq -c -r .[] | while read directory
+      do
+        sudo -u ubuntu mkdir -p /home/ubuntu/$directory
+      done
+      #
+      # pip3
+      #
+      pip3 install --upgrade pip --break-system-packages
+      pip3_packages='${pip3_packages}'
+      echo $pip3_packages | jq -c -r .[] | while read pip3_package
+      do
+        sudo -u ubuntu pip3 install $pip3_package --break-system-packages
+      done
+      #
+      # GOVC install
+      #
+      curl -L -o - "https://github.com/vmware/govmomi/releases/latest/download/govc_$(uname -s)_$(uname -m).tar.gz" | tar -C /usr/local/bin -xvzf - govc
+      #
+      # Network
+      #
+      mv /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.old
+      cat /etc/netplan/50-cloud-init.yaml.old | head -n -1 | tee /etc/netplan/50-cloud-init.yaml
+      echo "    vlans:" | tee -a /etc/netplan/50-cloud-init.yaml
+      networks='${networks}'
+      echo $networks | jq -c -r .[] | while read net
+      do
+        echo "        vlan.`echo $net | jq -c -r .vlan_id`:" | tee -a /etc/netplan/50-cloud-init.yaml
+        echo "            id: `echo $net | jq -c -r .vlan_id`" | tee -a /etc/netplan/50-cloud-init.yaml
+        echo "            link: $ifaceLastName" | tee -a /etc/netplan/50-cloud-init.yaml
+        echo "            addresses: [`echo $net | jq -c -r .cidr | awk -F'0/' '{print $1}'`${ip_gw_last_octet}/`echo $net | jq -c -r .cidr | cut -f2 -d'/'`]" | tee -a /etc/netplan/50-cloud-init.yaml
+        if [[ $(echo ${net} | jq -c -r '.type') == "EXTERNAL" ]] ; then
+          # nsx segments overlay
+          nsx_segments_overlay='${nsx_segments_overlay}'
+          echo "            routes:" | tee -a /etc/netplan/50-cloud-init.yaml
+          echo $nsx_segments_overlay | jq -c -r .[] | while read segment
+          do
+            echo "            - to: $(echo $segment | jq -c -r .cidr)" | tee -a /etc/netplan/50-cloud-init.yaml
+            echo "              via: ${cidr_external_three_octets}.${nsx_tier0_tier0_vip_starting_ip}" | tee -a /etc/netplan/50-cloud-init.yaml
+            sudo iptables -t nat -A POSTROUTING -s `echo $segment | jq -c -r .cidr` -o $ifaceFirstName -j MASQUERADE
+          done
+          # avi vip
+          echo $nsx_segments_overlay | jq -c -r '[.[] | select(has("avi_ipam_vip"))]' | jq -c -r .[] | while read segment
+          do
+            echo "            - to: $(echo $segment | jq -c -r .avi_ipam_vip.cidr)" | tee -a /etc/netplan/50-cloud-init.yaml
+            echo "              via: ${cidr_external_three_octets}.${nsx_tier0_tier0_vip_starting_ip}" | tee -a /etc/netplan/50-cloud-init.yaml
+          done
+          # nsx external IP block
+          nsx_config_ip_blocks='${nsx_config_ip_blocks}'
+          echo $nsx_config_ip_blocks | jq -c -r .[] | while read ip_block_json
+          do
+            if [[ $(echo ${ip_block_json} | jq -r -c .visibility) == "EXTERNAL" ]]; then
+              echo "            - to: $(echo $ip_block_json | jq -c -r .cidr)" | tee -a /etc/netplan/50-cloud-init.yaml
+              echo "              via: ${cidr_external_three_octets}.${nsx_tier0_tier0_vip_starting_ip}" | tee -a /etc/netplan/50-cloud-init.yaml
+              sudo iptables -t nat -A POSTROUTING -s `echo $ip_block_json | jq -c -r .cidr` -o $ifaceFirstName -j MASQUERADE
+            fi
+          done
+        fi
+        sudo iptables -t nat -A POSTROUTING -s `echo $net | jq -c -r .cidr` -o $ifaceFirstName -j MASQUERADE
+        sudo iptables -A FORWARD -i vlan.`echo $net | jq -c -r .vlan_id` -o $ifaceFirstName -j ACCEPT
+      done
+      echo "    version: 2" | tee -a /etc/netplan/50-cloud-init.yaml
+      netplan apply
+      iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+      iptables-save | tee /etc/iptables/rules.v4
+      sysctl -w net.ipv4.ip_forward=1
+      echo "net.ipv4.ip_forward=1" | tee -a /etc/sysctl.conf
+      #
+      # DNS config
+      #
+      cp /etc/bind/named.conf.options /etc/bind/named.conf.options.bkup
+      cp /etc/bind/named.conf.options /etc/bind/named.conf.options.old
+      sudo tee /etc/bind/named.conf.options > /dev/null <<EOT
+      options {
+        directory "/var/cache/bind";
+        recursion yes;
+        notify yes;
+        allow-query { any; };
+        allow-query-cache { any; };
+        allow-recursion { any; };
+        forwarders { ${forwarders_bind}; };
+        dnssec-validation no;
+        auth-nxdomain no; # conform to RFC1035
+        listen-on { localhost; any; };
+        listen-on-v6 { localhost; any; };
+        allow-transfer { any; };
+      };
+      EOT
+      #
+      sudo cp /etc/bind/named.conf.local /etc/bind/named.conf.local.old
+      sudo tee /etc/bind/named.conf.local > /dev/null <<EOT
+      zone "${domain}" {
+        type master;
+        forwarders {};
+        allow-transfer { any; };
+        update-policy {
+          grant myKeyName zonesub any;
+        };
+        file "/var/lib/bind/db.${domain}";
+      };
+      zone "${reverse_mgmt}.in-addr.arpa" {
+        type master;
+        update-policy {
+          grant myKeyName zonesub any;
+        };
+        allow-transfer { any; };
+        file "/var/lib/bind/db.${reverse_mgmt}";
+      };
+      zone "${reverse_vm_network}.in-addr.arpa" {
+        type master;
+        update-policy {
+          grant myKeyName zonesub any;
+        };
+        allow-transfer { any; };
+        file "/var/lib/bind/db.${reverse_vm_network}";
+      };
+      EOT
+      #
+      sudo tee /var/lib/bind/db.${domain} > /dev/null <<EOT
+      \$ORIGIN .
+      \$TTL 60
+      ${domain}                IN SOA dns.${domain}. admin.${domain}. (
+                                      329        ; serial
+                                      604800     ; refresh (1 week)
+                                      86400      ; retry (1 day)
+                                      2419200    ; expire (4 weeks)
+                                      604800     ; minimum (1 week)
+                                      )
+                              NS      dns.${domain}.
+      \$ORIGIN ${domain}.
+      dns       IN            A       ${ip_gw}
+      vault       IN            A       ${ip_gw}
+      ${basename_sddc}-nsx       IN            A       ${ip_nsx_vip}
+      ${basename_sddc}-avi       IN            A       ${ip_avi_vip}
+      ${basename_sddc}-vcsa       IN            A       ${ip_vcsa}
+      EOT
+      name_vcf_installer=${name_vcf_installer}
+      name_cb=${name_cb}
+      echo "${basename_sddc}-sddc-manager       IN            A       ${ip_sddc_manager}" | tee -a /var/lib/bind/db.${domain}
+      if [[ ${name_vcf_installer} != "null" ]]; then
+        echo "${basename_sddc}-${name_vcf_installer}       IN            A       ${ip_vcf_installer}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-vcfa       IN            A       ${ip_vcf_automation}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-vcfo       IN            A       ${ip_vcf_operation}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-vcfo-fleet       IN            A       ${ip_vcf_operation_fleet}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-vcfo-collector       IN            A       ${ip_vcf_operation_collector}" | tee -a /var/lib/bind/db.${domain}
+      fi
+      #
+      count_esxi=1
+      echo '${ips_esxi}' | jq -c -r .[] | while read ip_esxi
+      do
+        if [[ $(((${count_esxi}-1)/4+1)) -eq 1 ]] ; then
+          echo "${basename_sddc}-mgmt-esxi0$count_esxi      IN            A       ${ip_esxi}" | tee -a /var/lib/bind/db.${domain}
+        fi
+        if [[ $(((${count_esxi}-1)/4+1)) -gt 1 ]] ; then
+          echo "${basename_sddc}-wld0$(((${count_esxi}-1)/4))-esxi0$((${count_esxi}-(((${count_esxi}-1)/4))*4))      IN            A       ${ip_esxi}" | tee -a /var/lib/bind/db.${domain}
+        fi
+        ((count_esxi++))
+      done
+      #
+      count_nsx=1
+      echo '${ips_nsx}' | jq -c -r .[] | while read ip_nsx
+      do
+        echo "${basename_sddc}${basename_nsx_manager}$count_nsx      IN            A       ${ip_nsx}" | tee -a /var/lib/bind/db.${domain}
+        ((count_nsx++))
+      done
+      #
+      count_avi=1
+      echo '${ips_avi}' | jq -c -r .[] | while read ip_avi
+      do
+        echo "${basename_sddc}${basename_avi_ctrl}$count_avi      IN            A       ${ip_avi}" | tee -a /var/lib/bind/db.${domain}
+        ((count_avi++))
+      done
+      #
+      # zone delegation
+      #
+      echo "avi-dns-vs   IN            A       ${ip_avi_dns}" | tee -a /var/lib/bind/db.${domain}
+      echo "\$ORIGIN ${avi_subdomain}.${domain}." | tee -a /var/lib/bind/db.${domain}
+      echo "\$TTL 1D" | tee -a /var/lib/bind/db.${domain}
+      echo "@         IN            NS      avi-dns-vs.${domain}." | tee -a /var/lib/bind/db.${domain}
+      #
+      sudo tee /var/lib/bind/db.${reverse_mgmt} > /dev/null <<EOT
+      \$ORIGIN .
+      \$TTL 60
+      ${reverse_mgmt}.in-addr.arpa     IN SOA  dns.${domain}. admin.${domain}. (
+                                      298        ; serial
+                                      604800     ; refresh (1 week)
+                                      86400      ; retry (1 day)
+                                      2419200    ; expire (4 weeks)
+                                      604800     ; minimum (1 week)
+                                      )
+                              NS      dns.${domain}.
+      \$ORIGIN ${reverse_mgmt}.in-addr.arpa.
+      EOT
+      #
+      count_esxi=1
+      echo '${ips_esxi}' | jq -c -r .[] | while read ip_esxi
+      do
+        if [[ $(((${count_esxi}-1)/4+1)) -eq 1 ]] ; then
+          echo "`echo $ip_esxi | cut -f4 -d'.'`            PTR     ${basename_sddc}-mgmt-esxi0$count_esxi.${domain}." | tee -a /var/lib/bind/db.${reverse_mgmt}
+        fi
+        if [[ $(((${count_esxi}-1)/4+1)) -gt 1 ]] ; then
+          echo "`echo $ip_esxi | cut -f4 -d'.'`            PTR     ${basename_sddc}-wld0$(((${count_esxi}-1)/4))-esxi0$((${count_esxi}-(((${count_esxi}-1)/4))*4)).${domain}." | tee -a /var/lib/bind/db.${reverse_mgmt}
+        fi
+        ((count_esxi++))
+      done
+      #
+      sudo tee /var/lib/bind/db.${reverse_vm_network} > /dev/null <<EOT
+      \$ORIGIN .
+      \$TTL 60
+      ${reverse_vm_network}.in-addr.arpa     IN SOA  dns.${domain}. admin.${domain}. (
+                                      298        ; serial
+                                      604800     ; refresh (1 week)
+                                      86400      ; retry (1 day)
+                                      2419200    ; expire (4 weeks)
+                                      604800     ; minimum (1 week)
+                                      )
+                              NS      dns.${domain}.
+      \$ORIGIN ${reverse_vm_network}.in-addr.arpa.
+      EOT
+      echo "`echo '${ip_vcsa}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcsa.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+      echo "`echo '${ip_sddc_manager}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-sddc-manager.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+      if [[ ${name_vcf_installer} != "null" ]]; then
+        echo "`echo '${ip_vcf_automation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfa.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        echo "`echo '${ip_vcf_operation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfo.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        echo "`echo '${ip_vcf_operation_fleet}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfo-fleet.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        echo "`echo '${ip_vcf_operation_collector}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfo-collector.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+      fi
+      echo "`echo '${ip_nsx_vip}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-nsx.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+      echo "`echo '${ip_avi_vip}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-avi.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+      count_nsx=1
+      echo '${ips_nsx}' | jq -c -r .[] | while read ip_nsx
+      do
+        echo "`echo $ip_nsx | cut -f4 -d'.'`            PTR     ${basename_sddc}${basename_nsx_manager}$count_nsx.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        ((count_nsx++))
+      done
+      count_avi=1
+      echo '${ips_avi}' | jq -c -r .[] | while read ip_avi
+      do
+        echo "`echo $ip_avi | cut -f4 -d'.'`            PTR     ${basename_sddc}${basename_avi_ctrl}$count_avi.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        ((count_avi++))
+      done
+      #
+      systemctl restart bind9.service
+      #
+      # Vault config.
+      #
+      key_file="/opt/vault/tls/tls.key"
+      cert_conf_file="/opt/vault/tls/crt.conf"
+      cert_file="/opt/vault/tls/tls.crt"
+      openssl genrsa -out ${key_file} 4096
+      echo "[req]" | tee ${cert_conf_file} >/dev/null 2>&1
+      echo "default_bits = 4096" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "prompt = no" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "default_md = sha256" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "distinguished_name = dn" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "req_extensions = v3_req" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "[dn]" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "CN = ${domain}" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "O = Organization" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "L = City" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "ST = State" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "C = US" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "[v3_req]" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "basicConstraints = CA:FALSE" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "keyUsage = nonRepudiation, digitalSignature, keyEncipherment" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "subjectAltName = @alt_names" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "[alt_names]" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "DNS.1 = vault.${domain}" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      echo "IP.1 = ${ip_gw}" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      openssl req -new -x509 -key ${key_file} -out ${cert_file} -days 365 -config ${cert_conf_file} -extensions v3_req
+      mkdir -p /etc/vault.d
+      mv /etc/vault.d/vault.hcl /etc/vault.d/vault.hcl.ori
+      export VAULT_ADDR="https://127.0.0.1:8200"
+      vault_config='
+      storage "file" {
+        path    = "/opt/vault/data"
+      }
+        listener "tcp" {
+          address     = "0.0.0.0:8200"
+          tls_disable = "false"
+          tls_cert_file = "/opt/vault/tls/tls.crt"
+          tls_key_file = "/opt/vault/tls/tls.key"
+        }
+        ui = true
+        api_addr = "https://${ip_gw}:8200"'
+      echo "${vault_config}" | tee /etc/vault.d/vault.hcl
+      systemctl start vault
+      systemctl enable vault
+      # vault server -config /etc/vault.d/vault.hcl
+      vault operator init -key-shares=1 -key-threshold=1 -tls-skip-verify -format json | tee ${vault_secret_file_path}
+      vault operator unseal -tls-skip-verify $(jq -c -r .unseal_keys_hex[0] ${vault_secret_file_path})
+      vault login -tls-skip-verify $(jq -c -r .root_token ${vault_secret_file_path})
+      echo "apiVersion: v1" | tee /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "kind: Secret" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "metadata:" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "  name: cert-manager-vault-token" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "  namespace: ----------TO_BE_REPLACED----------" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "type: Opaque" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "data:" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "  token: $(echo -n $(jq -c -r .root_token ${vault_secret_file_path}) | base64)" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
+      echo "apiVersion: cert-manager.io/v1" | tee /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "kind: Issuer" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "metadata:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "  name: vault-issuer" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "  namespace: ----------TO_BE_REPLACED----------" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "spec:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "  vault:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "    server: https://${ip_gw}:8200" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "    path: ${vault_pki_intermediate_name}/sign/${vault_pki_intermediate_role_name}" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "    caBundle: $(cat /opt/vault/tls/tls.crt | base64 -w0)" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "    auth:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "      tokenSecretRef:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "        name: cert-manager-vault-token" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      echo "        key: token" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
+      # root ca
+      vault secrets enable -tls-skip-verify ${vault_pki_name}
+      vault secrets tune -tls-skip-verify -max-lease-ttl=${vault_pki_max_lease_ttl} "${vault_pki_name}"
+      vault write -tls-skip-verify -field=certificate ${vault_pki_name}/root/generate/internal common_name="${vault_pki_cert_common_name}" issuer_name="${vault_pki_cert_issuer_name}" ttl=${vault_pki_cert_ttl} > ${vault_pki_cert_path}
+      vault write -tls-skip-verify ${vault_pki_name}/roles/${vault_pki_role_name} allow_any_name=true
+      vault write -tls-skip-verify ${vault_pki_name}/config/urls issuing_certificates="https://${ip_gw}:8200/v1/${vault_pki_role_name}/ca" crl_distribution_points="https://${ip_gw}:8200/v1/${vault_pki_role_name}/crl"
+      # intermediate ca
+      vault secrets enable -tls-skip-verify -path=${vault_pki_intermediate_name} ${vault_pki_name}
+      vault secrets tune -tls-skip-verify -max-lease-ttl=${vault_pki_intermediate_max_lease_ttl} ${vault_pki_intermediate_name}
+      vault write -tls-skip-verify -format=json ${vault_pki_intermediate_name}/intermediate/generate/internal common_name="${vault_pki_intermediate_cert_common_name}" issuer_name="${vault_pki_intermediate_cert_issuer_name}" | jq -r '.data.csr' | tee ${vault_pki_intermediate_cert_path}
+      vault write -tls-skip-verify -format=json ${vault_pki_name}/root/sign-intermediate issuer_ref="${vault_pki_cert_issuer_name}" csr=@${vault_pki_intermediate_cert_path} format=pem_bundle ttl="${vault_pki_intermediate_max_lease_ttl}" | jq -r '.data.certificate' | tee ${vault_pki_intermediate_cert_path_signed}
+      vault write -tls-skip-verify ${vault_pki_intermediate_name}/intermediate/set-signed certificate=@${vault_pki_intermediate_cert_path_signed}
+      vault write -tls-skip-verify ${vault_pki_intermediate_name}/roles/${vault_pki_intermediate_role_name} issuer_ref="$(vault read -tls-skip-verify -field=default ${vault_pki_intermediate_role_name}/config/issuers)" allowed_domains="${domain}" allow_subdomains=${vault_pki_intermediate_role_allow_subdomains} max_ttl="${vault_pki_intermediate_role_max_ttl}"
+      #
+      # NTP config
+      #
+      mv /etc/chrony/chrony.conf /etc/chrony/chrony.conf.old
+      cat /etc/chrony/chrony.conf.old | grep -v pool | tee /etc/chrony/chrony.conf
+      ntp_masters='${ntp_masters}'
+      echo $ntp_masters | jq -c -r .[] | while read ntp_master
+      do
+        echo "pool $ntp_master iburst" | tee -a /etc/chrony/chrony.conf
+      done
+      echo "allow 0.0.0.0/0" | tee -a /etc/chrony/chrony.conf
+      systemctl restart chrony.service
+      #
+      # K8s install
+      #
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/${K8s_version_short}/deb/Release.key | sudo gpg --dearmor -o /tmp/kubernetes-apt-keyring.gpg
+      echo "deb [signed-by=/tmp/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${K8s_version_short}/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+      apt update
+      apt-get install -y kubectl
+      echo "alias k=kubectl" | sudo tee -a /home/ubuntu/.profile
+      echo "source <(kubectl completion bash | sed s/kubectl/k/g)" | sudo tee -a /home/ubuntu/.profile
+      #
+      # helm install
+      #
+      curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+      sudo chmod 700 get_helm.sh
+      ./get_helm.sh
+      #
+      # VCF CLI Install
+      #
+      wget -O /tmp/$(basename ${gw_vcf_cli_url}) ${gw_vcf_cli_url}
+      tar -xvzf /tmp/$(basename ${gw_vcf_cli_url})
+      mv ./vcf-cli-linux_amd64 /usr/local/bin/vcf
+      chmod a+x /usr/local/bin/vcf
+      #
+      # HTTP config (copy DNS zones)
+      #
+      cp /var/lib/bind/db.${domain} /var/www/html/forward_raw.html
+      while read -r line; do echo "$line<br>" ; done < /var/www/html/forward_raw.html | sudo tee /var/www/html/forward.html
+      cp /var/lib/bind/db.${reverse_mgmt} /var/www/html/ptr_mgmt_network_raw.html
+      while read -r line; do echo "$line<br>" ; done < /var/www/html/ptr_mgmt_network_raw.html | sudo tee /var/www/html/ptr_mgmt.html
+      cp /var/lib/bind/db.${reverse_vm_network} /var/www/html/ptr_vm_network_raw.html
+      while read -r line; do echo "$line<br>" ; done < /var/www/html/ptr_vm_network_raw.html | sudo tee /var/www/html/ptr_vm_network.html
+      #
+      #
+      # Patching DNS to localhost
+      #
+      mv /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.patching_dns
+      cat /etc/netplan/50-cloud-init.yaml.patching_dns | sed -e "s/${forwarders_netplan}/127.0.0.1/" | tee /etc/netplan/50-cloud-init.yaml
+      netplan apply
+      #
+      echo "cloud init done" | tee /tmp/cloudInitDone.log
+    path: /opt/bootstrap.sh
+    permissions: 0755
+
+  - content: |
+      ubuntu ALL=(ALL) NOPASSWD:ALL
+    path: /etc/sudoers.d/ubuntu
+
+runcmd:
+  - /opt/bootstrap.sh

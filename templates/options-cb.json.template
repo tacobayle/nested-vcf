@@ -1,0 +1,66 @@
+{
+  "DiskProvisioning": "thin",
+  "IPAllocationPolicy": "fixedPolicy",
+  "IPProtocol": "IPv4",
+  "PropertyMapping": [
+    {
+      "Key": "FIPS_ENABLE",
+      "Value": "False"
+    },
+    {
+      "Key": "guestinfo.ADMIN_USERNAME",
+      "Value": "admin"
+    },
+    {
+      "Key": "guestinfo.ADMIN_PASSWORD",
+      "Value": "${CLOUD_BUILDER_PASSWORD}"
+    },
+    {
+      "Key": "guestinfo.ROOT_PASSWORD",
+      "Value": "${CLOUD_BUILDER_PASSWORD}"
+    },
+    {
+      "Key": "guestinfo.hostname",
+      "Value": "${name_cb}"
+    },
+    {
+      "Key": "guestinfo.ip0",
+      "Value": "${ip_cb}"
+    },
+    {
+      "Key": "guestinfo.netmask0",
+      "Value": "${netmask}"
+    },
+    {
+      "Key": "guestinfo.gateway",
+      "Value": "${ip_gw}"
+    },
+    {
+      "Key": "guestinfo.DNS",
+      "Value": "${ip_gw}"
+    },
+    {
+      "Key": "guestinfo.domain",
+      "Value": ""
+    },
+    {
+      "Key": "guestinfo.searchpath",
+      "Value": ""
+    },
+    {
+      "Key": "guestinfo.ntp",
+      "Value": "${ip_gw}"
+    }
+  ],
+  "NetworkMapping": [
+    {
+      "Name": "Network 1",
+      "Network": "${network_ref}"
+    }
+  ],
+  "MarkAsTemplate": false,
+  "PowerOn": false,
+  "InjectOvfEnv": false,
+  "WaitForIP": false,
+  "Name": "${name_cb}"
+}
