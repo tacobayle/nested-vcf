@@ -44,7 +44,7 @@ log() {
 sddcm="${basename_sddc}-sddc-manager.${domain}"
 sddcmuser="${vsphere_nested_username}@${ssoDomain}"
 sddcmpass=''${generic_password}''
-export SSHPASS='${generic_password}'
+export SSHPASS=''${generic_password}''
 pvcfile="/home/ubuntu/sddc-manager/pvc.json"
 sigfile="/home/ubuntu/sddc-manager/pvc.sig"
 ovapath="/home/ubuntu/sddc-manager/$(basename ${avi_ova_url_sddc_manager})"

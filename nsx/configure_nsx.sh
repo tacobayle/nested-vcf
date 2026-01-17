@@ -137,6 +137,21 @@ json_data=$(echo ${json_data} | jq '.host_switch_spec.host_switches[0].transport
             "PUT" \
             "$(echo ${json_data} | jq -c -r .)"
 #
+# enable ssh
+#
+json_data='{"service_name": "ssh","service_properties": {"start_on_boot": true,"root_login": true}}'
+/bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" "${generic_password}" \
+            "api/v1/node/services/ssh" \
+            PUT \
+            "${json_data}"
+/bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" "${generic_password}" \
+            "api/v1/node/services/ssh?action=start" \
+            POST \
+            ""
+export SSHPASS=''${generic_password}''
+sshpass -e scp -o StrictHostKeyChecking=no /home/ubuntu/nsx/disable_ovf_validation_flag.sh root@${ip_nsx_vip}:/tmp/disable_ovf_validation_flag.sh
+sshpass -e ssh -o StrictHostKeyChecking=no root@${ip_nsx_vip} "bash /tmp/disable_ovf_validation_flag.sh"
+#
 # Edge node creation
 #
 # Get compute manager id
