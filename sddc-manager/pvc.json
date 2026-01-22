@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "sequenceNumber": 2,
-  "creationTime": "2025-09-05T04:00:00Z",
-  "publishedTime": "2025-09-05T04:00:00Z",
+  "sequenceNumber": 3,
+  "creationTime": "2025-11-29T00:00:00Z",
+  "publishedTime": "2025-11-29T00:00:00Z",
   "patches": {
     "NSX_ALB": [
       {
@@ -83,6 +83,27 @@
                   "fileName": "controller-31.1.2-9193.ova",
                   "size": 4737034240,
                   "checksum": "e779e8e85a248e84e9d06416bcf2216852d29f63b75dbda4a0d0b8af84b8e98e"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "releaseDate": "2025-10-21T12:00:00Z",
+        "description": "This VMware Software install bundle contains VMware Avi Load Balancer 31.2.1. For more information, see https://techdocs.broadcom.com/us/en/vmware-security-load-balancing/avi-load-balancer/avi-load-balancer/31-2/vmware-avi-load-balancer-release-notes/release-notes-for-avi-load-balancer-version-31-2-1.html",
+        "productVersion": "31.2.1-25015167",
+        "artifacts": {
+          "bundles": [
+            {
+              "id": "b384b0a2-fe1d-4eaf-a785-3b12768e529b",
+              "type": "INSTALL",
+              "name": "b384b0a2-fe1d-4eaf-a785-3b12768e529b",
+              "binaries": [
+                {
+                  "fileName": "controller-31.2.1-9148.ova",
+                  "size": 5267855360,
+                  "checksum": "d4550f6ea36de41a55e63a7bc3eac6773f50f47e40529b22168c1b0e0950654c"
                 }
               ]
             }

@@ -16,6 +16,10 @@ govc dvs.portgroup.add -dvs "${basename_sddc}-vds-01" -vlan "$(jq -c -r --arg ar
 log_message "create portgroup ${basename_sddc}-pg-external in vds ${basename_sddc}-vds-01 with vlan $(jq -c -r --arg arg "EXTERNAL" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)" "${log_file}" "" ""
 govc dvs.portgroup.add -dvs "${basename_sddc}-vds-01" -vlan "$(jq -c -r --arg arg "EXTERNAL" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)" "${basename_sddc}-pg-external" > /dev/null 2>&1
 #
+#
+#
+touch ${resultFile}
+#
 # content library
 #
 #log_message "create content library update-cl-ubuntu" "${log_file}" "" ""
