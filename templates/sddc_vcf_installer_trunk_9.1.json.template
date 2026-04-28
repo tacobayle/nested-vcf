@@ -1,0 +1,229 @@
+{
+    "sddcId": "${basename_sddc}",
+    "vcfInstanceName": "${basename_sddc}-instance",
+    "workflowType": "VCF",
+    "version": "${vcf_version_full}",
+    "ceipEnabled": false,
+    "dnsSpec": {
+        "nameservers": [
+            "${ip_gw}"
+        ],
+        "subdomain": "${domain}"
+    },
+    "ntpServers": [
+        "${ip_gw}"
+    ],
+    "vcenterSpec": {
+        "vcenterHostname": "${basename_sddc}-vcsa.${domain}",
+        "rootVcenterPassword": "${VCS_PASSWORD}",
+        "vmSize": "medium",
+        "storageSize": "",
+        "adminUserSsoPassword": "${VCS_PASSWORD}",
+        "ssoDomain": "${ssoDomain}",
+        "useExistingDeployment": false
+    },
+    "clusterSpec": {
+        "clusterName": "${basename_sddc}-cluster",
+        "datacenterName": "${basename_sddc}-dc"
+    },
+    "datastoreSpec": {
+        "vsanSpec": {
+            "esaConfig": {
+                "enabled": false
+            },
+            "datastoreName": "${basename_sddc}-vsan",
+            "failuresToTolerate": 1,
+            "vsanDedup": false
+        }
+    },
+    "nsxtSpec": {
+        "nsxtManagerSize": "${nsxtManagerSize}",
+        "nsxtManagers": [
+            {
+                "hostname": "${basename_sddc}${basename_nsx_manager}1.${domain}"
+            }
+        ],
+        "vipFqdn": "${basename_sddc}-nsx.${domain}",
+        "useExistingDeployment": false,
+        "nsxtAdminPassword": "${NSX_PASSWORD}",
+        "nsxtAuditPassword": "${NSX_PASSWORD}",
+        "rootNsxtManagerPassword": "${NSX_PASSWORD}",
+        "skipNsxOverlayOverManagementNetwork": true,
+        "ipAddressPoolSpec": {
+            "name": "teppool",
+            "description": "teppool",
+            "subnets": [
+                {
+                    "cidr": "${nsx_subnet_cidr}",
+                    "gateway": "${nsx_subnet_gw}",
+                    "ipAddressPoolRanges": [
+                        {
+                            "start": "${nsx_pool_range_start}",
+                            "end": "${nsx_pool_range_end}"
+                        }
+                    ]
+                }
+            ]
+        },
+        "transportVlanId": "${vlan_id_host_overlay}"
+    },
+    "vcfOperationsSpec": {
+        "nodes": [
+            {
+                "hostname": "${basename_sddc}-vcfo.${domain}",
+                "rootUserPassword": "${VCFO_PASSWORD}",
+                "type": "master"
+            }
+        ],
+        "adminUserPassword": "${VCFO_PASSWORD}",
+        "applianceSize": "small",
+        "useExistingDeployment": false,
+        "loadBalancerFqdn": null
+    },
+    "vcfOperationsFleetManagementSpec": {
+        "hostname": "${basename_sddc}-vcfo-fleet.${domain}",
+        "rootUserPassword": "${VCFO_PASSWORD}",
+        "adminUserPassword": "${VCFO_PASSWORD}",
+        "useExistingDeployment": false
+    },
+    "vcfOperationsCollectorSpec": {
+        "hostname": "${basename_sddc}-vcfo-collector.${domain}",
+        "applicationSize": "small",
+        "rootUserPassword": "${VCFO_PASSWORD}",
+        "useExistingDeployment": false
+    },
+    "vcfAutomationSpec": {
+        "hostname": "${basename_sddc}-vcfa.${domain}",
+        "adminUserPassword": "${VCFA_PASSWORD}",
+        "ipPool": [
+            "${ip_vcf_automation_start}",
+            "${ip_vcf_automation_end}"
+        ],
+        "nodePrefix": "${vcf_automation_node_prefix}",
+        "internalClusterCidr": "198.18.0.0/15",
+        "useExistingDeployment": false
+    },
+    "hostSpecs": ${hostSpecs},
+    "networkSpecs": [
+        {
+            "networkType": "MANAGEMENT",
+            "portGroupKey": "${basename_sddc}-pg-mgmt",
+            "gateway": "${gw_mgmt}",
+            "mtu": "1500",
+            "vlanId": "${vlan_id_mgmt}",
+            "subnet": "${cidr_mgmt}",
+            "teamingPolicy": "loadbalance_loadbased",
+            "activeUplinks": [
+                "uplink1",
+                "uplink2"
+            ],
+            "standbyUplinks": []
+        },
+        {
+            "networkType": "VM_MANAGEMENT",
+            "portGroupKey": "${basename_sddc}-pg-vm-mgmt",
+            "gateway": "${gw_vm_mgmt}",
+            "mtu": "1500",
+            "vlanId": "${vlan_id_vm_mgmt}",
+            "subnet": "${cidr_vm_mgmt}",
+            "teamingPolicy": "loadbalance_loadbased",
+            "activeUplinks": [
+                "uplink1",
+                "uplink2"
+            ],
+            "standbyUplinks": []
+        },
+        {
+            "networkType": "VMOTION",
+            "portGroupKey": "${basename_sddc}-pg-vmotion",
+            "gateway": "${gw_vmotion}",
+            "mtu": "8000",
+            "vlanId": "${vlan_id_vmotion}",
+            "subnet": "${cidr_vmotion}",
+            "includeIpAddressRanges": [
+                {
+                    "startIpAddress": "${starting_ip_vmotion}",
+                    "endIpAddress": "${ending_ip_vmotion}"
+                }
+            ],
+            "teamingPolicy": "loadbalance_loadbased",
+            "activeUplinks": [
+                "uplink1",
+                "uplink2"
+            ],
+            "standbyUplinks": []
+        },
+        {
+            "networkType": "VSAN",
+            "portGroupKey": "${basename_sddc}-pg-vsan",
+            "gateway": "${gw_vsan}",
+            "mtu": "8000",
+            "vlanId": "${vlan_id_vsan}",
+            "subnet": "${cidr_vsan}",
+            "includeIpAddressRanges": [
+                {
+                    "startIpAddress": "${starting_ip_vsan}",
+                    "endIpAddress": "${ending_ip_vsan}"
+                }
+            ],
+            "teamingPolicy": "loadbalance_loadbased",
+            "activeUplinks": [
+                "uplink1",
+                "uplink2"
+            ],
+            "standbyUplinks": []
+        }
+    ],
+    "dvsSpecs": [
+        {
+            "dvsName": "${basename_sddc}-vds-01",
+            "networks": [
+                "MANAGEMENT",
+                "VMOTION",
+                "VSAN",
+                "VM_MANAGEMENT"
+            ],
+            "mtu": "8500",
+            "nsxtSwitchConfig": {
+                "transportZones": [
+                    {
+                        "transportType": "OVERLAY",
+                        "name": "VCF-Created-Overlay-Zone"
+                    }
+                ]
+            },
+            "vmnicsToUplinks": [
+                {
+                    "id": "vmnic0",
+                    "uplink": "uplink1"
+                },
+                {
+                    "id": "vmnic1",
+                    "uplink": "uplink2"
+                }
+            ],
+            "nsxTeamings": [
+                {
+                    "policy": "LOADBALANCE_SRCID",
+                    "activeUplinks": [
+                        "uplink1",
+                        "uplink2"
+                    ],
+                    "standByUplinks": []
+                }
+            ],
+            "lagSpecs": null,
+            "vmnics": [
+                "vmnic0",
+                "vmnic1"
+            ]
+        }
+    ],
+    "sddcManagerSpec": {
+        "hostname": "${basename_sddc}-sddc-manager.${domain}",
+        "useExistingDeployment": false,
+        "rootPassword": "${SDDC_MANAGER_PASSWORD}",
+        "sshPassword": "${SDDC_MANAGER_PASSWORD}",
+        "localUserPassword": "${SDDC_MANAGER_PASSWORD}"
+    }
+}

@@ -54,44 +54,50 @@ done
 #
 #
 if [[ ${esxi_trunk} == "true" && ${name_vcf_installer} != "null" ]] ; then
-  sed -e "s/\${basename_sddc}/${basename_sddc}/" \
-      -e "s/\${SDDC_MANAGER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
-      -e "s/\${VCFA_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
-      -e "s/\${ip_vcf_automation_start}/${ip_vcf_automation_start}/" \
-      -e "s/\${ip_vcf_automation_end}/${ip_vcf_automation_end}/" \
-      -e "s/\${vcf_automation_node_prefix}/${vcf_automation_node_prefix}/" \
-      -e "s/\${vcf_version_full}/${vcf_version_full}/" \
-      -e "s/\${basename_sddc}/${basename_sddc}/" \
-      -e "s/\${domain}/${domain}/" \
-      -e "s/\${hostSpecs}/$(echo ${hostSpecs} | jq -c -r .)/" \
-      -e "s/\${VCFO_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
-      -e "s/\${ip_gw}/${ip_gw}/" \
-      -e "s/\${VCS_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
-      -e "s/\${ssoDomain}/$(jq -c -r .sddc.vcenter.ssoDomain ${jsonFile})/" \
-      -e "s/\${nsxtManagerSize}/$(jq -c -r .sddc.nsx.size ${jsonFile})/" \
-      -e "s/\${NSX_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
-      -e "s/\${nsx_pool_range_start}/${nsx_pool_range_start}/" \
-      -e "s/\${nsx_pool_range_end}/${nsx_pool_range_end}/" \
-      -e "s@\${nsx_subnet_cidr}@$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
-      -e "s/\${nsx_subnet_gw}/$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
-      -e "s/\${vlan_id_host_overlay}/$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
-      -e "s/\${basename_nsx_manager}/${basename_nsx_manager}/" \
-      -e "s/\${gw_mgmt}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
-      -e "s/\${vlan_id_mgmt}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
-      -e "s@\${cidr_mgmt}@$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
-      -e "s@\${cidr_vm_mgmt}@$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
-      -e "s/\${gw_vm_mgmt}/$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
-      -e "s/\${vlan_id_vm_mgmt}/$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
-      -e "s@\${cidr_vmotion}@$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
-      -e "s/\${gw_vmotion}/$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
-      -e "s/\${vlan_id_vmotion}/$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
-      -e "s/\${ending_ip_vmotion}/${ending_ip_vmotion}/" \
-      -e "s/\${starting_ip_vmotion}/${starting_ip_vmotion}/" \
-      -e "s@\${cidr_vsan}@$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
-      -e "s/\${gw_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
-      -e "s/\${vlan_id_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
-      -e "s/\${ending_ip_vsan}/${ending_ip_vsan}/" \
-      -e "s/\${starting_ip_vsan}/${starting_ip_vsan}/" /home/ubuntu/templates/sddc_vcf_installer_trunk.json.template | tee /home/ubuntu/json/${basename_sddc}.json > /dev/null
+  if [[ ${vcf_version_two_digit} == "9.0" ]]; then
+    json_template_file="/home/ubuntu/templates/sddc_vcf_installer_trunk_9.0.json.template"
+    sed -e "s/\${basename_sddc}/${basename_sddc}/" \
+        -e "s/\${SDDC_MANAGER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+        -e "s/\${VCFA_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+        -e "s/\${ip_vcf_automation_start}/${ip_vcf_automation_start}/" \
+        -e "s/\${ip_vcf_automation_end}/${ip_vcf_automation_end}/" \
+        -e "s/\${vcf_automation_node_prefix}/${vcf_automation_node_prefix}/" \
+        -e "s/\${vcf_version_full}/${vcf_version_full}/" \
+        -e "s/\${basename_sddc}/${basename_sddc}/" \
+        -e "s/\${domain}/${domain}/" \
+        -e "s/\${hostSpecs}/$(echo ${hostSpecs} | jq -c -r .)/" \
+        -e "s/\${VCFO_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+        -e "s/\${ip_gw}/${ip_gw}/" \
+        -e "s/\${VCS_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+        -e "s/\${ssoDomain}/$(jq -c -r .sddc.vcenter.ssoDomain ${jsonFile})/" \
+        -e "s/\${nsxtManagerSize}/$(jq -c -r .sddc.nsx.size ${jsonFile})/" \
+        -e "s/\${NSX_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
+        -e "s/\${nsx_pool_range_start}/${nsx_pool_range_start}/" \
+        -e "s/\${nsx_pool_range_end}/${nsx_pool_range_end}/" \
+        -e "s@\${nsx_subnet_cidr}@$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s/\${nsx_subnet_gw}/$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_host_overlay}/$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s/\${basename_nsx_manager}/${basename_nsx_manager}/" \
+        -e "s/\${gw_mgmt}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_mgmt}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s@\${cidr_mgmt}@$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s@\${cidr_vm_mgmt}@$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s/\${gw_vm_mgmt}/$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_vm_mgmt}/$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s@\${cidr_vmotion}@$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s/\${gw_vmotion}/$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_vmotion}/$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s/\${ending_ip_vmotion}/${ending_ip_vmotion}/" \
+        -e "s/\${starting_ip_vmotion}/${starting_ip_vmotion}/" \
+        -e "s@\${cidr_vsan}@$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile)@" \
+        -e "s/\${gw_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
+        -e "s/\${vlan_id_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+        -e "s/\${ending_ip_vsan}/${ending_ip_vsan}/" \
+        -e "s/\${starting_ip_vsan}/${starting_ip_vsan}/" /home/ubuntu/templates/${json_template_file} | tee /home/ubuntu/json/${basename_sddc}.json > /dev/null
+  fi
+  if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+    json_template_file="/home/ubuntu/templates/sddc_vcf_installer_trunk_9.1.json.template"
+  fi
 fi
 #
 #

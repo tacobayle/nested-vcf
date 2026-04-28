@@ -9,15 +9,57 @@ source /home/ubuntu/bash/variables.sh
 source /home/ubuntu/bash/log_message.sh
 #
 if [[ ${name_vcf_installer} != "null" ]]; then
-  log_message "Create VCF Installer API session" "${log_file}" "" ""
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, Create VCF Installer API session" "${log_file}" "" ""
   /home/ubuntu/bash/sddc_manager/create_api_session.sh "admin@local" ''$(jq -c -r .generic_password $jsonFile)'' ${ip_vcf_installer} /tmp/token_vcfi.json
-  sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"downloadToken" : "'${vcf_installer_token}'"}}' ${ip_vcf_installer} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
+  #
+  # Add the token for 9.0 use case
+  #
+  if [[ ${vcf_version_two_digit} == "9.0" ]]; then
+    sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"downloadToken" : "'${vcf_installer_token}'"}}' ${ip_vcf_installer} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
+  fi
+  #
+  # Find the machineId for 9.1 use case and update the depot config with the obtained activation_code
+  #
+  if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+    sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/system/settings/depot/machine-details $(jq -c -r .accessToken /tmp/token_vcfi.json)
+    vcfi_machineId=$(echo ${response_body} | jq -c -r '.machineId')
+    if [ -z "$vcfi_machineId" ] || [ "$vcfi_machineId" == "null" ]; then
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: vcfi_machineId is undefined or null" "${log_file}" "${slack_webhook}" "${google_webhook}"
+      exit 255
+    fi
+    vcfi_access_token=$(curl --request POST \
+      --url ${vcf_installer_bearer_url} \
+      --header 'content-type: application/x-www-form-urlencoded' \
+      --data client_id=${vcf_installer_client_id} \
+      --data client_secret=${vcf_installer_client_secret} \
+      --data grant_type=client_credentials | jq -c -r '.access_token')
+    if [ -z "$vcfi_access_token" ] || [ "$vcfi_access_token" == "null" ]; then
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: vcfi_access_token is undefined or null" "${log_file}" "${slack_webhook}" "${google_webhook}"
+      exit 255
+    fi
+    vcfi_activation_code=$(curl --request POST \
+      --url ${vcf_installer_token_url}/${tenant_id}/${vcf_installer_token_url_suffix} \
+      --header 'authorization: Bearer '${access_token}'' \
+      --header 'content-type: application/json' \
+      --data '{
+      "id": "'${vcfi_machineId}'",
+      "name": "test123456"
+      }' | jq -r .activation_code)
+    if [ -z "$vcfi_activation_code" ] || [ "$vcfi_activation_code" == "null" ]; then
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: vcfi_activation_code is undefined or null" "${log_file}" "${slack_webhook}" "${google_webhook}"
+      exit 255
+    fi
+    sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"downloadActivationCode" : "'${vcfi_activation_code}'"}}' ${ip_vcf_installer} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
+  fi
+  #
+  # check that the depot bundle has been populated
+  #
   retry_bundle=60 ; pause_bundle=10 ; attempt_bundle=1
   while true
   do
     sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
     bundles_count=$(echo ${response_body} | jq -c -r '.elements | length')
-    if [[ bundles_count -gt 0 ]] ; then
+    if [[ ${bundles_count} -gt 0 ]] ; then
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: bundles are populated" "${log_file}" "" ""
       sleep 30
       break
@@ -37,8 +79,8 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     sddc_manager_api 3 2 PATCH '{"bundleDownloadSpec":{"downloadNow":true}}' ${ip_vcf_installer} v1/bundles/${depot_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: patching bundle ${depot_id} to download it" "${log_file}" "" ""
   done
-  sleep 240
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: waiting 240 seconds" "${log_file}" "" ""
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: waiting 600 seconds" "${log_file}" "" ""
+  sleep 600
   #
   # download bundles
   #

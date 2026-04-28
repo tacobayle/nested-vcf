@@ -59,11 +59,23 @@ ip_gw=$(jq -c -r .gw.ip $jsonFile)
 gw_vcf_cli_url=$(jq -c -r .gw.vcf_cli_url $jsonFile)
 ip_vcsa="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.vcenter.ip ${jsonFile})"
 name_cb=$(jq -c -r .cloud_builder.name $jsonFile)
-name_vcf_installer=$(jq -c -r .vcf_installer.name $jsonFile)
 iso_url=$(jq -c -r .esxi.iso_url $jsonFile)
+name_vcf_installer=$(jq -c -r .vcf_installer.name $jsonFile)
 if [[ ${name_vcf_installer} != "null" ]]; then
   vcf_version=$(echo ${iso_url} | cut -d"-" -f4 | cut -d"." -f1-3)
+  vcf_version_two_digit=$(echo ${iso_url} | cut -d"-" -f4 | cut -d"." -f1-2)
   vcf_version_full=$(echo ${iso_url} | cut -d"-" -f4 | cut -d"." -f1-4)
+fi
+if [[ ${vcf_version_two_digit} == "9.0" ]]; then
+  vcf_installer_token=$(jq -c -r .vcf_installer.token $jsonFile)
+fi
+if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+  vcf_installer_client_id=$(jq -c -r .vcf_installer.client_id $jsonFile)
+  vcf_installer_client_secret=$(jq -c -r .vcf_installer.client_secret $jsonFile)
+  vcf_installer_tenant_id=$(jq -c -r .vcf_installer.tenant_id $jsonFile)
+  vcf_installer_bearer_url=$(jq -c -r .vcf_installer.bearer_url $jsonFile)
+  vcf_installer_token_url=$(jq -c -r .vcf_installer.token_url $jsonFile)
+  vcf_installer_token_url_suffix=$(jq -c -r .vcf_installer.token_url_suffix $jsonFile)
 fi
 cidr_mgmt=$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f1)
 if [[ ${cidr_mgmt} =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.[0-9]{1,3}$ ]] ; then
@@ -82,7 +94,6 @@ vcf_installer_ova_url=$(jq -c -r .vcf_installer.ova_url $jsonFile)
 vcf_installer_network_ref=$(jq -c -r .vcf_installer.network_ref $jsonFile)
 ip_cb=$(jq -c -r .cloud_builder.ip $jsonFile)
 ip_vcf_installer=$(jq -c -r .vcf_installer.ip $jsonFile)
-vcf_installer_token=$(jq -c -r .vcf_installer.token $jsonFile)
 vcf_automation_node_prefix="$(jq -c -r .vcf_automation.node_prefix ${jsonFile})"
 ip_vcf_automation="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_automation.ip ${jsonFile})"
 ip_vcf_automation_start="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_automation.ip_pool ${jsonFile}| cut -f1 -d'-')"
