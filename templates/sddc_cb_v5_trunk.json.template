@@ -8,7 +8,7 @@
         "password": "${SDDC_MANAGER_PASSWORD}"
       },
       "ipAddress": "${ip_sddc_manager}",
-      "hostname": "${basename_sddc}-sddc-manager",
+      "hostname": "${basename_sddc}-sddcm",
       "rootUserCredentials": {
         "username": "root",
         "password": "${SDDC_MANAGER_PASSWORD}"
@@ -79,7 +79,7 @@
       "nsxtAdminPassword": "${NSX_PASSWORD}",
       "nsxtAuditPassword": "${NSX_PASSWORD}",
       "vip": "${ip_nsx_vip}",
-      "vipFqdn": "${basename_sddc}-nsx",
+      "vipFqdn": "${basename_sddc}-nsx01",
       "nsxtLicense": null,
       "transportVlanId": "${transportVlanId}",
       "ipAddressPoolSpec": {
@@ -195,7 +195,7 @@
     ],
     "vcenterSpec": {
       "vcenterIp": "${ip_vcsa}",
-      "vcenterHostname": "${basename_sddc}-vcsa",
+      "vcenterHostname": "${basename_sddc}-vc01",
       "vmSize": "${vmSize}",
       "storageSize": null,
       "rootVcenterPassword": "${VCENTER_PASSWORD}"

@@ -93,7 +93,7 @@ if [[ ${esxi_trunk} == "true" && ${name_vcf_installer} != "null" ]] ; then
         -e "s/\${gw_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
         -e "s/\${vlan_id_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
         -e "s/\${ending_ip_vsan}/${ending_ip_vsan}/" \
-        -e "s/\${starting_ip_vsan}/${starting_ip_vsan}/" /home/ubuntu/templates/${json_template_file} | tee /home/ubuntu/json/${basename_sddc}.json > /dev/null
+        -e "s/\${starting_ip_vsan}/${starting_ip_vsan}/" ${json_template_file} | tee /home/ubuntu/json/${basename_sddc}.json > /dev/null
   fi
   if [[ ${vcf_version_two_digit} == "9.1" ]]; then
     json_template_file="/home/ubuntu/templates/sddc_vcf_installer_trunk_9.1.json.template"
@@ -107,7 +107,6 @@ if [[ ${esxi_trunk} == "true" && ${name_vcf_installer} != "null" ]] ; then
         -e "s/\${ip_vcf_automation_end}/${ip_vcf_automation_end}/" \
         -e "s/\${vcf_automation_node_prefix}/${vcf_automation_node_prefix}/" \
         -e "s/\${vcf_version_full}/${vcf_version_full}/" \
-        -e "s/\${basename_sddc}/${basename_sddc}/" \
         -e "s/\${domain}/${domain}/" \
         -e "s/\${hostSpecs}/$(echo ${hostSpecs} | jq -c -r .)/" \
         -e "s/\${VCFO_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
@@ -137,8 +136,7 @@ if [[ ${esxi_trunk} == "true" && ${name_vcf_installer} != "null" ]] ; then
         -e "s/\${gw_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" \
         -e "s/\${vlan_id_vsan}/$(jq -c -r --arg arg "VSAN" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
         -e "s/\${ending_ip_vsan}/${ending_ip_vsan}/" \
-        -e "s/\${starting_ip_vsan}/${starting_ip_vsan}/" /home/ubuntu/templates/${json_template_file} | tee /home/ubuntu/json/${basename_sddc}.json > /dev/null
-
+        -e "s/\${starting_ip_vsan}/${starting_ip_vsan}/" ${json_template_file} | tee /home/ubuntu/json/${basename_sddc}.json > /dev/null
   fi
 fi
 #

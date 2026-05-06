@@ -41,7 +41,7 @@ log() {
     esac
 }
 
-sddcm="${basename_sddc}-sddc-manager.${domain}"
+sddcm="${basename_sddc}-sddcm.${domain}"
 sddcmuser="${vsphere_nested_username}@${ssoDomain}"
 sddcmpass=''${generic_password}''
 export SSHPASS=''${generic_password}''

@@ -4,10 +4,9 @@
     "version": "${vcf_version_full}",
     "hostSpecs": ${hostSpecs},
     "vcenterSpec": {
-        "vcenterHostname": "${basename_sddc}-vcsa.${domain}",
+        "vcenterHostname": "${basename_sddc}-vc01.${domain}",
         "rootVcenterPassword": "${VCS_PASSWORD}",
         "vmSize": "medium",
-        "storageSize": "",
         "adminUserSsoPassword": "${VCS_PASSWORD}",
         "ssoDomain": "${ssoDomain}",
         "useExistingDeployment": false
@@ -68,7 +67,7 @@
                 "hostname": "${basename_sddc}${basename_nsx_manager}1.${domain}"
             }
         ],
-        "vipFqdn": "${basename_sddc}-nsx.${domain}",
+        "vipFqdn": "${basename_sddc}-nsx01.${domain}",
         "useExistingDeployment": false,
         "nsxtAdminPassword": "${NSX_PASSWORD}",
         "nsxtAuditPassword": "${NSX_PASSWORD}",
@@ -172,7 +171,7 @@
         "${ip_gw}"
     ],
     "sddcManagerSpec": {
-        "hostname": "${basename_sddc}-sddc-manager.${domain}",
+        "hostname": "${basename_sddc}-sddcm.${domain}",
         "useExistingDeployment": false,
         "rootPassword": "${SDDC_MANAGER_PASSWORD}",
         "sshPassword": "${SDDC_MANAGER_PASSWORD}",
@@ -191,9 +190,9 @@
         }
     },
     "vspClusterSpec": {
-        "platformFqdn": "${basename_sddc}-vcf-vsp-platform.${domain}",
-        "instanceFqdn": "${basename_sddc}-vcf-vsp-instance.${domain}",
-        "fleetFqdn": "${basename_sddc}-vcf-vsp-fleet.${domain}",
+        "platformFqdn": "${basename_sddc}-vsp01.${domain}",
+        "instanceFqdn": "${basename_sddc}-shared01.${domain}",
+        "fleetFqdn": "${basename_sddc}-fleetlcm.${domain}",
         "name": "vmsp-01",
         "internalClusterCidrIpv4": "198.18.0.0/15",
         "systemUserPassword": "${VCF_VSP_PASSWORD}",
@@ -218,7 +217,7 @@
         "size": "small"
     },
     "vidbSpec": {
-        "hostname": "${basename_sddc}-vcf-vidb.${domain}",
+        "hostname": "${basename_sddc}-vidb.${domain}",
         "size": "small"
     },
     "saltSpec": {
@@ -230,7 +229,7 @@
     "vcfOperationsSpec": {
         "nodes": [
             {
-                "hostname": "${basename_sddc}-vcfo.${domain}",
+                "hostname": "${basename_sddc}-ops01.${domain}",
                 "rootUserPassword": "${VCFO_PASSWORD}",
                 "type": "master"
             }
@@ -260,7 +259,7 @@
         "useExistingDeployment": false
     },
     "licenseServerSpec": {
-        "hostname": "${basename_sddc}-license-server.${domain}"
+        "hostname": "${basename_sddc}-license.${domain}"
     },
     "vcfInstanceName": "${basename_sddc}-instance"
 }

@@ -191,13 +191,13 @@ write_files:
       \$ORIGIN ${domain}.
       dns       IN            A       ${ip_gw}
       vault       IN            A       ${ip_gw}
-      ${basename_sddc}-nsx       IN            A       ${ip_nsx_vip}
+      ${basename_sddc}-nsx01       IN            A       ${ip_nsx_vip}
       ${basename_sddc}-avi       IN            A       ${ip_avi_vip}
-      ${basename_sddc}-vcsa       IN            A       ${ip_vcsa}
+      ${basename_sddc}-vc01       IN            A       ${ip_vcsa}
       EOT
       name_vcf_installer=${name_vcf_installer}
       name_cb=${name_cb}
-      echo "${basename_sddc}-sddc-manager       IN            A       ${ip_sddc_manager}" | tee -a /var/lib/bind/db.${domain}
+      echo "${basename_sddc}-sddcm       IN            A       ${ip_sddc_manager}" | tee -a /var/lib/bind/db.${domain}
       if [[ ${name_vcf_installer} != "null" ]]; then
         echo "${basename_sddc}-${name_vcf_installer}       IN            A       ${ip_vcf_installer}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-vcfa       IN            A       ${ip_vcf_automation}" | tee -a /var/lib/bind/db.${domain}
@@ -206,12 +206,15 @@ write_files:
         echo "${basename_sddc}-vcfo-collector       IN            A       ${ip_vcf_operation_collector}" | tee -a /var/lib/bind/db.${domain}
       fi
       if [[ ${vcf_version_two_digit} == "9.1" ]]; then
-        echo "${basename_sddc}-license-server       IN            A       ${ip_license_server}" | tee -a /var/lib/bind/db.${domain}
-        echo "${basename_sddc}-vcfa-platform       IN            A       ${ip_vcf_automation_platform}" | tee -a /var/lib/bind/db.${domain}
-        echo "${basename_sddc}-vcf-vsp-platform       IN            A       ${ip_vcf_vsp_platform}" | tee -a /var/lib/bind/db.${domain}
-        echo "${basename_sddc}-vcf-vsp-instance       IN            A       ${ip_vcf_vsp}" | tee -a /var/lib/bind/db.${domain}
-        echo "${basename_sddc}-vcf-vsp-fleet       IN            A       ${ip_vcf_operation_fleet}" | tee -a /var/lib/bind/db.${domain}
-        echo "${basename_sddc}-vcf-vidb       IN            A       ${ip_vcf_identity_broker}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-license       IN            A       ${ip_license_server}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-auto-platform       IN            A       ${ip_vcf_automation_platform}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-vsp01       IN            A       ${ip_vcf_vsp_platform}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-shared01       IN            A       ${ip_vcf_vsp}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-fleetlcm       IN            A       ${ip_vcf_operation_fleet}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-vidb       IN            A       ${ip_vcf_identity_broker}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-ops01       IN            A       ${ip_vcf_operation}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-collector       IN            A       ${ip_vcf_operation_collector}" | tee -a /var/lib/bind/db.${domain}
+        echo "${basename_sddc}-auto-vip       IN            A       ${ip_vcf_automation}" | tee -a /var/lib/bind/db.${domain}
       fi
       #
       count_esxi=1
@@ -226,7 +229,7 @@ write_files:
         ((count_esxi++))
       done
       #
-      count_nsx=1
+      count_nsx=2
       echo '${ips_nsx}' | jq -c -r .[] | while read ip_nsx
       do
         echo "${basename_sddc}${basename_nsx_manager}$count_nsx      IN            A       ${ip_nsx}" | tee -a /var/lib/bind/db.${domain}
@@ -286,8 +289,8 @@ write_files:
                               NS      dns.${domain}.
       \$ORIGIN ${reverse_vm_network}.in-addr.arpa.
       EOT
-      echo "`echo '${ip_vcsa}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcsa.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
-      echo "`echo '${ip_sddc_manager}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-sddc-manager.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+      echo "`echo '${ip_vcsa}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vc01.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+      echo "`echo '${ip_sddc_manager}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-sddcm.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       if [[ ${name_vcf_installer} != "null" ]]; then
         echo "`echo '${ip_vcf_automation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfa.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_operation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfo.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
@@ -295,16 +298,19 @@ write_files:
         echo "`echo '${ip_vcf_operation_collector}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfo-collector.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       fi
       if [[ ${vcf_version_two_digit} == "9.1" ]]; then
-        echo "`echo '${ip_license_server}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-license-server.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
-        echo "`echo '${ip_vcf_automation_platform}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfa-platform.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
-        echo "`echo '${ip_vcf_vsp_platform}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcf-vsp-platform.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
-        echo "`echo '${ip_vcf_vsp}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcf-vsp-instance.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
-        echo "`echo '${ip_vcf_operation_fleet}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcf-vsp-fleet.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
-        echo "`echo '${ip_vcf_identity_broker}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcf-vidb.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        echo "`echo '${ip_license_server}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-license.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        echo "`echo '${ip_vcf_automation_platform}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-auto-platform.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        echo "`echo '${ip_vcf_vsp_platform}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vsp01.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        echo "`echo '${ip_vcf_vsp}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-shared01.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        echo "`echo '${ip_vcf_operation_fleet}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-fleetlcm.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        echo "`echo '${ip_vcf_identity_broker}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vidb.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        echo "`echo '${ip_vcf_operation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-ops01.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        echo "`echo '${ip_vcf_operation_collector}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-collector.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+        echo "`echo '${ip_vcf_automation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-auto-vip.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       fi
-      echo "`echo '${ip_nsx_vip}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-nsx.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+      echo "`echo '${ip_nsx_vip}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-nsx01.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       echo "`echo '${ip_avi_vip}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-avi.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
-      count_nsx=1
+      count_nsx=2
       echo '${ips_nsx}' | jq -c -r .[] | while read ip_nsx
       do
         echo "`echo $ip_nsx | cut -f4 -d'.'`            PTR     ${basename_sddc}${basename_nsx_manager}$count_nsx.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}

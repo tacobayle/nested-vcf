@@ -159,19 +159,19 @@ api_endpoint="api/v1/fabric/compute-managers"
 /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
             "api/v1/fabric/compute-managers" \
             "${file_path}/$(basename ${api_endpoint}).json"
-vc_id=$(jq -c -r --arg arg1 "${basename_sddc}-vcsa.${domain}" '.results[] | select(.display_name == $arg1).id' ${file_path}/$(basename ${api_endpoint}).json)
+vc_id=$(jq -c -r --arg arg1 "${basename_sddc}-vc01.${domain}" '.results[] | select(.display_name == $arg1).id' ${file_path}/$(basename ${api_endpoint}).json)
 # vCenter API session creation to retrieve various things
-token=$(/bin/bash /home/ubuntu/bash/vcenter/create_vcenter_api_session.sh "${vsphere_nested_username}" "${ssoDomain}" "${generic_password}" "${basename_sddc}-vcsa.${domain}")
-vcenter_api 2 2 "GET" ${token} '' "${basename_sddc}-vcsa.${domain}" "api/vcenter/datastore"
+token=$(/bin/bash /home/ubuntu/bash/vcenter/create_vcenter_api_session.sh "${vsphere_nested_username}" "${ssoDomain}" "${generic_password}" "${basename_sddc}-vc01.${domain}")
+vcenter_api 2 2 "GET" ${token} '' "${basename_sddc}-vc01.${domain}" "api/vcenter/datastore"
 storage_id=$(echo ${response_body} | jq -r .[0].datastore)
-vcenter_api 2 2 "GET" ${token} "" "${basename_sddc}-vcsa.${domain}" "api/vcenter/network"
+vcenter_api 2 2 "GET" ${token} "" "${basename_sddc}-vc01.${domain}" "api/vcenter/network"
 management_network_id=$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-pg-mgmt" '.[] | select(.name == $arg1).network')
 data_network_ids="[]"
 data_network_ids=$(echo ${data_network_ids} | jq '. += ["'$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-pg-edge-overlay" '.[] | select(.name == $arg1).network')'"]')
 data_network_ids=$(echo ${data_network_ids} | jq '. += ["'$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-pg-external" '.[] | select(.name == $arg1).network')'"]')
-vcenter_api 2 2 "GET" ${token} "" "${basename_sddc}-vcsa.${domain}" "api/vcenter/cluster"
+vcenter_api 2 2 "GET" ${token} "" "${basename_sddc}-vc01.${domain}" "api/vcenter/cluster"
 cluster=$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-cluster" '.[] | select(.name == $arg1).cluster')
-vcenter_api 2 2 "GET" ${token} "" "${basename_sddc}-vcsa.${domain}" "api/vcenter/cluster/${cluster}"
+vcenter_api 2 2 "GET" ${token} "" "${basename_sddc}-vc01.${domain}" "api/vcenter/cluster/${cluster}"
 compute_id=$(echo ${response_body} | jq -c -r '.resource_pool')
 #
 edge_ids="[]"

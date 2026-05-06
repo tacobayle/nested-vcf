@@ -14,7 +14,7 @@
         "${ip_gw}"
     ],
     "vcenterSpec": {
-        "vcenterHostname": "${basename_sddc}-vcsa.${domain}",
+        "vcenterHostname": "${basename_sddc}-vc01.${domain}",
         "rootVcenterPassword": "${VCS_PASSWORD}",
         "vmSize": "medium",
         "storageSize": "",
@@ -43,7 +43,7 @@
                 "hostname": "${basename_sddc}${basename_nsx_manager}1.${domain}"
             }
         ],
-        "vipFqdn": "${basename_sddc}-nsx.${domain}",
+        "vipFqdn": "${basename_sddc}-nsx01.${domain}",
         "useExistingDeployment": false,
         "nsxtAdminPassword": "${NSX_PASSWORD}",
         "nsxtAuditPassword": "${NSX_PASSWORD}",
@@ -220,7 +220,7 @@
         }
     ],
     "sddcManagerSpec": {
-        "hostname": "${basename_sddc}-sddc-manager.${domain}",
+        "hostname": "${basename_sddc}-sddcm.${domain}",
         "useExistingDeployment": false,
         "rootPassword": "${SDDC_MANAGER_PASSWORD}",
         "sshPassword": "${SDDC_MANAGER_PASSWORD}",
