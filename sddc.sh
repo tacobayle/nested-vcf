@@ -511,9 +511,10 @@ if [[ ${operation} == "apply" ]] ; then
       log_message "ERROR while running the following command from the gw: ${script_file} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
     fi
 #    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "/bin/bash /home/ubuntu/esxi/esxi_customization-$esxi.sh"
-    govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
+    cdrom_name=$(govc device.ls -vm "${folder}/${name_esxi}" -json | jq -r --arg arg "VirtualCdrom" '.devices[] | select( .type == $arg).name')
+    govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device "${cdrom_name}" nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
     sleep 10
-    govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device cdrom-3000 nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
+    govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device "${cdrom_name}" nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
     govc datastore.rm nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${name_esxi} ready" ${log_file} ${slack_webhook} ${google_webhook}
   done
