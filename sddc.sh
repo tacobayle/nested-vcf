@@ -634,7 +634,7 @@ if [[ ${operation} == "destroy" ]] ; then
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_cb}'")] | length') -eq 1 ]]; then
       govc vm.power -off=true "${folder}/${name_cb}"
       govc vm.destroy "${folder}/${name_cb}"
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-Cloud_Builder VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${name_cb} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   fi
   #
@@ -644,7 +644,7 @@ if [[ ${operation} == "destroy" ]] ; then
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_vcf_installer}'")] | length') -eq 1 ]]; then
       govc vm.power -off=true "${folder}/${name_vcf_installer}"
       govc vm.destroy "${folder}/${name_vcf_installer}"
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-installer VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${name_vcf_installer} powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   fi
   #
@@ -662,7 +662,7 @@ if [[ ${operation} == "destroy" ]] ; then
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_esxi}'")] | length') -eq 1 ]]; then
       govc vm.power -off=true "${folder}/${name_esxi}"
       govc vm.destroy "${folder}/${name_esxi}"
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${esxi} destroyed" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${esxi} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
     else
       echo "ERROR: unable to delete ESXi ${name_esxi}: it is already gone" | tee -a ${log_file}
     fi
@@ -674,7 +674,7 @@ if [[ ${operation} == "destroy" ]] ; then
   if [[ ${list_gw} != "null" ]] ; then
     govc vm.power -off=true "${gw_name}"
     govc vm.destroy "${gw_name}"
-    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: external-gw ${gw_name} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${gw_name} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
   else
     echo "ERROR: unable to delete VM ${gw_name}: it already exists" | tee -a ${log_file}
   fi

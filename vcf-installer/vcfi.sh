@@ -28,23 +28,23 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       exit 255
     fi
     vcfi_access_token=$(curl --request POST \
-      --url ${vcf_installer_bearer_url} \
-      --header 'content-type: application/x-www-form-urlencoded' \
-      --data client_id=${vcf_installer_client_id} \
-      --data client_secret=${vcf_installer_client_secret} \
-      --data grant_type=client_credentials | jq -c -r '.access_token')
+          --url ${vcf_installer_bearer_url} \
+          --header 'content-type: application/x-www-form-urlencoded' \
+          --data client_id=${vcf_installer_client_id} \
+          --data client_secret=${vcf_installer_client_secret} \
+          --data grant_type=client_credentials | jq -c -r '.access_token')
     if [ -z "$vcfi_access_token" ] || [ "$vcfi_access_token" == "null" ]; then
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: vcfi_access_token is undefined or null" "${log_file}" "${slack_webhook}" "${google_webhook}"
       exit 255
     fi
     vcfi_activation_code=$(curl --request POST \
-      --url ${vcf_installer_token_url}/${tenant_id}/${vcf_installer_token_url_suffix} \
-      --header 'authorization: Bearer '${access_token}'' \
+      --url ${vcf_installer_token_url}/${vcf_installer_tenant_id}/${vcf_installer_token_url_suffix} \
+      --header 'authorization: Bearer '${vcfi_access_token}'' \
       --header 'content-type: application/json' \
       --data '{
       "id": "'${vcfi_machineId}'",
       "name": "test123456"
-      }' | jq -r .activation_code)
+      }' | jq -c -r '.activation_code')
     if [ -z "$vcfi_activation_code" ] || [ "$vcfi_activation_code" == "null" ]; then
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: vcfi_activation_code is undefined or null" "${log_file}" "${slack_webhook}" "${google_webhook}"
       exit 255
