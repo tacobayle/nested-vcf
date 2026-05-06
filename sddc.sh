@@ -119,6 +119,12 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s/\${ip_avi_vip}/${ip_avi_vip}/" \
         -e "s/\${ips_avi}/$(echo ${ips_avi} | jq -c -r .)/" \
         -e "s/\${ip_sddc_manager}/${ip_sddc_manager}/" \
+        -e "s/\${ip_license_server}/${ip_license_server}/" \
+        -e "s/\${vcf_version_two_digit}/${vcf_version_two_digit}/" \
+        -e "s/\${ip_vcf_automation_platform}/${ip_vcf_automation_platform}/" \
+        -e "s/\${ip_vcf_vsp_platform}/${ip_vcf_vsp_platform}/" \
+        -e "s/\${ip_vcf_vsp}/${ip_vcf_vsp}/" \
+        -e "s/\${ip_vcf_identity_broker}/${ip_vcf_identity_broker}/" \
         -e "s/\${ip_vcsa}/${ip_vcsa}/" \
         -e "s/\${pip3_packages}/$(jq -c -r '.pip3_packages' $jsonFile)/" \
         -e "s/\${ip_vcf_automation}/${ip_vcf_automation}/" \

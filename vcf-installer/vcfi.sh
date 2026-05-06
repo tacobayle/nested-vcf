@@ -103,6 +103,13 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     ((attempt_download++))
   done
   #
+  #
+  #
+  if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+    log_message "VCF 9.1 exit" "${log_file}" "" ""
+    exit
+  fi
+  #
   # validation json
   #
   sddc_manager_api 3 2 POST "@/home/ubuntu/json/${basename_sddc}.json" ${ip_vcf_installer} v1/sddcs/validations $(jq -c -r .accessToken /tmp/token_vcfi.json)
