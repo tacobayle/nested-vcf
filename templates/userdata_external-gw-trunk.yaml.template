@@ -319,7 +319,7 @@ write_files:
                               NS      dns.${domain}.
 
       \$ORIGIN ${reverse_mgmt_network}.in-addr.arpa.
-      echo "`echo '${ip_vcf_installer}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-${name_vcf_installer}.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+      `echo '${ip_vcf_installer}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-${name_vcf_installer}.${domain}.
       EOT
       #
       #
