@@ -662,8 +662,8 @@ if [[ ${operation} == "destroy" ]] ; then
   if [[ ${name_vcf_installer} != "null" ]]; then
     echo '------------------------------------------------------------'
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_vcf_installer}'")] | length') -eq 1 ]]; then
-      govc vm.power -off=true "${folder}/${name_vcf_installer}"
-      govc vm.destroy "${folder}/${name_vcf_installer}"
+      govc vm.power -off=true "${folder}/${basename_sddc}-${name_vcf_installer}.${domain}"
+      govc vm.destroy "${folder}/${basename_sddc}-${name_vcf_installer}.${domain}"
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${name_vcf_installer} powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   fi
