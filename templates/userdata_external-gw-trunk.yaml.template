@@ -206,7 +206,7 @@ write_files:
       name_vcf_installer=${name_vcf_installer}
       name_cb=${name_cb}
       echo "${basename_sddc}-sddcm       IN            A       ${ip_sddc_manager}" | tee -a /var/lib/bind/db.${domain}
-      if [[ ${vcf_version_two_digit} == "9.0" || {vcf_version_two_digit} == "9.1" ]]; then
+      if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "9.1" ]]; then
         echo "${basename_sddc}-${name_vcf_installer}       IN            A       ${ip_vcf_installer}" | tee -a /var/lib/bind/db.${domain}
       fi
       if [[ ${vcf_version_two_digit} == "9.0" ]]; then
