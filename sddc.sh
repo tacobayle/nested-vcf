@@ -72,16 +72,34 @@ if [[ ${operation} == "apply" ]] ; then
     ntp_masters=$(jq -c -r .gw.ntp_masters $jsonFile)
     forwarders_netplan=$(jq -c -r '.gw.dns_forwarders | join(",")' $jsonFile)
     forwarders_bind=$(jq -c -r '.gw.dns_forwarders | join(";")' $jsonFile)
+    #
+    # determine reverse zone for MANAGEMENT network
+    #
     cidr=$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f1)
     IFS="." read -r -a octets <<< "$cidr"
     count=0
     for octet in "${octets[@]}"; do if [ $count -eq 3 ]; then break ; fi ; addr_mgmt=$octet"."$addr_mgmt ;((count++)) ; done
     reverse_mgmt=${addr_mgmt%.}
+    #
+    # determine reverse zone for VM_MANAGEMENT network
+    #
     cidr=$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f1)
     IFS="." read -r -a octets <<< "$cidr"
     count=0
     for octet in "${octets[@]}"; do if [ $count -eq 3 ]; then break ; fi ; addr_vm_network=$octet"."$addr_vm_network ;((count++)) ; done
     reverse_vm_network=${addr_vm_network%.}
+    #
+    # determine reverse zone for mgmt network
+    #
+    network_ref=$(jq -c -r .gw.network_ref $jsonFile)
+    cidr=$(jq -c -r --arg arg "${network_ref}" '.vsphere_underlay.networks[] | select( .ref == $arg).cidr' $jsonFile | cut -d"/" -f1)
+    IFS="." read -r -a octets <<< "$cidr"
+    count=0
+    for octet in "${octets[@]}"; do if [ $count -eq 3 ]; then break ; fi ; addr_mgmt_network=$octet"."$addr_mgmt_network ;((count++)) ; done
+    reverse_mgmt_network=${addr_mgmt_network%.}
+    #
+    #
+    #
     basename=$(jq -c -r .esxi.basename $jsonFile)
     if [[ ${esxi_trunk} == "true" ]] ; then
       template_userdata_file="userdata_external-gw-trunk.yaml.template"
@@ -98,6 +116,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s/\${domain}/${domain}/g" \
         -e "s/\${reverse_mgmt}/${reverse_mgmt}/g" \
         -e "s/\${reverse_vm_network}/${reverse_vm_network}/g" \
+        -e "s/\${reverse_mgmt_network}/${reverse_mgmt_network}/g" \
         -e "s/\${ips_esxi}/$(echo ${ips_esxi} | jq -c -r .)/" \
         -e "s@\${name_vcf_installer}@${name_vcf_installer}@" \
         -e "s@\${name_cb}@${name_cb}@" \

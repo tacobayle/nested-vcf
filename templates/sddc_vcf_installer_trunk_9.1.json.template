@@ -64,7 +64,7 @@
         "nsxtManagerSize": "${nsxtManagerSize}",
         "nsxtManagers": [
             {
-                "hostname": "${basename_sddc}${basename_nsx_manager}1.${domain}"
+                "hostname": "${basename_sddc}${basename_nsx_manager}2.${domain}"
             }
         ],
         "vipFqdn": "${basename_sddc}-nsx01.${domain}",
@@ -246,13 +246,10 @@
         "useExistingDeployment": false
     },
     "vcfAutomationSpec": {
-        "hostname": "${basename_sddc}-vcfa.${domain}",
-        "platformFqdn": "${basename_sddc}-vcfa-platform.${domain}",
+        "hostname": "${basename_sddc}-auto-vip.${domain}",
+        "platformFqdn": "${basename_sddc}-auto-platform.${domain}",
         "adminUserPassword": "${VCFA_PASSWORD}",
-        "ipPool": [
-            "${ip_vcf_automation_start}",
-            "${ip_vcf_automation_end}"
-        ],
+        "ipPool": ${pool_ip_vcf_auto},
         "nodePrefix": "${vcf_automation_node_prefix}",
         "internalClusterCidr": "198.18.0.0/15",
         "size": "small",

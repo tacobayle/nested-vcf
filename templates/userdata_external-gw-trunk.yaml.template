@@ -175,6 +175,14 @@ write_files:
         allow-transfer { any; };
         file "/var/lib/bind/db.${reverse_vm_network}";
       };
+      zone "${reverse_mgmt_network}.in-addr.arpa" {
+        type master;
+        update-policy {
+          grant myKeyName zonesub any;
+        };
+        allow-transfer { any; };
+        file "/var/lib/bind/db.${reverse_mgmt_network}";
+      };
       EOT
       #
       sudo tee /var/lib/bind/db.${domain} > /dev/null <<EOT
@@ -198,8 +206,10 @@ write_files:
       name_vcf_installer=${name_vcf_installer}
       name_cb=${name_cb}
       echo "${basename_sddc}-sddcm       IN            A       ${ip_sddc_manager}" | tee -a /var/lib/bind/db.${domain}
-      if [[ ${name_vcf_installer} != "null" ]]; then
+      if [[ ${vcf_version_two_digit} == "9.0" || {vcf_version_two_digit} == "9.1" ]]; then
         echo "${basename_sddc}-${name_vcf_installer}       IN            A       ${ip_vcf_installer}" | tee -a /var/lib/bind/db.${domain}
+      fi
+      if [[ ${vcf_version_two_digit} == "9.0" ]]; then
         echo "${basename_sddc}-vcfa       IN            A       ${ip_vcf_automation}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-vcfo       IN            A       ${ip_vcf_operation}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-vcfo-fleet       IN            A       ${ip_vcf_operation_fleet}" | tee -a /var/lib/bind/db.${domain}
@@ -250,6 +260,8 @@ write_files:
       echo "\$TTL 1D" | tee -a /var/lib/bind/db.${domain}
       echo "@         IN            NS      avi-dns-vs.${domain}." | tee -a /var/lib/bind/db.${domain}
       #
+      #
+      #
       sudo tee /var/lib/bind/db.${reverse_mgmt} > /dev/null <<EOT
       \$ORIGIN .
       \$TTL 60
@@ -276,6 +288,8 @@ write_files:
         ((count_esxi++))
       done
       #
+      #
+      #
       sudo tee /var/lib/bind/db.${reverse_vm_network} > /dev/null <<EOT
       \$ORIGIN .
       \$TTL 60
@@ -289,9 +303,30 @@ write_files:
                               NS      dns.${domain}.
       \$ORIGIN ${reverse_vm_network}.in-addr.arpa.
       EOT
+      #
+      #
+      #
+      sudo tee /var/lib/bind/db.${reverse_mgmt_network} > /dev/null <<EOT
+      \$ORIGIN .
+      \$TTL 60
+      ${reverse_mgmt_network}.in-addr.arpa     IN SOA  dns.${domain}. admin.${domain}. (
+                                      298        ; serial
+                                      604800     ; refresh (1 week)
+                                      86400      ; retry (1 day)
+                                      2419200    ; expire (4 weeks)
+                                      604800     ; minimum (1 week)
+                                      )
+                              NS      dns.${domain}.
+
+      \$ORIGIN ${reverse_mgmt_network}.in-addr.arpa.
+      echo "`echo '${ip_vcf_installer}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-${name_vcf_installer}.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
+      EOT
+      #
+      #
+      #
       echo "`echo '${ip_vcsa}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vc01.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       echo "`echo '${ip_sddc_manager}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-sddcm.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
-      if [[ ${name_vcf_installer} != "null" ]]; then
+      if [[ ${vcf_version_two_digit} == "9.0" ]]; then
         echo "`echo '${ip_vcf_automation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfa.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_operation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfo.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_operation_fleet}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfo-fleet.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}

@@ -98,16 +98,20 @@ ip_vcf_installer=$(jq -c -r .vcf_installer.ip $jsonFile)
 vcf_automation_node_prefix="$(jq -c -r .vcf_automation.node_prefix ${jsonFile})"
 ip_vcf_automation_platform="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_automation.ip_platform ${jsonFile})"
 ip_vcf_automation="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_automation.ip ${jsonFile})"
+ip_vcf_auto_start="$(jq -c -r .vcf_automation.ip_pool ${jsonFile}| cut -f1 -d'-')"
+ip_vcf_auto_end="$(jq -c -r .vcf_automation.ip_pool ${jsonFile}| cut -f2 -d'-')"
+pool_ip_vcf_auto="[]"
+prefix_ip_vcf_auto="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')"
 ip_vcf_automation_start="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_automation.ip_pool ${jsonFile}| cut -f1 -d'-')"
 ip_vcf_automation_end="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_automation.ip_pool ${jsonFile}| cut -f2 -d'-')"
+for ip in $(seq "${ip_vcf_auto_start}" "${ip_vcf_auto_end}"); do pool_ip_vcf_auto=$(echo "${pool_ip_vcf_auto}" | jq --arg val "${prefix_ip_vcf_auto}${ip}" '. += [$val]') ; done
 ip_vcf_operation="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_operation.ip ${jsonFile})"
 ip_vcf_operation_fleet="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_operation_fleet.ip ${jsonFile})"
 ip_vcf_operation_collector="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_operation_collector.ip ${jsonFile})"
 ip_vcf_vsp_platform="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_vsp.ip_platform ${jsonFile})"
 ip_vcf_vsp="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_vsp.ip ${jsonFile})"
 ip_vcf_vsp_start="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_vsp.ip_pool ${jsonFile}| cut -f1 -d'-')"
-ip_vcf_vsp_end="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_vsp.ip_pool ${jsonFile}| cut -f2 -d'-')"
-ip_vcf_identity_broker="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_identity_broker.ip ${jsonFile})"
+ip_vcf_vsp_end="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_vsp.ip_pool ${jsonFile}| cut -f2 -d'-')"ip_vcf_identity_broker="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .vcf_identity_broker.ip ${jsonFile})"
 folders_to_copy=$(jq -c -r '.folders_to_copy' ${jsonFile})
 vcfi_scripts=$(jq -c -r '.vcfi_scripts' ${jsonFile})
 K8s_version_short=$(jq -c -r '.K8s_version_short' ${jsonFile})

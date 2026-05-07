@@ -103,8 +103,7 @@ if [[ ${esxi_trunk} == "true" && ${name_vcf_installer} != "null" ]] ; then
         -e "s/\${VCF_VSP_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
         -e "s/\${ip_vcf_vsp_start}/${ip_vcf_vsp_start}/" \
         -e "s/\${ip_vcf_vsp_end}/${ip_vcf_vsp_end}/" \
-        -e "s/\${ip_vcf_automation_start}/${ip_vcf_automation_start}/" \
-        -e "s/\${ip_vcf_automation_end}/${ip_vcf_automation_end}/" \
+        -e "s/\${pool_ip_vcf_auto}/${pool_ip_vcf_auto}/" \
         -e "s/\${vcf_automation_node_prefix}/${vcf_automation_node_prefix}/" \
         -e "s/\${vcf_version_full}/${vcf_version_full}/" \
         -e "s/\${domain}/${domain}/" \
