@@ -487,7 +487,7 @@ if [[ ${operation} == "apply" ]] ; then
       govc import.ova --options="/tmp/options-${name_vcf_installer}.json" -folder "${folder}" "/root/$(basename ${vcf_installer_ova_url})" >/dev/null
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM created" ${log_file} ${slack_webhook} ${google_webhook}
       echo "Creating VCF Installer VM" | tee -a ${log_file}
-      govc vm.power -on=true "${name_vcf_installer}"
+      govc vm.power -on=true "${basename_sddc}-${name_vcf_installer}.${domain}"
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM started" ${log_file} ${slack_webhook} ${google_webhook}
       count=1
       until $(curl --output /dev/null --silent --head -k https://${ip_vcf_installer})
