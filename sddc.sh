@@ -682,7 +682,7 @@ if [[ ${operation} == "destroy" ]] ; then
     if [[ $(govc find -json vm | jq '[.[] | select(. == "vm/'${folder}'/'${name_esxi}'")] | length') -eq 1 ]]; then
       govc vm.power -off=true "${folder}/${name_esxi}"
       govc vm.destroy "${folder}/${name_esxi}"
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${esxi} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${name_esxi} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
     else
       echo "ERROR: unable to delete ESXi ${name_esxi}: it is already gone" | tee -a ${log_file}
     fi
