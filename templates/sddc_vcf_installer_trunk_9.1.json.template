@@ -236,11 +236,10 @@
         ],
         "adminUserPassword": "${VCFO_PASSWORD}",
         "applianceSize": "small",
-        "useExistingDeployment": false,
-        "loadBalancerFqdn": null
+        "useExistingDeployment": false
     },
     "vcfOperationsCollectorSpec": {
-        "hostname": "${basename_sddc}-vcfo-collector.${domain}",
+        "hostname": "${basename_sddc}-collector.${domain}",
         "applicationSize": "small",
         "rootUserPassword": "${VCFO_PASSWORD}",
         "useExistingDeployment": false

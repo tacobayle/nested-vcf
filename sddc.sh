@@ -476,7 +476,7 @@ if [[ ${operation} == "apply" ]] ; then
       exit
     else
       sed -e "s/\${VCF_INSTALLER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
-          -e "s/\${name_vcf_installer}/${name_vcf_installer}/" \
+          -e "s/\${name_vcf_installer}/${basename_sddc}-${name_vcf_installer}.${domain}/" \
           -e "s/\${ip_vcf_installer}/${ip_vcf_installer}/" \
           -e "s/\${domain}/${domain}/" \
           -e "s/\${netmask}/$(ip_netmask_by_prefix $(jq -c -r --arg arg "${vcf_installer_network_ref}" '.vsphere_underlay.networks[] | select( .ref == $arg).cidr' $jsonFile | cut -d"/" -f2) "   ++++++")/" \

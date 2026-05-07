@@ -45,7 +45,7 @@ done
 #
 #
 nsxtManagers="[]"
-for nsx_count in $(seq 1 $(echo ${ips_nsx} | jq -c -r '. | length'))
+for nsx_count in $(seq 2 $(echo ${ips_nsx} | jq -c -r '. | length'))
 do
   nsxtManager='{"hostname":"'${basename_sddc}''${basename_nsx_manager}''${nsx_count}'","ip":"'$(echo ${ips_nsx} | jq -c -r '.['$((nsx_count - 1))']')'"}'
   nsxtManagers=$(echo ${nsxtManagers} | jq '. += ['${nsxtManager}']')
@@ -103,7 +103,7 @@ if [[ ${esxi_trunk} == "true" && ${name_vcf_installer} != "null" ]] ; then
         -e "s/\${VCF_VSP_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
         -e "s/\${ip_vcf_vsp_start}/${ip_vcf_vsp_start}/" \
         -e "s/\${ip_vcf_vsp_end}/${ip_vcf_vsp_end}/" \
-        -e "s/\${pool_ip_vcf_auto}/${pool_ip_vcf_auto}/" \
+        -e "s/\${pool_ip_vcf_auto}/$(echo ${pool_ip_vcf_auto} | jq -c -r .)/" \
         -e "s/\${vcf_automation_node_prefix}/${vcf_automation_node_prefix}/" \
         -e "s/\${vcf_version_full}/${vcf_version_full}/" \
         -e "s/\${domain}/${domain}/" \

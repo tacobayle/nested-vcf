@@ -61,7 +61,7 @@ gw_vcf_cli_url=$(jq -c -r .gw.vcf_cli_url $jsonFile)
 ip_vcsa="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.vcenter.ip ${jsonFile})"
 name_cb=$(jq -c -r .cloud_builder.name $jsonFile)
 iso_url=$(jq -c -r .esxi.iso_url $jsonFile)
-name_vcf_installer=$(jq -c -r .vcf_installer.name $jsonFile)
+name_vcf_installer="vcf-installer"
 if [[ ${name_vcf_installer} != "null" ]]; then
   vcf_version=$(echo ${iso_url} | cut -d"-" -f4 | cut -d"." -f1-3)
   vcf_version_two_digit=$(echo ${iso_url} | cut -d"-" -f4 | cut -d"." -f1-2)
