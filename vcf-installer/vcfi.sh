@@ -107,7 +107,13 @@ if [[ ${name_vcf_installer} != "null" ]]; then
   #
   sddc_manager_api 3 2 POST "@/home/ubuntu/json/${basename_sddc}.json" ${ip_vcf_installer} v1/sddcs/validations $(jq -c -r .accessToken /tmp/token_vcfi.json)
   sddc_validation_id=$(echo ${response_body} | jq -c -r .id)
+  if [ -z "${sddc_validation_id}" ] ]; then
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: sddc_validation_id is undefined or null" "${log_file}" "${slack_webhook}" "${google_webhook}"
+    exit 255
+  fi
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: sddc_validation_id: ${sddc_validation_id}" "${log_file}" "${slack_webhook}" "${google_webhook}"
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: waiting 300 seconds" "${log_file}" "" ""
+  sleep 300
   retry_validation=60 ; pause_validation=10 ; attempt_validation=1
   while true ; do
     log_message "attempt $attempt_validation to verify SDDC JSON validation" "${log_file}" "" ""
