@@ -560,6 +560,13 @@ if [[ ${operation} == "apply" ]] ; then
       log_message "running the following command from the gw: ${script_file} ${jsonFile_remote}" ${log_file} ${slack_webhook} ${google_webhook}
       ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${jsonFile_remote}" < /dev/null 2>/dev/null &
       test_remote_script ${log_file} ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+      #
+      #
+      #
+      if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+        log_message "VCF 9.1 exit" "${log_file}" "" ""
+        exit
+      fi
       if [ $? -eq 100 ]; then
         log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
       fi
