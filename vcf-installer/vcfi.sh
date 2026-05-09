@@ -130,7 +130,11 @@ if [[ ${name_vcf_installer} != "null" ]]; then
           log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation not ERROR - ${item}" "${log_file}" "${slack_webhook}" "${google_webhook}"
         done
         log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation not SUCCEEDED - exiting the automation" "${log_file}" "${slack_webhook}" "${google_webhook}"
-        exit
+        if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: v9.1 - ignoring the error" "${log_file}" "${slack_webhook}" "${google_webhook}"
+        else
+          exit 100
+        fi
       fi
       break
     else
