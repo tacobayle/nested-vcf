@@ -153,7 +153,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
   sddc_id=$(echo ${response_body} | jq -c -r .id)
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: starting building sddc id ${sddc_id}" "${log_file}" "${slack_webhook}" "${google_webhook}"
   # validation_sddc creation
-  retry_build=120 ; pause_build=300 ; attempt_build=1 ; count_retry=1
+  retry_build=180 ; pause_build=300 ; attempt_build=1 ; count_retry=1
   while true ; do
     /home/ubuntu/bash/sddc_manager/create_api_session.sh "admin@local" ''$(jq -c -r .generic_password $jsonFile)'' ${ip_vcf_installer} /tmp/token_vcfi.json
     log_message "attempt $attempt_build to verify SDDC ${sddc_id} creation" "${log_file}" "" ""
