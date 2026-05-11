@@ -277,7 +277,7 @@ done
 #
 # Check the status of Nodes (including transport node and edge nodes but filtered with edge_ids
 #
-log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: pausing for 600 seconds" "${log_file}" "" ""
+log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 600 seconds" "${log_file}" "" ""
 sleep 600
 retry=240 ; pause=20 ; attempt=0
 for item in $(echo ${edge_ids} | jq -c -r '.[]')
