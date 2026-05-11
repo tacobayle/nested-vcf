@@ -16,7 +16,7 @@
     <li><a href="https://${basename_sddc}-vc01.${domain}" target="_blank">Mgmt VCSA</a></li>
     <li><a href="https://${basename_sddc}-nsx01.${domain}" target="_blank">Mgmt NSX Manager</a></li>
     <li><a href="https://${basename_sddc}${basename_avi_ctrl}1.${domain}" target="_blank">Mgmt Avi ctrl</a></li>
-    <li><a href="https://${basename_sddc}-vcfa.${domain}" target="_blank">VCF-Automation</a></li>
+    <li><a href="https://${basename_sddc}-auto-vip.${domain}" target="_blank">VCF-Automation</a></li>
     <li><a href="https://${basename_sddc}-ops01.${domain}" target="_blank">VCF-Operations</a></li>
     <li><a href="https://${basename_sddc}-vcfo-fleet.${domain}" target="_blank">VCF-Fleet</a></li>
     <li><a href="https://${basename_sddc}-vcfo-collector.${domain}" target="_blank">VCF-Collector</a></li>

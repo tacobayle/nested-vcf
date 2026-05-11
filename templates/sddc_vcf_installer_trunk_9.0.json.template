@@ -93,7 +93,7 @@
         "useExistingDeployment": false
     },
     "vcfAutomationSpec": {
-        "hostname": "${basename_sddc}-vcfa.${domain}",
+        "hostname": "${basename_sddc}-auto-vip.${domain}",
         "adminUserPassword": "${VCFA_PASSWORD}",
         "ipPool": [
             "${ip_vcf_automation_start}",
