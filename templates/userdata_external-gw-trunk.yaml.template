@@ -211,7 +211,6 @@ write_files:
       fi
       if [[ ${vcf_version_two_digit} == "9.0" ]]; then
         echo "${basename_sddc}-vcfa       IN            A       ${ip_vcf_automation}" | tee -a /var/lib/bind/db.${domain}
-        echo "${basename_sddc}-vcfo       IN            A       ${ip_vcf_operation}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-vcfo-fleet       IN            A       ${ip_vcf_operation_fleet}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-vcfo-collector       IN            A       ${ip_vcf_operation_collector}" | tee -a /var/lib/bind/db.${domain}
       fi
@@ -222,10 +221,10 @@ write_files:
         echo "${basename_sddc}-shared01       IN            A       ${ip_vcf_vsp}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-fleetlcm       IN            A       ${ip_vcf_operation_fleet}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-vidb       IN            A       ${ip_vcf_identity_broker}" | tee -a /var/lib/bind/db.${domain}
-        echo "${basename_sddc}-ops01       IN            A       ${ip_vcf_operation}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-collector       IN            A       ${ip_vcf_operation_collector}" | tee -a /var/lib/bind/db.${domain}
         echo "${basename_sddc}-auto-vip       IN            A       ${ip_vcf_automation}" | tee -a /var/lib/bind/db.${domain}
       fi
+      echo "${basename_sddc}-ops01       IN            A       ${ip_vcf_operation}" | tee -a /var/lib/bind/db.${domain}
       #
       count_esxi=1
       echo '${ips_esxi}' | jq -c -r .[] | while read ip_esxi
@@ -328,7 +327,6 @@ write_files:
       echo "`echo '${ip_sddc_manager}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-sddcm.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       if [[ ${vcf_version_two_digit} == "9.0" ]]; then
         echo "`echo '${ip_vcf_automation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfa.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
-        echo "`echo '${ip_vcf_operation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfo.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_operation_fleet}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfo-fleet.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_operation_collector}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vcfo-collector.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       fi
@@ -339,10 +337,10 @@ write_files:
         echo "`echo '${ip_vcf_vsp}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-shared01.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_operation_fleet}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-fleetlcm.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_identity_broker}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-vidb.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
-        echo "`echo '${ip_vcf_operation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-ops01.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_operation_collector}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-collector.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
         echo "`echo '${ip_vcf_automation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-auto-vip.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       fi
+      echo "`echo '${ip_vcf_operation}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-ops01.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       echo "`echo '${ip_nsx_vip}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-nsx01.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       echo "`echo '${ip_avi_vip}' | cut -f4 -d'.'`            PTR     ${basename_sddc}-avi.${domain}." | tee -a /var/lib/bind/db.${reverse_vm_network}
       count_nsx=2
