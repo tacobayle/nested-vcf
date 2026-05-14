@@ -25,8 +25,9 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     vcfi_machineId=$(echo ${response_body} | jq -c -r '.machineId')
     if [ -z "$vcfi_machineId" ] || [ "$vcfi_machineId" == "null" ]; then
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: vcfi_machineId is undefined or null" "${log_file}" "${slack_webhook}" "${google_webhook}"
-      exit 255
+      exit 100
     fi
+    sleep 3
     vcfi_access_token=$(curl --request POST \
           --url ${vcf_installer_bearer_url} \
           --header 'content-type: application/x-www-form-urlencoded' \
@@ -35,8 +36,9 @@ if [[ ${name_vcf_installer} != "null" ]]; then
           --data grant_type=client_credentials | jq -c -r '.access_token')
     if [ -z "$vcfi_access_token" ] || [ "$vcfi_access_token" == "null" ]; then
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: vcfi_access_token is undefined or null" "${log_file}" "${slack_webhook}" "${google_webhook}"
-      exit 255
+      exit 100
     fi
+    sleep 3
     vcfi_activation_code=$(curl --request POST \
       --url ${vcf_installer_token_url}/${vcf_installer_tenant_id}/${vcf_installer_token_url_suffix} \
       --header 'authorization: Bearer '${vcfi_access_token}'' \
@@ -47,8 +49,9 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       }' | jq -c -r '.activation_code')
     if [ -z "$vcfi_activation_code" ] || [ "$vcfi_activation_code" == "null" ]; then
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: vcfi_activation_code is undefined or null" "${log_file}" "${slack_webhook}" "${google_webhook}"
-      exit 255
+      exit 100
     fi
+    sleep 3
     sddc_manager_api 3 2 PUT '{"vmwareAccount" : {"downloadActivationCode" : "'${vcfi_activation_code}'"}}' ${ip_vcf_installer} v1/system/settings/depot $(jq -c -r .accessToken /tmp/token_vcfi.json)
   fi
   #
@@ -109,7 +112,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
   sddc_validation_id=$(echo ${response_body} | jq -c -r .id)
   if [ -z "${sddc_validation_id}" ] ]; then
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: sddc_validation_id is undefined or null" "${log_file}" "${slack_webhook}" "${google_webhook}"
-    exit 255
+    exit 100
   fi
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: sddc_validation_id: ${sddc_validation_id}" "${log_file}" "${slack_webhook}" "${google_webhook}"
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: waiting 300 seconds" "${log_file}" "" ""
