@@ -257,5 +257,5 @@
     "licenseServerSpec": {
         "hostname": "${basename_sddc}-license.${domain}"
     },
-    "vcfInstanceName": "${basename_sddc}-instance"
+    "vcfInstanceName": "vcf-instance-01"
 }

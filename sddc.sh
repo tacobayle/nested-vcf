@@ -563,7 +563,7 @@ if [[ ${operation} == "apply" ]] ; then
       #
       #
       #
-      if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+      if [[ ${vcf_version_two_digit} == "9.1" && ${script_file} == "/home/ubuntu/avi/configure_avi.sh" ]]; then
         log_message "VCF 9.1 exit" "${log_file}" "" ""
         exit
       fi
@@ -705,7 +705,12 @@ if [[ ${operation} == "destroy" ]] ; then
   else
     echo "ERROR: unable to delete VM ${gw_name}: it already exists" | tee -a ${log_file}
   fi
-  govc cluster.rule.remove -name "${folder}-affinity-rule"
+  #
+  #
+  #
+  if [[ $(jq -c -r .vsphere_underlay.affinity $jsonFile) == "true" ]] ; then
+    govc cluster.rule.remove -name "${folder}-affinity-rule"
+  fi
   #
   #
   echo '------------------------------------------------------------' | tee -a ${log_file}
