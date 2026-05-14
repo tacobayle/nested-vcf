@@ -58,10 +58,12 @@ if [[ ${operation} == "apply" ]] ; then
   echo "Creation of an external gw on the underlay infrastructure - This should take 10 minutes" >> ${log_file}
   # ova download
   download_file_from_url_to_location "${ubuntu_ova_url}" "/root/$(basename ${ubuntu_ova_url})" "Ubuntu OVA"
-  download_file_from_url_to_location "${avi_ova_url}" "/root/$(basename ${avi_ova_url})" "Avi OVA"
-  download_file_from_url_to_location "${avi_ova_url_sddc_manager}" "/root/$(basename ${avi_ova_url_sddc_manager})" "Avi OVA"
+  if [[ ${vcf_version_two_digit} == "9.0" ]]; then
+    download_file_from_url_to_location "${avi_ova_url}" "/root/$(basename ${avi_ova_url})" "Avi OVA"
+    download_file_from_url_to_location "${avi_ova_url_sddc_manager}" "/root/$(basename ${avi_ova_url_sddc_manager})" "Avi OVA"
+  fi
   download_file_from_url_to_location "${iso_url}" "/root/$(basename ${iso_url})" "ESXi ISO" &
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Ubuntu OVA downloaded" ${log_file} ${slack_webhook} ${google_webhook}
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Ubuntu OVA downloaded" ${log_file} "" ""
   #
   if [[ ${list_gw} != "null" ]] ; then
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to create VM ${gw_name}: it already exists" ${log_file} ${slack_webhook} ${google_webhook}
@@ -101,12 +103,6 @@ if [[ ${operation} == "apply" ]] ; then
     #
     #
     basename=$(jq -c -r .esxi.basename $jsonFile)
-    if [[ ${esxi_trunk} == "true" ]] ; then
-      template_userdata_file="userdata_external-gw-trunk.yaml.template"
-    fi
-    if [[ ${esxi_trunk} == "false" ]] ; then
-      template_userdata_file="userdata_external-gw-multi-nic.yaml.template"
-    fi
     sed -e "s/\${password}/$(jq -c -r .generic_password $jsonFile)/" \
         -e "s/\${ip_gw}/${ip_gw}/g" \
         -e "s/\${prefix}/${prefix}/" \
@@ -171,7 +167,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${vault_pki_intermediate_role_name}@${vault_pki_intermediate_role_name}@g" \
         -e "s@\${vault_pki_intermediate_role_allow_subdomains}@${vault_pki_intermediate_role_allow_subdomains}@" \
         -e "s@\${vault_pki_intermediate_role_max_ttl}@${vault_pki_intermediate_role_max_ttl}@" \
-        -e "s/\${hostname}/${gw_name}/" /nested-vcf/templates/${template_userdata_file} | tee /root/${gw_name}_userdata.yaml > /dev/null
+        -e "s/\${hostname}/${gw_name}/" /nested-vcf/templates/userdata_external-gw-trunk.yaml.template | tee /root/${gw_name}_userdata.yaml > /dev/null
     #
     sed -e "s#\${public_key}#$(awk '{printf "%s\\n", $0}' /root/.ssh/id_rsa.pub | awk '{length=$0; print substr($0, 1, length-2)}')#" \
         -e "s@\${base64_userdata}@$(base64 /root/${gw_name}_userdata.yaml -w 0)@" \
@@ -182,10 +178,8 @@ if [[ ${operation} == "apply" ]] ; then
     govc import.ova --options="/tmp/options-${gw_name}.json" -folder "${folder}" "/root/$(basename ${ubuntu_ova_url})" > /dev/null 2>&1
     govc vm.change -vm "${folder}/${gw_name}" -c $(jq -c -r .gw.cpu $jsonFile) -m $(jq -c -r .gw.memory $jsonFile) > /dev/null 2>&1
     govc vm.disk.change -vm "${folder}/${gw_name}" -size $(jq -c -r .gw.disk $jsonFile) > /dev/null 2>&1
-    if [[ ${esxi_trunk} == "true" ]] ; then
-      nic_to_esxi=$(jq -c -r .esxi.nics[0] $jsonFile)
-      govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3
-    fi
+    nic_to_esxi=$(jq -c -r .esxi.nics[0] $jsonFile)
+    govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3
     govc vm.power -on=true "${gw_name}" > /dev/null 2>&1
     echo "   +++ Updating /etc/hosts..." >> ${log_file}
     contents=$(cat /etc/hosts | grep -v ${ip_gw})
@@ -204,27 +198,6 @@ if [[ ${operation} == "apply" ]] ; then
         if [[ $? -eq 0 ]]; then
           echo "Gw ${gw_name} is ready." >> ${log_file}
           log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: external-gw ${gw_name} VM reachable and configured" ${log_file} ${slack_webhook} ${google_webhook}
-          if [[ ${esxi_trunk} == "false" ]] ; then
-            count=3
-            count_nic=0
-            ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo mv /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.old"
-            ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "cat /etc/netplan/50-cloud-init.yaml.old | head -n -1 | sudo tee /etc/netplan/50-cloud-init.yaml"
-            echo ${networks} | jq -c -r .[] | while read net
-            do
-              nic_to_esxi=$(jq -c -r .esxi.nics[${count_nic}] $jsonFile)
-              govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3 > /dev/null 2>&1
-              ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"        \$(ip -o link show | awk -F': ' '{print \$2}' | head -${count} | tail -1):\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
-              ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            dhcp4: false\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
-              ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            addresses: [$(echo $net | jq -c -r .cidr | awk -F'0/' '{print $1}')${ip_gw_last_octet}/$(echo $net | jq -c -r .cidr | cut -f2 -d'/')]\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
-              ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            match:\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
-              ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"                macaddress: \$(ip -o link show | awk -F'link/ether ' '{print \$2}' | awk -F' ' '{print \$1}' | head -${count} | tail -1)\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
-              ssh -n -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"            set-name: \$(ip -o link show | awk -F': ' '{print \$2}' | head -${count} | tail -1)\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
-              count=$((count+1))
-              count_nic=$((count_nic+1))
-            done
-            ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "echo \"    version: 2\" | sudo tee -a /etc/netplan/50-cloud-init.yaml"
-            ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo netplan apply"
-          fi
           sed -e "s@\${avi_subdomain}@${avi_subdomain}@" \
               -e "s/\${domain}/${domain}/" /nested-vcf/templates/blueprint.yaml.template | tee "/nested-vcf/vcf-automation/blueprint.yaml" > /dev/null
           sed -e "s@\${avi_subdomain}@${avi_subdomain}@" \
@@ -320,34 +293,22 @@ if [[ ${operation} == "apply" ]] ; then
       hostSpecs=$(echo ${hostSpecs} | jq '. += ['${hostSpec}']')
       rm -f ${iso_build_location}/ks_cust.cfg
       rm -f "${iso_location}-${esxi}.iso"
-      if [[ ${esxi_trunk} == "true" ]] ; then
-        sed -e "s/\${nested_esxi_root_password}/$(jq -c -r .generic_password $jsonFile)/" \
-            -e "s/\${ip_mgmt}/${ip_esxi}/" \
-            -e "s/\${netmask}/$(ip_netmask_by_prefix $(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f2) "   ++++++")/" \
-            -e "s/\${vlan_id}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
-            -e "s/\${dns_servers}/${ip_gw}/" \
-            -e "s/\${ntp_servers}/${ip_gw}/" \
-            -e "s/\${hostname}/${name_esxi}/" \
-            -e "s/\${domain}/${domain}/" \
-            -e "s/\${gateway}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" /nested-vcf/templates/ks_cust-trunk.cfg.template | tee ${iso_build_location}/ks_cust.cfg > /dev/null
-      fi
-      if [[ ${esxi_trunk} == "false" ]] ; then
-        sed -e "s/\${nested_esxi_root_password}/$(jq -c -r .generic_password $jsonFile)/" \
-            -e "s/\${ip_mgmt}/${ip_esxi}/" \
-            -e "s/\${netmask}/$(ip_netmask_by_prefix $(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f2) "   ++++++")/" \
-            -e "s/\${dns_servers}/${ip_gw}/" \
-            -e "s/\${ntp_servers}/${ip_gw}/" \
-            -e "s/\${hostname}/${name_esxi}/" \
-            -e "s/\${domain}/${domain}/" \
-            -e "s/\${gateway}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" /nested-vcf/templates/ks_cust-multi-nic.cfg.template | tee ${iso_build_location}/ks_cust.cfg > /dev/null
-      fi
+      sed -e "s/\${nested_esxi_root_password}/$(jq -c -r .generic_password $jsonFile)/" \
+          -e "s/\${ip_mgmt}/${ip_esxi}/" \
+          -e "s/\${netmask}/$(ip_netmask_by_prefix $(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f2) "   ++++++")/" \
+          -e "s/\${vlan_id}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)/" \
+          -e "s/\${dns_servers}/${ip_gw}/" \
+          -e "s/\${ntp_servers}/${ip_gw}/" \
+          -e "s/\${hostname}/${name_esxi}/" \
+          -e "s/\${domain}/${domain}/" \
+          -e "s/\${gateway}/$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')${ip_gw_last_octet}/" /nested-vcf/templates/ks_cust-trunk.cfg.template | tee ${iso_build_location}/ks_cust.cfg > /dev/null
       echo "Building new ISO for ESXi ${esxi}" >> ${log_file}
       xorrisofs -relaxed-filenames -J -R -o "${iso_location}-${esxi}.iso" -b isolinux.bin -c boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e efiboot.img -no-emul-boot ${iso_build_location}
       ds=$(jq -c -r .vsphere_underlay.datastore $jsonFile)
       dc=$(jq -c -r .vsphere_underlay.datacenter $jsonFile)
       echo "Uploading new ISO for ESXi ${esxi}" >> ${log_file}
       govc datastore.upload  --ds=${ds} --dc=${dc} "${iso_location}-${esxi}.iso" nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null 2>&1
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ISO ESXi ${esxi} uploaded" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ISO ESXi ${esxi} uploaded" ${log_file} "" ""
       if [[ ${esxi} -gt 4 ]] ; then
         cpu=$(jq -c -r .esxi.sizing_workload.cpu $jsonFile)
         memory=$(jq -c -r .esxi.sizing_workload.memory $jsonFile)
@@ -380,27 +341,8 @@ if [[ ${operation} == "apply" ]] ; then
       govc vm.change -vm "${folder}/${name_esxi}" -nested-hv-enabled > /dev/null 2>&1
       govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk1 -size ${disk_flash_size} > /dev/null 2>&1
       govc vm.disk.create -vm "${folder}/${name_esxi}" -name ${name_esxi}/disk2 -size ${disk_capacity_size} > /dev/null 2>&1
-      if [[ ${esxi_trunk} == "true" ]] ; then
-        net=$(jq -c -r .esxi.nics[1] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
-      fi
-      if [[ ${esxi_trunk} == "false" ]] ; then
-        net=$(jq -c -r .esxi.nics[0] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
-        net=$(jq -c -r .esxi.nics[1] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
-        net=$(jq -c -r .esxi.nics[2] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
-        net=$(jq -c -r .esxi.nics[3] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
-        net=$(jq -c -r .esxi.nics[4] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
-        net=$(jq -c -r .esxi.nics[5] $jsonFile)
-        govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
-      fi
+      net=$(jq -c -r .esxi.nics[1] $jsonFile)
+      govc vm.network.add -vm "${folder}/${name_esxi}" -net ${net} -net.adapter vmxnet3 > /dev/null 2>&1
       govc vm.power -on=true "${folder}/${name_esxi}" > /dev/null 2>&1
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${esxi} created" ${log_file} ${slack_webhook} ${google_webhook} &
     fi
@@ -430,7 +372,7 @@ if [[ ${operation} == "apply" ]] ; then
   fi
   if [[ ${vcf_installer_ova_url} != "null" ]]; then
     echo "VCF Installer OVA downloaded" | tee -a ${log_file}
-    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF Installer OVA downloaded" ${log_file} ${slack_webhook} ${google_webhook}
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF Installer OVA downloaded" ${log_file} "" ""
   fi
   #
   # Cloud builder use case
@@ -485,10 +427,10 @@ if [[ ${operation} == "apply" ]] ; then
       #
       echo "Uploading VCF Installer OVA" | tee -a ${log_file}
       govc import.ova --options="/tmp/options-${name_vcf_installer}.json" -folder "${folder}" "/root/$(basename ${vcf_installer_ova_url})" >/dev/null
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM created" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM created" ${log_file} "" ""
       echo "Creating VCF Installer VM" | tee -a ${log_file}
       govc vm.power -on=true "${basename_sddc}-${name_vcf_installer}.${domain}"
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM started" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM started" ${log_file} "" ""
       count=1
       until $(curl --output /dev/null --silent --head -k https://${ip_vcf_installer})
       do
@@ -500,7 +442,7 @@ if [[ ${operation} == "apply" ]] ; then
           exit 1
         fi
       done
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM configured and reachable" ${log_file} ${slack_webhook} ${google_webhook}
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM configured and reachable" ${log_file} "" ""
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM: please patch it: ssh vcf@${ip_vcf_installer}" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   fi

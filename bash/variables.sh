@@ -88,7 +88,6 @@ if [[ ${cidr_external} =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.[0-9]{1,3}$
 fi
 external_prefix_length=$(jq -c -r --arg arg "EXTERNAL" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -f2 -d"/")
 ips_esxi=$(jq -c -r .esxi.ips $jsonFile | jq ". | map(\"$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')\" + (. | tostring))")
-esxi_trunk=$(jq -c -r .esxi.trunk $jsonFile)
 cloud_builder_ova_url=$(jq -c -r .cloud_builder.ova_url $jsonFile)
 cloud_builder_network_ref=$(jq -c -r .cloud_builder.network_ref $jsonFile)
 vcf_installer_ova_url=$(jq -c -r .vcf_installer.ova_url $jsonFile)

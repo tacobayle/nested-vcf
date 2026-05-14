@@ -53,7 +53,7 @@ done
 #
 #
 #
-if [[ ${esxi_trunk} == "true" && ${name_vcf_installer} != "null" ]] ; then
+if [[ ${name_vcf_installer} != "null" ]] ; then
   if [[ ${vcf_version_two_digit} == "9.0" ]]; then
     json_template_file="/home/ubuntu/templates/sddc_vcf_installer_trunk_9.0.json.template"
     sed -e "s/\${basename_sddc}/${basename_sddc}/" \
@@ -141,7 +141,7 @@ fi
 #
 #
 #
-if [[ ${esxi_trunk} == "true" && ${name_cb} != "null" ]] ; then
+if [[ ${name_cb} != "null" ]] ; then
   sed -e "s/\${basename_sddc}/${basename_sddc}/" \
       -e "s/\${SDDC_MANAGER_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" \
       -e "s/\${ip_sddc_manager}/${ip_sddc_manager}/" \
