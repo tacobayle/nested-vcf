@@ -59,8 +59,7 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" 
     govc vm.power -on=true "${avi_ctrl_name}" > /dev/null
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Avi ctrl deployed" "${log_file}" "${slack_webhook}" "${google_webhook}"
   fi
-  touch ${resultFile}
-  exit
 else
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Avi ctrl not deployed manually because of VCF version: ${vcf_version_two_digit}" "${log_file}" "${slack_webhook}" "${google_webhook}"
 fi
+touch ${resultFile}
