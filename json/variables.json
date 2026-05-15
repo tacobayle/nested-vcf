@@ -67,7 +67,7 @@
     },
     {
       "script_file": "/home/ubuntu/sddc-manager/avi-sddc.sh",
-      "test_remote_script_retry": 20,
+      "test_remote_script_retry": 120,
       "test_remote_script_pause": 30
     },
     {
