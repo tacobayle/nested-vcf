@@ -23,6 +23,6 @@ touch ${resultFile}
 # content library
 #
 #log_message "create content library update-cl-ubuntu" "${log_file}" "" ""
-#govc library.create ${vsphere_cl_name} > /dev/null 2>&1
-#govc library.import ${vsphere_cl_name} "/home/ubuntu/bin/$(basename ${ubuntu_ova_url})" > /dev/null 2>&1
-#touch ${resultFile}
+govc library.create ${vsphere_cl_name} > /dev/null 2>&1
+govc library.import ${vsphere_cl_name} "/home/ubuntu/bin/$(basename ${ubuntu_ova_url})" > /dev/null 2>&1
+touch ${resultFile}

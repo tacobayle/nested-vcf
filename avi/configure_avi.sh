@@ -9,10 +9,6 @@ source /home/ubuntu/bash/log_message.sh
 source /home/ubuntu/bash/load_govc_env_with_cluster.sh
 source /home/ubuntu/avi/avi_api.sh
 #
-# ansible collection install vmware.alb
-#
-/home/ubuntu/.local/bin/ansible-galaxy collection install vmware.alb
-#
 # creating a content library and folder for seg
 #
 load_govc_env_with_cluster
@@ -115,7 +111,7 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   # system config.
   #
   avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/systemconfiguration"
-  json_data=$(echo ${response_body} | jq -c -r '. += {"welcome_workflow_complete": true}')
+  json_data=$(echo ${response_body} | jq -c -r '. += {"welcome_workflow_complete": true, "default_license_tier":"ENTERPRISE_WITH_CLOUD_SERVICES"}')
   avi_api 2 2 "PUT" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/systemconfiguration"
   #
   # cloud update
@@ -328,7 +324,24 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
       "account_id": "'${avi_account_id}'"
     }'
   avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/albservices/register"
-  sleep 10
+  sleep 20
+  json_data='
+    {
+      "replace": {
+        "feature_opt_in_status": {
+          "enable_appsignature_sync": true,
+          "enable_ip_reputation": true,
+          "enable_pulse_case_management": false,
+          "enable_pulse_waf_management": true,
+          "enable_user_agent_db_sync": false
+        },
+        "waf_config": {
+          "enable_auto_download_waf_signatures": true,
+          "enable_waf_signatures_notifications": true
+        },
+      }
+    }'
+  avi_api 2 2 "PATCH" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/albservicesconfig"
   #
   # SEG update
   #
@@ -406,7 +419,14 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   done
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: DNS VS UP" "${log_file}" "${slack_webhook}" "${google_webhook}"
 fi
+#
+# VCF 9.0 or 5.2 use case
+#
 if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" ]]; then
+  #
+  # ansible collection install vmware.alb
+  #
+  /home/ubuntu/.local/bin/ansible-galaxy collection install vmware.alb
   #
   # Network mgmt
   #
@@ -470,6 +490,5 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" 
   /home/ubuntu/.local/bin/ansible-playbook -i hosts_avi ${avi_ansible_playbook} --extra-vars @/home/ubuntu/avi/avi_values.yml
   #
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Avi ctrl configured" "${log_file}" "${slack_webhook}" "${google_webhook}"
-  touch ${resultFile}
 fi
-exit
+touch ${resultFile}
