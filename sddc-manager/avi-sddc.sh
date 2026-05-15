@@ -154,6 +154,7 @@ elif [[ ${vcf_version_two_digit} == "9.1" ]]; then
            "vcfopsAdminPassword": "'${generic_password}'"
           }'
   else
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, sddcm: patching sddcm for single ctrl use case" "${log_file}" "" ""
     /bin/bash /home/ubuntu/sddc-manager/patch_sddcm.sh -u vcf -P ''${generic_password}'' -r ''${generic_password}'' -H ${basename_sddc}-sddcm.${domain}
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, sddcm: waiting 180 seconds" "${log_file}" "" ""
     sleep 180
@@ -167,8 +168,9 @@ elif [[ ${vcf_version_two_digit} == "9.1" ]]; then
            "nsxIds": ["'${nsx_id}'"],
            "vcfopsAdminPassword": "'${generic_password}'"
           }'
-    sleep 1800
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, sddcm: single ctrl Avi deployment started" "${log_file}" "" ""
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, sddcm: waiting 1800 seconds" "${log_file}" "" ""
+    sleep 1800
     sddcm_token=$(curl -s -H 'Content-Type:application/json' https://$sddcm/v1/tokens -d "$loginpayload" -k | jq -c -r .'accessToken')
     retry_download=60 ; pause_download=10 ; attempt_download=1
     while true
