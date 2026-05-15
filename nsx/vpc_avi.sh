@@ -370,17 +370,19 @@ done
 #
 # registering Avi in the NSX config
 #
-json_data='
-{
-  "owned_by": "LCM",
-  "cluster_ip": "'${ip_avi}'",
-  "infra_admin_username" : "admin",
-  "infra_admin_password" : "'${generic_password}'"
-}'
-/bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" "${generic_password}" \
-            "policy/api/v1/infra/alb-onboarding-workflow" \
-            "PUT" \
-            $(echo ${json_data} | jq -c -r .)
+if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" ]]; then
+  json_data='
+  {
+    "owned_by": "LCM",
+    "cluster_ip": "'${ip_avi}'",
+    "infra_admin_username" : "admin",
+    "infra_admin_password" : "'${generic_password}'"
+  }'
+  /bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" "${generic_password}" \
+              "policy/api/v1/infra/alb-onboarding-workflow" \
+              "PUT" \
+              $(echo ${json_data} | jq -c -r .)
+fi
 #
 #
 #
