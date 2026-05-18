@@ -161,6 +161,7 @@
                 }
               ],
               "ip_pool_name": "update-ip_pool_tep_edge_overlay",
+              "ip_pool_name_9_1": "teppool",
               "transport_zone_names": [
                 "VCF-Created-Overlay-Zone"
               ]

@@ -66,31 +66,33 @@ done
 #
 # create ip pools and subnets
 #
-echo ${nsx_config_ip_pools} | jq -c -r .[] | while read item
-do
-  item=$(echo ${item} | jq -c -r '. += {"gateway": "'${ip_gw_edge_overlay}'"}')
-  item=$(echo ${item} | jq -c -r '. += {"start": "'${ip_start_nsx_edge_overlay}'"}')
-  item=$(echo ${item} | jq -c -r '. += {"end": "'${ip_end_nsx_edge_overlay}'"}')
-  item=$(echo ${item} | jq -c -r '. += {"cidr": "'${cidr_edge_overlay}'"}')
-  /bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" ${generic_password} \
-              "policy/api/v1/infra/ip-pools/$(echo ${item} | jq -c -r '.display_name')" \
-              "PATCH" \
-              "{\"display_name\": \"$(echo ${item} | jq -c -r '.display_name')\"}"
-  /bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" ${generic_password} \
-              "policy/api/v1/infra/ip-pools/$(echo ${item} | jq -c -r '.display_name')/ip-subnets/$(echo ${item} | jq -c -r '.display_name')-subnet" \
-              "PATCH" \
-              "{\"display_name\": \"$(echo ${item} | jq -c -r '.display_name')-subnet\",
-                \"resource_type\": \"$(echo ${item} | jq -c -r '.resource_type')\",
-                \"cidr\": \"$(echo ${item} | jq -c -r '.cidr')\",
-                \"gateway_ip\": \"$(echo ${item} | jq -c -r '.gateway')\",
-                \"allocation_ranges\": [
-                  {
-                    \"start\": \"$(echo ${item} | jq -c -r '.start')\",
-                    \"end\": \"$(echo ${item} | jq -c -r '.end')\"
-                  }
-                ]
-              }"
-done
+if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" ]]; then
+  echo ${nsx_config_ip_pools} | jq -c -r .[] | while read item
+  do
+    item=$(echo ${item} | jq -c -r '. += {"gateway": "'${ip_gw_edge_overlay}'"}')
+    item=$(echo ${item} | jq -c -r '. += {"start": "'${ip_start_nsx_edge_overlay}'"}')
+    item=$(echo ${item} | jq -c -r '. += {"end": "'${ip_end_nsx_edge_overlay}'"}')
+    item=$(echo ${item} | jq -c -r '. += {"cidr": "'${cidr_edge_overlay}'"}')
+    /bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" ${generic_password} \
+                "policy/api/v1/infra/ip-pools/$(echo ${item} | jq -c -r '.display_name')" \
+                "PATCH" \
+                "{\"display_name\": \"$(echo ${item} | jq -c -r '.display_name')\"}"
+    /bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" ${generic_password} \
+                "policy/api/v1/infra/ip-pools/$(echo ${item} | jq -c -r '.display_name')/ip-subnets/$(echo ${item} | jq -c -r '.display_name')-subnet" \
+                "PATCH" \
+                "{\"display_name\": \"$(echo ${item} | jq -c -r '.display_name')-subnet\",
+                  \"resource_type\": \"$(echo ${item} | jq -c -r '.resource_type')\",
+                  \"cidr\": \"$(echo ${item} | jq -c -r '.cidr')\",
+                  \"gateway_ip\": \"$(echo ${item} | jq -c -r '.gateway')\",
+                  \"allocation_ranges\": [
+                    {
+                      \"start\": \"$(echo ${item} | jq -c -r '.start')\",
+                      \"end\": \"$(echo ${item} | jq -c -r '.end')\"
+                    }
+                  ]
+                }"
+  done
+fi
 #
 # create segments
 #
@@ -167,7 +169,13 @@ storage_id=$(echo ${response_body} | jq -r .[0].datastore)
 vcenter_api 2 2 "GET" ${token} "" "${basename_sddc}-vc01.${domain}" "api/vcenter/network"
 management_network_id=$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-pg-mgmt" '.[] | select(.name == $arg1).network')
 data_network_ids="[]"
-data_network_ids=$(echo ${data_network_ids} | jq '. += ["'$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-pg-edge-overlay" '.[] | select(.name == $arg1).network')'"]')
+if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+  data_network_ids=$(echo ${data_network_ids} | jq '. += ["'$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-edge-uplink1" '.[] | select(.name == $arg1).network')'"]')
+  #data_network_ids=$(echo ${data_network_ids} | jq '. += ["'$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-edge-uplink2" '.[] | select(.name == $arg1).network')'"]')
+fi
+if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" ]]; then
+  data_network_ids=$(echo ${data_network_ids} | jq '. += ["'$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-pg-edge-overlay" '.[] | select(.name == $arg1).network')'"]')
+fi
 data_network_ids=$(echo ${data_network_ids} | jq '. += ["'$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-pg-external" '.[] | select(.name == $arg1).network')'"]')
 vcenter_api 2 2 "GET" ${token} "" "${basename_sddc}-vc01.${domain}" "api/vcenter/cluster"
 cluster=$(echo ${response_body} | jq -c -r --arg arg1 "${basename_sddc}-cluster" '.[] | select(.name == $arg1).cluster')
@@ -197,14 +205,17 @@ do
                   "${file_path}/$(basename ${api_endpoint}).json"
       host_switch_profile_id=$(jq -c -r --arg arg1 "${host_switch_profile_name}" '.results[] | select(.display_name == $arg1).id' ${file_path}/$(basename ${api_endpoint}).json)
       json_data=$(jq '.host_switch_spec.host_switches['${host_switch_count}'].host_switch_profile_ids += [{"key": "UplinkHostSwitchProfile", "value": "'${host_switch_profile_id}'"}]' /tmp/tmp.json)
+      if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+        json_data=$(echo ${json_data} | jq '.host_switch_spec.host_switches['${host_switch_count}'] += {"vlan": "'$(jq -c -r --arg arg "HOST_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)'"}')
+      fi
       echo ${json_data} | jq . | tee /tmp/tmp.json
     done
+    api_endpoint="api/v1/transport-zones"
+    /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
+                "${api_endpoint}" \
+                "${file_path}/$(basename ${api_endpoint}).json"
     echo ${item} | jq -c -r .transport_zone_names[] | while read tz
     do
-      api_endpoint="api/v1/transport-zones"
-      /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
-                  "${api_endpoint}" \
-                  "${file_path}/$(basename ${api_endpoint}).json"
       transport_zone_id=$(jq -c -r --arg arg1 "${tz}" '.results[] | select(.display_name == $arg1).id' ${file_path}/$(basename ${api_endpoint}).json)
       json_data=$(jq '.host_switch_spec.host_switches['${host_switch_count}'].transport_zone_endpoints += [{"transport_zone_id": "'${transport_zone_id}'"}]' /tmp/tmp.json)
       echo ${json_data} | jq . | tee /tmp/tmp.json
@@ -214,9 +225,15 @@ do
       /bin/bash /home/ubuntu/nsx/get_object.sh "${ip_nsx_vip}" "${generic_password}" \
                   "${api_endpoint}" \
                   "${file_path}/$(basename ${api_endpoint}).json"
-      ip_pool_id=$(jq -c -r --arg arg1 "$(echo ${json_data} | jq -r '.host_switch_spec.host_switches['${host_switch_count}'].ip_pool_name')" '.results[] | select(.display_name == $arg1).realization_id' ${file_path}/$(basename ${api_endpoint}).json)
+      if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" ]]; then
+        ip_pool_id=$(jq -c -r --arg arg1 "$(echo ${json_data} | jq -r '.host_switch_spec.host_switches['${host_switch_count}'].ip_pool_name')" '.results[] | select(.display_name == $arg1).realization_id' ${file_path}/$(basename ${api_endpoint}).json)
+      fi
+      if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+        ip_pool_id=$(jq -c -r --arg arg1 "$(echo ${json_data} | jq -r '.host_switch_spec.host_switches['${host_switch_count}'].ip_pool_name_9_1')" '.results[] | select(.display_name == $arg1).realization_id' ${file_path}/$(basename ${api_endpoint}).json)
+      fi
       json_data=$(jq '.host_switch_spec.host_switches['${host_switch_count}'] += {"ip_assignment_spec": {"ip_pool_id": "'${ip_pool_id}'", "resource_type": "StaticIpPoolSpec"}}' /tmp/tmp.json)
       json_data=$(echo ${json_data} | jq 'del (.host_switch_spec.host_switches['${host_switch_count}'].ip_pool_name)')
+      json_data=$(echo ${json_data} | jq 'del (.host_switch_spec.host_switches['${host_switch_count}'].ip_pool_name_9_1)')
       echo ${json_data} | jq . | tee /tmp/tmp.json
     fi
     json_data=$(jq 'del (.host_switch_spec.host_switches['${host_switch_count}'].host_switch_profile_names)' /tmp/tmp.json)

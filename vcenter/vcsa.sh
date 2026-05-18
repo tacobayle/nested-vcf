@@ -11,10 +11,15 @@ load_govc_nested_env_wo_cluster
 #
 # port group
 #
-log_message "create portgroup ${basename_sddc}-pg-edge-overlay in vds ${basename_sddc}-vds-01 with vlan $(jq -c -r --arg arg "EDGE_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)" "${log_file}" "" ""
-govc dvs.portgroup.add -dvs "${basename_sddc}-vds-01" -vlan "$(jq -c -r --arg arg "EDGE_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)" "${basename_sddc}-pg-edge-overlay" > /dev/null 2>&1
+if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" ]]; then
+  log_message "create portgroup ${basename_sddc}-pg-edge-overlay in vds ${basename_sddc}-vds-01 with vlan $(jq -c -r --arg arg "EDGE_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)" "${log_file}" "" ""
+  govc dvs.portgroup.add -dvs "${basename_sddc}-vds-01" -vlan "$(jq -c -r --arg arg "EDGE_OVERLAY" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)" "${basename_sddc}-pg-edge-overlay" > /dev/null 2>&1
+fi
 log_message "create portgroup ${basename_sddc}-pg-external in vds ${basename_sddc}-vds-01 with vlan $(jq -c -r --arg arg "EXTERNAL" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)" "${log_file}" "" ""
 govc dvs.portgroup.add -dvs "${basename_sddc}-vds-01" -vlan "$(jq -c -r --arg arg "EXTERNAL" '.sddc.vcenter.networks[] | select( .type == $arg).vlan_id' $jsonFile)" "${basename_sddc}-pg-external" > /dev/null 2>&1
+if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+  govc dvs.portgroup.add -dvs "${basename_sddc}-vds-01" -vlan-mode=trunking "${basename_sddc}-edge-uplink1"
+fi
 #
 #
 #
