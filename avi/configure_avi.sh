@@ -311,7 +311,7 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/albservices/status"
   json_data='
     {
-      "jwt_token": "'${avi_jwt_token=}'"
+      "jwt_token": "'${avi_jwt_token}'"
     }'
   avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/portal/refresh-access-token"
   sleep 20
@@ -338,16 +338,56 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
         "waf_config": {
           "enable_auto_download_waf_signatures": true,
           "enable_waf_signatures_notifications": true
-        },
+        }
       }
     }'
   avi_api 2 2 "PATCH" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/albservicesconfig"
+  sleep 10
+  avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/albservices/pool"
+  pulse_pool_id=$(echo ${response_body} | jq -c -r '.results[0].pool_id')
+  json_data='
+      {
+        "pool_id": "'${pulse_pool_id}'"
+      }'
+  avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/licensing/v1/cloud/subscribe"
+  #
+  # AZ update
+  #
+  avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/vcenterserver"
+  vcenter_uuid=$(echo ${response_body} | jq -c -r '.results[0].uuid')
+  avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/cloud"
+  cloud_uuid=$(echo ${response_body} | jq -c -r --arg arg "CLOUD_NSXT" '.results[] | select(.vtype == $arg) | .uuid')
+  json_data='
+    {
+      "cloud_uuid": "'${cloud_uuid}'",
+      "vcenter_uuid": "'${vcenter_uuid}'"
+    }'
+  avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/nsxt/transportnodes"
+  list_az_uuids="[]"
+  while read item
+  do
+    json_data='
+      {
+        "az_hosts": [
+          {
+            "host_ids": [
+              "'$(echo $item | jq -c -r '.vc_mobj_id')'"
+            ],
+            "vcenter_ref": "'${vcenter_uuid}'"
+          }
+        ],
+        "cloud_ref": "'${cloud_uuid}'",
+        "name": "az-'$(echo $item | jq -c -r '.name')'"
+      }'
+    avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/availabilityzone"
+    list_az_uuids=$(echo ${list_az_uuids} | jq '. += ["'$(echo ${response_body} | jq -c -r '.uuid')'"]')
+  done < <(echo "${response_body}" | jq -c -r '.resource.nsxt_transportnodes[]')
   #
   # SEG update
   #
   avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/serviceenginegroup?name=Default-Group&cloud_ref=${cloud_uuid}"
   serviceneginegroup_uuid=$(echo ${response_body} | jq -c -r '.results[0].uuid')
-  json_data='{"replace": {"cpu_reserve": false, "mem_reserve": false, "se_deprovision_delay": 120, "buffer_se": 0, "min_scaleout_per_vs": 1, "algo": "PLACEMENT_ALGO_PACKED", "ha_mode": "HA_MODE_SHARED", "vcpus_per_se": 1, "memory_per_se": 2048, "disk_per_se": 15, "realtime_se_metrics": {"duration": 30, "enable": false}}}'
+  json_data='{"replace": {"availability_zone_refs": '$(echo ${list_az_uuids} | jq -c -r '.[-3:]')', "cpu_reserve": false, "mem_reserve": false, "se_deprovision_delay": 120, "buffer_se": 0, "min_scaleout_per_vs": 1, "algo": "PLACEMENT_ALGO_PACKED", "ha_mode": "HA_MODE_SHARED", "vcpus_per_se": 1, "memory_per_se": 2048, "disk_per_se": 15, "realtime_se_metrics": {"duration": 30, "enable": false}}}'
   avi_api 2 2 "PATCH" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/serviceenginegroup/${serviceneginegroup_uuid}"
   #
   # DNS vsvip
@@ -491,4 +531,7 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" 
   #
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Avi ctrl configured" "${log_file}" "${slack_webhook}" "${google_webhook}"
 fi
+#
+#
+#
 touch ${resultFile}
