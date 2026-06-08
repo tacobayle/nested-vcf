@@ -142,6 +142,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s/\${ip_vcf_identity_broker}/${ip_vcf_identity_broker}/" \
         -e "s/\${ip_vcsa}/${ip_vcsa}/" \
         -e "s/\${pip3_packages}/$(jq -c -r '.pip3_packages' $jsonFile)/" \
+        -e "s@\${gw_pip_artefact}@${gw_pip_artefact}@" \
         -e "s/\${ip_vcf_automation}/${ip_vcf_automation}/" \
         -e "s/\${ip_vcf_installer}/${ip_vcf_installer}/" \
         -e "s/\${ip_vcf_operation}/${ip_vcf_operation}/" \

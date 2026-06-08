@@ -67,11 +67,19 @@ write_files:
       #
       # pip3
       #
-      pip3 install --upgrade pip --break-system-packages
+      if [[ ${gw_pip_artefact} == "null" ]]; then
+        pip3 install --upgrade pip --break-system-packages
+      else
+        pip3 install --upgrade pip --break-system-packages --index-url ${gw_pip_artefact}
+      fi
       pip3_packages='${pip3_packages}'
       echo $pip3_packages | jq -c -r .[] | while read pip3_package
       do
-        sudo -u ubuntu pip3 install $pip3_package --break-system-packages
+        if [[ ${gw_pip_artefact} == "null" ]]; then
+          sudo -u ubuntu pip3 install $pip3_package --break-system-packages
+        else
+          sudo -u ubuntu pip3 install $pip3_package --break-system-packages --index-url ${gw_pip_artefact}
+        fi
       done
       #
       # GOVC install

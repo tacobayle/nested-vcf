@@ -5,7 +5,7 @@
     "disk": "40G"
   },
   "K8s_version_short": "v1.31",
-  "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer", "avi", "vks", "vcf-automation", "html", "sddc-manager"],
+  "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer", "avi", "supervisor", "vcf-automation", "html", "sddc-manager"],
   "directories": ["bin", "esxi", "vault", "yaml-files"],
   "vault": {
     "secret_file_path": "/home/ubuntu/vault/secret.json",
@@ -86,7 +86,7 @@
       "test_remote_script_pause": 30
     },
     {
-      "script_file": "/home/ubuntu/vks/configure_vks.sh",
+      "script_file": "/home/ubuntu/supervisor/configure_supervisor.sh",
       "test_remote_script_retry": 120,
       "test_remote_script_pause": 30
     }
