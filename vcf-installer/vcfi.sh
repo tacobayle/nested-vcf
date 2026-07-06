@@ -99,7 +99,7 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       log_message "${depot_downloaded} on ${depots_to_download} bundles have been downloaded" "${log_file}" "" ""
     fi
     if [ $attempt_download -eq $retry_download ]; then
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: Bundles are not downloaded after ${attempt_download} attempts of ${pause_download} seconds" "${log_file}" "" ""
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: Bundles are not downloaded after ${attempt_download} attempts of ${pause_download} seconds" "${log_file}" "${slack_webhook}" "${google_webhook}"
       exit
     fi
     sleep ${pause_download}
