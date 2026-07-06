@@ -124,15 +124,16 @@ write_files:
               sudo iptables -t nat -A POSTROUTING -s `echo $ip_block_json | jq -c -r .cidr` -o $ifaceFirstName -j MASQUERADE
             fi
           done
-        fi
-        vcf_a_ip_spaces='${vcf_a_ip_spaces}'
-        if [ -n "$vcf_a_ip_spaces" ] && [ "$vcf_a_ip_spaces" != "null" ]; then
-          echo $vcf_a_ip_spaces | jq -c -r .[] | while read item
-          do
-            echo "            - to: $(echo $item | jq -c -r .cidr)" | tee -a /etc/netplan/50-cloud-init.yaml
-            echo "              via: ${cidr_external_three_octets}.${nsx_tier0_tier0_vip_starting_ip}" | tee -a /etc/netplan/50-cloud-init.yaml
-            sudo iptables -t nat -A POSTROUTING -s `echo $item | jq -c -r .cidr` -o $ifaceFirstName -j MASQUERADE
-          done
+          # VCF-A external blocks
+          vcf_a_ip_spaces='${vcf_a_ip_spaces}'
+          if [ -n "$vcf_a_ip_spaces" ] && [ "$vcf_a_ip_spaces" != "null" ]; then
+            echo $vcf_a_ip_spaces | jq -c -r .[] | while read item
+            do
+              echo "            - to: $(echo $item | jq -c -r .cidr)" | tee -a /etc/netplan/50-cloud-init.yaml
+              echo "              via: ${cidr_external_three_octets}.${nsx_tier0_tier0_vip_starting_ip}" | tee -a /etc/netplan/50-cloud-init.yaml
+              sudo iptables -t nat -A POSTROUTING -s `echo $item | jq -c -r .cidr` -o $ifaceFirstName -j MASQUERADE
+            done
+          fi
         fi
         sudo iptables -t nat -A POSTROUTING -s `echo $net | jq -c -r .cidr` -o $ifaceFirstName -j MASQUERADE
         sudo iptables -A FORWARD -i vlan.`echo $net | jq -c -r .vlan_id` -o $ifaceFirstName -j ACCEPT
