@@ -189,14 +189,19 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       -e "s/\${name_vcf_installer}/${name_vcf_installer}/" \
       -e "s/\${basename_avi_ctrl}/${basename_avi_ctrl}/" \
       -e "s/\${domain}/${domain}/" ${template_html_file} | tee /home/ubuntu/html/index.html > /dev/null
+  sed -e "s@\${ip_gw}@${ip_gw}@" "/home/ubuntu/templates/socks.html.template" | tee /home/ubuntu/html/html/socks.html > /dev/null
+
 else
   template_html_file="/home/ubuntu/templates/index.html.template"
   sed -e "s/\${basename_sddc}/${basename_sddc}/" \
       -e "s/\${domain}/${domain}/" ${template_html_file} | tee /home/ubuntu/html/index.html > /dev/null
 fi
 sudo mv /home/ubuntu/html/index.html /var/www/html/index.html
+sudo mv /home/ubuntu/html/html/socks.html /var/www/html/socks.html
 sudo chown root /var/www/html/index.html
 sudo chgrp root /var/www/html/index.html
+sudo chown root /var/www/html/socks.html
+sudo chgrp root /var/www/html/socks.html
 sudo mv /home/ubuntu/vcf-automation/blueprint.yaml /var/www/html/blueprint.yaml
 sudo chown root /var/www/html/blueprint.yaml
 sudo chgrp root /var/www/html/blueprint.yaml

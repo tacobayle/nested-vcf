@@ -1,0 +1,87 @@
+{
+  "resultTotal": 3,
+  "pageCount": 1,
+  "page": 1,
+  "pageSize": 25,
+  "associations": null,
+  "values": [
+    {
+      "status": "REALIZED",
+      "id": "urn:vcloud:ipSpace:ae58b02b-ff06-4d79-9164-bf77e2dc4bbb",
+      "name": "test1",
+      "description": "",
+      "internalScopeCidrBlocks": [
+        {
+          "id": "test1-6taex",
+          "name": "test1-6taex",
+          "cidr": "192.168.244.0/24"
+        }
+      ],
+      "ipAddressRanges": [],
+      "reservedIpAddressRanges": [],
+      "backingId": null,
+      "isImportedIpBlock": false,
+      "externalScopeCidr": null,
+      "regionRef": {
+        "name": "region-1",
+        "id": "urn:vcloud:region:f8c8ad0d-0d1c-4825-b152-7da5aa09bc8f"
+      },
+      "defaultQuota": null,
+      "subnetExclusive": false,
+      "dedicatedDistributedVlanConnectionRef": null,
+      "providerVisibilityOnly": false
+    },
+    {
+      "status": "REALIZED",
+      "id": "urn:vcloud:ipSpace:a5384478-329d-4a34-8218-4b0372473f35",
+      "name": "test2",
+      "description": "",
+      "internalScopeCidrBlocks": [
+        {
+          "id": "test2",
+          "name": "test2-m3qa0",
+          "cidr": "192.168.145.0/24"
+        }
+      ],
+      "ipAddressRanges": [],
+      "reservedIpAddressRanges": [],
+      "backingId": "test2",
+      "isImportedIpBlock": false,
+      "externalScopeCidr": null,
+      "regionRef": {
+        "name": "region-1",
+        "id": "urn:vcloud:region:f8c8ad0d-0d1c-4825-b152-7da5aa09bc8f"
+      },
+      "defaultQuota": null,
+      "subnetExclusive": false,
+      "dedicatedDistributedVlanConnectionRef": null,
+      "providerVisibilityOnly": false
+    },
+    {
+      "status": "REALIZED",
+      "id": "urn:vcloud:ipSpace:b4402dcb-ab69-46f1-b2e8-1255191c6314",
+      "name": "test3",
+      "description": "",
+      "internalScopeCidrBlocks": [
+        {
+          "id": "test3",
+          "name": "test3-mutlw",
+          "cidr": "192.168.248.0/24"
+        }
+      ],
+      "ipAddressRanges": [],
+      "reservedIpAddressRanges": [],
+      "backingId": "test3",
+      "isImportedIpBlock": false,
+      "externalScopeCidr": null,
+      "regionRef": {
+        "name": "region-1",
+        "id": "urn:vcloud:region:f8c8ad0d-0d1c-4825-b152-7da5aa09bc8f"
+      },
+      "defaultQuota": null,
+      "subnetExclusive": false,
+      "dedicatedDistributedVlanConnectionRef": null,
+      "providerVisibilityOnly": false
+    }
+  ]
+}

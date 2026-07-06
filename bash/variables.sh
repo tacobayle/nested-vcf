@@ -221,6 +221,7 @@ supernet_vpc_public_third_octet=$(echo "${supernet_vpc_public}" | cut -d'.' -f3)
 supernet_vpc_public_two_octets=$(echo "${supernet_vpc_public}" | cut -d'.' -f1-2)
 public_count=0
 last_public_third_octet=$((${supernet_vpc_public_third_octet} + $(jq '[.nsx.config.ip_blocks[] | select(.visibility == "EXTERNAL" and .project_ref == "default") ] | length' $jsonFile) - 1))
+first_public_third_octet_vcf_a=$((${last_public_third_octet} + 1 ))
 for third_octet in $(seq ${supernet_vpc_public_third_octet} ${last_public_third_octet})
 do
   cidr="${supernet_vpc_public_two_octets}.${third_octet}.0/24"
@@ -344,3 +345,19 @@ supervisor_cluster_service_address_count=$(jq -c -r '.supervisor_cluster.service
 supervisor_cluster_vpc_profile=$(jq -c -r '.supervisor_cluster.vpc_profile_ref' $jsonFile)
 supervisor_cluster_vpc_private_cidr_address=$(jq -c -r '.supervisor_cluster.vpc_private_cidr_address' $jsonFile)
 supervisor_cluster_vpc_private_cidr_prefix=$(jq -c -r '.supervisor_cluster.vpc_private_cidr_prefix' $jsonFile)
+#
+# VCF-A
+#
+vcf_a_regions=$(jq -c -r '.vcf_a.regions' $jsonFile)
+vcf_a_ip_spaces="[]"
+supernet_vpc_public=$(jq -c -r '.sddc.nsx.supernet_vpc_public' $jsonFile)
+supernet_vpc_public_two_octets=$(echo "${supernet_vpc_public}" | cut -d'.' -f1-2)
+ipspace_count=0
+last_public_third_octet_vcf_a=$((${first_public_third_octet_vcf_a} + $(jq '.vcf_a.ip_spaces | length' $jsonFile) - 1))
+for third_octet in $(seq ${first_public_third_octet_vcf_a} ${last_public_third_octet_vcf_a})
+do
+  cidr="${supernet_vpc_public_two_octets}.${third_octet}.0/24"
+  vcf_a_ip_space=$(jq -c -r '.vcf_a.ip_spaces['${ipspace_count}'] + {"cidr": "'${cidr}'"}' $jsonFile)
+  vcf_a_ip_spaces=$(echo ${vcf_a_ip_spaces} | jq '. + ['${vcf_a_ip_space}'] ')
+  ((ipspace_count++))
+done

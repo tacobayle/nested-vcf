@@ -4,7 +4,11 @@
     <title>VCF Deployment Details</title>
 </head>
 <body>
-<h1>VCF Deployment Details</h1>
+<h1>Nested Deployment Details</h1>
+<ul>
+    <li><a href="socks.html" target="_blank">Configure SOCKS proxy</a></li>
+</ul>
+<h1>VCF Deployment UI Links</h1>
 <ul>
     <li><a href="https://${basename_sddc}-mgmt-esxi01.${domain}" target="_blank">ESXi 01</a></li>
     <li><a href="https://${basename_sddc}-mgmt-esxi02.${domain}" target="_blank">ESXi 02</a></li>
@@ -22,6 +26,16 @@
     <li><a href="https://${basename_sddc}-vcfo-collector.${domain}" target="_blank">VCF-Collector</a></li>
     <li><a href="forward.html" target="_blank">Initial Forward Zone - this is not refreshed</a></li>
     <li><a href="ptr_mgmt.html" target="_blank">Initial PTR MANAGEMENT network - this is not refreshed - this includes ESXi hosts</a></li>
+    <li><a href="ptr_vm_network.html" target="_blank">Initial PTR VM_MANAGEMENT network - this is not refreshed - this includes NSX and Avi</a></li>
+</ul>
+<h1>DNS A records</h1>
+<ul>
+    <li><a href="forward.html" target="_blank">Initial Forward Zone - this is not refreshed</a></li>
+    <li><a href="ptr_mgmt.html" target="_blank">Initial PTR MANAGEMENT network - this is not refreshed - this includes ESXi hosts</a></li>
+    <li><a href="ptr_vm_network.html" target="_blank">Initial PTR VM_MANAGEMENT network - this is not refreshed - this includes NSX and Avi</a></li>
+</ul>
+<h1>DNS PTR records</h1>
+<ul>
     <li><a href="ptr_vm_network.html" target="_blank">Initial PTR VM_MANAGEMENT network - this is not refreshed - this includes NSX and Avi</a></li>
 </ul>
 <h1>Manual Configuration</h1>

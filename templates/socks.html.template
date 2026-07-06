@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Configure SOCKS Proxy</title>
+</head>
+<body>
+<h1>Enable and maintain SSH connection on MacOS</h1>
+<ul>
+    <li>From your terminal, type the following command:</li>
+</ul>
+<i>ssh -o StrictHostKeyChecking=no -f -N -M -S /tmp/sshtunnel -D 1080 ubuntu@${ip_gw} -p22</i>
+<h1>Enable and maintain SSH connection on Windows using Putty</h1>
+<ul>
+    <li>to be done</li>
+</ul>
+<h1>Configure Firefox</h1>
+<img src="socks1.png" width="792" height="304" alt="Firefox settings">
+<br>
+<img src="socks2.png" width="450" height="506" alt="Firefox Proxy settings">
+</body>
+</html>
