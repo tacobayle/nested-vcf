@@ -228,6 +228,7 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
     }'
   avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/ipamdnsproviderprofile"
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: configure Avi - waiting for 120 seconds" "${log_file}" "" ""
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 120 seconds" "${log_file}" "" ""
   sleep 120
   curl_login=$(curl -s -k -X POST -H "Content-Type: application/json" \
                                   -d "{\"username\": \"${username}\", \"password\": \"${password}\"}" \
@@ -314,6 +315,7 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
       "jwt_token": "'${avi_jwt_token}'"
     }'
   avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/portal/refresh-access-token"
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 20 seconds" "${log_file}" "" ""
   sleep 20
   random_string=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 10 | head -n 1)
   json_data='
@@ -324,6 +326,7 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
       "account_id": "'${avi_account_id}'"
     }'
   avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/albservices/register"
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 20 seconds" "${log_file}" "" ""
   sleep 20
   json_data='
     {
@@ -342,6 +345,7 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
       }
     }'
   avi_api 2 2 "PATCH" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/albservicesconfig"
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 10 seconds" "${log_file}" "" ""
   sleep 10
   avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/albservices/pool"
   pulse_pool_id=$(echo ${response_body} | jq -c -r '.results[0].pool_id')
@@ -355,14 +359,20 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   #
   avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/vcenterserver"
   vcenter_uuid=$(echo ${response_body} | jq -c -r '.results[0].uuid')
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 10 seconds" "${log_file}" "" ""
+  sleep 10
   avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/cloud"
   cloud_uuid=$(echo ${response_body} | jq -c -r --arg arg "CLOUD_NSXT" '.results[] | select(.vtype == $arg) | .uuid')
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 10 seconds" "${log_file}" "" ""
+  sleep 10
   json_data='
     {
       "cloud_uuid": "'${cloud_uuid}'",
       "vcenter_uuid": "'${vcenter_uuid}'"
     }'
   avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/nsxt/transportnodes"
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 10 seconds" "${log_file}" "" ""
+  sleep 10
   list_az_uuids="[]"
   while read item
   do
@@ -379,6 +389,8 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
         "cloud_ref": "'${cloud_uuid}'",
         "name": "az-'$(echo $item | jq -c -r '.name')'"
       }'
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 10 seconds" "${log_file}" "" ""
+    sleep 10
     avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/availabilityzone"
     list_az_uuids=$(echo ${list_az_uuids} | jq '. += ["'$(echo ${response_body} | jq -c -r '.uuid')'"]')
   done < <(echo "${response_body}" | jq -c -r '.resource.nsxt_transportnodes[]')
