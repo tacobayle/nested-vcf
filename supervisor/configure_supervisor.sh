@@ -144,6 +144,7 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "9.1" ]];
   }'
   token=$(/bin/bash /home/ubuntu/bash/vcenter/create_vcenter_api_session.sh "${vsphere_nested_username}" "${ssoDomain}" "${generic_password}" "${vcsa_fqdn}")
   vcenter_api 3 3 "POST" $token "${json_data}" ${vcsa_fqdn} "api/vcenter/namespace-management/supervisors/${cluster_id}?action=enable_on_compute_cluster"
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 600 seconds" "${log_file}" "" ""
   sleep 600
   #
   #

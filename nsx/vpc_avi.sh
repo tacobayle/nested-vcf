@@ -383,19 +383,21 @@ do
         "${json_data}"
 done
 #
-# registering Avi in the NSX config
+# registering Avi in the NSX config - VCF 9.0 or 5.2 use case
 #
-json_data='
-{
-  "owned_by": "LCM",
-  "cluster_ip": "'${ip_avi}'",
-  "infra_admin_username" : "admin",
-  "infra_admin_password" : "'${generic_password}'"
-}'
-/bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" "${generic_password}" \
-            "policy/api/v1/infra/alb-onboarding-workflow" \
-            "PUT" \
-            $(echo ${json_data} | jq -c -r .)
+if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" ]]; then
+  json_data='
+  {
+    "owned_by": "LCM",
+    "cluster_ip": "'${ip_avi}'",
+    "infra_admin_username" : "admin",
+    "infra_admin_password" : "'${generic_password}'"
+  }'
+  /bin/bash /home/ubuntu/nsx/set_object.sh "${ip_nsx_vip}" "${generic_password}" \
+              "policy/api/v1/infra/alb-onboarding-workflow" \
+              "PUT" \
+              $(echo ${json_data} | jq -c -r .)
+fi
 log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: End of the NSX config." "${log_file}" "${slack_webhook}" "${google_webhook}"
 #
 #
