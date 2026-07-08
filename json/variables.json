@@ -76,6 +76,11 @@
       "test_remote_script_pause": 30
     },
     {
+      "script_file": "/home/ubuntu/avi/upgrade_avi.sh",
+      "test_remote_script_retry": 120,
+      "test_remote_script_pause": 30
+    },
+    {
       "script_file": "/home/ubuntu/nsx/vpc_avi.sh",
       "test_remote_script_retry": 20,
       "test_remote_script_pause": 30

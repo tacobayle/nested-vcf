@@ -62,6 +62,11 @@ if [[ ${operation} == "apply" ]] ; then
     download_file_from_url_to_location "${avi_ova_url}" "/root/$(basename ${avi_ova_url})" "Avi OVA"
     download_file_from_url_to_location "${avi_ova_url_sddc_manager}" "/root/$(basename ${avi_ova_url_sddc_manager})" "Avi OVA"
   fi
+  if [ -z "$avi_pkg_url" ] || [ "$avi_pkg_url" == "null" ]; then
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: INFO: no need to download PKG file" ${log_file} "" ""
+  else
+    download_file_from_url_to_location "${avi_pkg_url}" "/root/$(basename ${avi_pkg_url})" "Avi PKG"
+  fi
   download_file_from_url_to_location "${iso_url}" "/root/$(basename ${iso_url})" "ESXi ISO" &
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Ubuntu OVA downloaded" ${log_file} "" ""
   #
@@ -214,6 +219,7 @@ if [[ ${operation} == "apply" ]] ; then
           scp -o StrictHostKeyChecking=no "/root/$(basename ${ubuntu_ova_url})" ubuntu@${ip_gw}:/home/ubuntu/bin/$(basename ${ubuntu_ova_url})
           scp -o StrictHostKeyChecking=no "/root/$(basename ${avi_ova_url})" ubuntu@${ip_gw}:/home/ubuntu/bin/$(basename ${avi_ova_url})
           scp -o StrictHostKeyChecking=no "/root/$(basename ${avi_ova_url_sddc_manager})" ubuntu@${ip_gw}:/home/ubuntu/sddc-manager/$(basename ${avi_ova_url_sddc_manager})
+          scp -o StrictHostKeyChecking=no "/root/$(basename ${avi_pkg_url})" ubuntu@${ip_gw}:/home/ubuntu/avi/$(basename ${avi_pkg_url})
           scp -o StrictHostKeyChecking=no -r /root/${basename_sddc}_${operation}.json ubuntu@${ip_gw}:/home/ubuntu/json/${basename_sddc}_${operation}.json
           for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
           do

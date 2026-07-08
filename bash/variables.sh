@@ -241,6 +241,7 @@ nsx_config_vpc_connectivity_profiles=$(jq -c -r .nsx.config.vpc_connectivity_pro
 nsx_config_vpc_service_profiles=$(jq -c -r .nsx.config.vpc_service_profiles $jsonFile)
 nsx_config_vpcs=$(jq -c -r .nsx.config.vpcs $jsonFile)
 avi_ova_url=$(jq -c -r '.sddc.avi.ova_url' $jsonFile)
+avi_pkg_url=$(jq -c -r '.sddc.avi.pkg_url' $jsonFile)
 avi_jwt_token=$(jq -c -r '.sddc.avi.jwt_token' $jsonFile)
 avi_account_id=$(jq -c -r '.sddc.avi.account_id' $jsonFile)
 avi_ova_url_sddc_manager=$(jq -c -r '.sddc.avi.ova_url_sddc_manager' $jsonFile)

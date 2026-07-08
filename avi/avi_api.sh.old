@@ -9,17 +9,12 @@ avi_api () {
   # $8 http data
   # $9 ALB Controller IP
   # $10 API endpoint
-  # $11 File binary
   retry=$1
   pause=$2
   attempt=0
   echo "  HTTP ${3} API call to https://${9}/${10}"
   while true ; do
-    if [[ -z "${11}" ]]; then
-      response=$(curl -k -s -X "${3}" --write-out "\n\n%{http_code}" -b "${4}" -H "X-CSRFToken: ${5}" -H "X-Avi-Tenant: ${6}" -H "X-Avi-Version: ${7}" -H "Content-Type: application/json" -H "Referer: https://${9}" -d "${8}" https://${9}/${10})
-    else
-      response=$(curl -k -s -X "${3}" --write-out "\n\n%{http_code}" -b "${4}" -H "X-CSRFToken: ${5}" -H "X-Avi-Tenant: ${6}" -H "X-Avi-Version: ${7}" -H "Referer: https://${9}" https://${9}/${10} -F "file=@${11}")
-    fi
+    response=$(curl -k -s -X "${3}" --write-out "\n\n%{http_code}" -b "${4}" -H "X-CSRFToken: ${5}" -H "X-Avi-Tenant: ${6}" -H "X-Avi-Version: ${7}" -H "Content-Type: application/json" -H "Referer: https://${9}" -d "${8}" https://${9}/${10})
 #    sleep 2
     response_body=$(sed '$ d' <<< "$response")
     response_code=$(tail -n1 <<< "$response")
@@ -34,7 +29,7 @@ avi_api () {
     if [ $attempt -eq $retry ]; then
       echo "    FAILED HTTP ${3} API call to https://${9}/${10}, response code was: $response_code"
       echo "$response_body"
-      break
+      exit 255
     fi
     sleep $pause
     ((attempt++))
