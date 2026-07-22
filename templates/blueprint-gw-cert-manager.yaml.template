@@ -199,7 +199,7 @@ resources:
             - name: https
               protocol: HTTPS
               port: 443
-              hostname: '*.app.vcf9.lab'
+              hostname: ${env.deploymentName}.app.vcf9.lab
               tls:
                 certificateRefs:
                   - kind: Secret
@@ -247,9 +247,9 @@ resources:
           issuerRef:
             name: vault-issuer
             kind: Issuer
-          commonName: '*.app.vcf9.lab'
+          commonName: ${env.deploymentName}.app.vcf9.lab
           dnsNames:
-            - '*.app.vcf9.lab'
+            - ${env.deploymentName}.app.vcf9.lab
           duration: 8760h
           renewBefore: 720h
           privateKey:
