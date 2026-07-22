@@ -424,6 +424,16 @@
         }
       }
     ],
+    "provider_gws": [
+      {
+        "name": "ext-connection1",
+        "tier0_ref": "t0-01",
+        "region_ref": "region-1",
+        "ip_space_refs": [
+          "ip_space-1"
+        ]
+      }
+    ],
     "organizations": [
       {
         "name": "org-1",
@@ -460,14 +470,6 @@
         "storage_limit": 102400,
         "username": "admin",
         "role": "Organization Administrator"
-      }
-    ],
-    "provider_gw": [
-      {
-        "name": "provider_gw-1",
-        "region_ref": "region-1",
-        "tier0_ref": "t0-01",
-        "ip_space_ref": "ip_space-1"
       }
     ]
   }

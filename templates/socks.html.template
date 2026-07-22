@@ -8,10 +8,57 @@
 <ul>
     <li>From your terminal, type the following command:</li>
 </ul>
-<i>ssh -o StrictHostKeyChecking=no -f -N -M -S /tmp/sshtunnel -D 1080 ubuntu@${ip_gw} -p22</i>
+<code><div id="contentToCopy0">ssh -o StrictHostKeyChecking=no -f -N -M -S /tmp/sshtunnel -D 1080 ubuntu@${ip_gw} -p22</div>
+<br>
+</code><button id="copyButton0">Copy</button>
+<ul>
+    <li>Keep that terminal open to keep the proxy open. Closing it will kill the proxy</li>
+</ul>
+<h1>Enable and maintain SSH connection in Windows using CMD</h1>
+<ul>
+    <li>From your terminal, type the following command:</li>
+</ul>
+<code><div id="contentToCopy1">ssh -D 1080 -C -N -o ServerAliveInterval=60 -o ServerAliveCountMax=3 ubuntu@${ip_gw}</div>
+    <br>
+</code><button id="copyButton1">Copy</button>
+<ul>
+    <li>Keep that cmd tab / window open to keep the proxy open. Close the tab or window to close the proxy</li>
+</ul>
 <h1>Enable and maintain SSH connection on Windows using Putty</h1>
 <ul>
-    <li>to be done</li>
+    <li>Download and Install Putty if you don't have it</li>
+    <li>Open Putty and configurea a new session</li>
+    <li>Enter the remote gw-vcf IP: ${ip_gw}</li>
+    <li>Save a new session using the name: GW_VCF</li>
+    <img src="putty-gw-vcf-1.png" width="792" height="304" alt="putty-gw-vcf-1.png">
+    <li>Click on Data under Connection</li>
+    <li>Enter the Auto-login username: ubuntu</li>
+    <img src="putty-gw-vcf-username.png" width="792" height="304" alt="putty-gw-vcf-username.png">
+    <li>Add the proxy tunnel config:</li>
+    <ul>
+      <li>Expand the SSH folder and click on Tunnels</li>
+      <li>Click the Dynamic button (critical)</li>
+      <li>Enter 1080 in the Source port under Add new forwarded port:</li>
+    </ul>
+    <li>Click ADD</li>
+    <img src="putty-gw-vcf-socks_tunnel_add.png" width="792" height="304" alt="putty-gw-vcf-socks_tunnel_add.png">
+    <li>Verify the forwarded port was added correctly: Should see D1080:</li>
+    <img src="putty-gw-vcf-socks_tunnel_configured.png" width="792" height="304" alt="putty-gw-vcf-socks_tunnel_configured.png">
+    <li>Go back to the Session and make sure you SAVE the recent changes to the GW_VCF session</li>
+    <li>Now you can establish the proxy connection by Opening the session</li>
+    <li>You will be prompted for a password</li>
+    <li>Use the Firefox browser configured per the FireFox section when the putty session is open</li>
+    <li>To clos the session, close the putty session window</li>
+</ul>
+<h1>Create Windows Shortcut auto login with cmd line argument and password:</h1>
+<ul>
+    <li>Important to use the same session name saved previously: GW_VCF</li>
+    <li>Right click on your Windows desktop > Create New Shortcut</li>
+    <li>Enter this command in the target: (replaces the password field)</li>
+    <li>Shortcut Target:  "C:\Program Files\PuTTY\putty.exe" -load "GW_VCF" -pw "enter password here between the quotes"</li>
+    <li>Save the shortcut: Click Apply and OK</li>
+    <li>Now when you run the shortcut, it auto login and starts the proxy. You can save ths shortcut to your Windows Taskbar</li>
+    <img src="putty-gw-vcf-shortcut.png" width="792" height="304" alt="putty-gw-vcf-shortcut.png">
 </ul>
 <h1>Configure Firefox</h1>
 <img src="socks1.png" width="792" height="304" alt="Firefox settings">
@@ -19,3 +66,86 @@
 <img src="socks2.png" width="450" height="506" alt="Firefox Proxy settings">
 </body>
 </html>
+<script>
+function setupCopyButton(buttonId, contentId) {
+    const copyButton = document.getElementById(buttonId);
+    const contentToCopy = document.getElementById(contentId);
+
+    if (copyButton && contentToCopy) {
+        copyButton.addEventListener('click', () => {
+            const textToCopy = contentToCopy.innerText;
+
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => {
+                    // alert(`Content for ${contentId} copied successfully!`);
+                    console.log(`Content from ${contentId} successfully copied.`);
+                })
+                .catch(err => {
+                    console.error('Could not copy text: ', err);
+                    alert('Failed to copy content. Please try again.');
+                });
+        });
+    } else {
+        // Log errors if the elements are missing in the HTML
+        if (!copyButton) {
+            console.error(`Copy Button with ID '${buttonId}' was not found.`);
+        }
+        if (!contentToCopy) {
+            console.error(`Content Element with ID '${contentId}' was not found.`);
+        }
+    }
+}
+
+// ====================================================================
+// MAIN EXECUTION BLOCK (Runs ONLY when the page is fully loaded)
+// ====================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- 1. SETUP CONFIGURATION BUTTON (CLEANED UP) ---
+    const myButton = document.getElementById('configButton');
+
+    // Attach the click listener directly to the button, only once.
+    if (myButton) {
+        myButton.addEventListener('click', () => {
+            // Prevent action if button is disabled
+            if (myButton.disabled) {
+                return;
+            }
+
+            fetch(API_APPLY, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // Check for a specific API error response here if needed
+                    throw new Error('Configuration failed');
+                }
+            })
+            .then(data => {
+                console.log('Success:', data);
+                alert('Configuration applied');
+            })
+            .catch((error) => {
+                console.log('Error:', error);
+                alert('Configuration failed');
+            });
+        });
+    } else {
+        console.error("Configuration button with ID 'configButton' was not found.");
+    }
+
+    setupCopyButton('copyButton0', 'contentToCopy0');
+    setupCopyButton('copyButton1', 'contentToCopy1');
+    // --- 2. SETUP MULTIPLE COPY BUTTONS ---
+
+    // Note: You must ensure 'quoteContent', 'summaryContent', etc., are the
+    // correct IDs for the content areas in your HTML.
+    // You had multiple setup calls for the same button IDs but different content
+    // IDs in your previous code. I've updated these to match the IDs
+    // in your provided HTML structure (contentToCopy0, contentToCopy1, etc.).
+});
+</script>

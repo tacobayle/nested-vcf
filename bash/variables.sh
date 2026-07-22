@@ -362,3 +362,5 @@ do
   vcf_a_ip_spaces=$(echo ${vcf_a_ip_spaces} | jq '. + ['${vcf_a_ip_space}'] ')
   ((ipspace_count++))
 done
+vcf_a_provider_gws=$(jq -c -r '.vcf_a.provider_gws' $jsonFile)
+vcf_a_organizations=$(jq -c -r '.vcf_a.organizations' $jsonFile)

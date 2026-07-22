@@ -71,7 +71,7 @@ do
     json_data=''
     vcfa_api ${fqdn_vcfa} ${generic_password} ${vcfa_api_endpoint} ${http_method} "${json_data}" 2 2
     if [[ ${vcfa_api_state} == "FAIL" ]]; then log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-A API ${http_method} call to ${fqdn_vcfa}/${vcfa_api_endpoint} FAILED" "${log_file}" "${slack_webhook}" "${google_webhook}"; fi
-    region_id=$(echo ${response_body} | jq -c -r --arg arg "'$(echo ${item} | jq -c -r '.region_ref')'" '.values[] | select(.name == $arg) | .id')
+    region_id=$(echo ${response_body} | jq -c -r --arg arg "$(echo ${item} | jq -c -r '.region_ref')" '.values[] | select(.name == $arg) | .id')
     #
     # Create external IP space for the external connection
     #
@@ -80,7 +80,6 @@ do
     json_data='
     {
       "name": "'$(echo ${item} | jq -c -r '.name')'",
-      "id": "'$(echo ${item} | jq -c -r '.name')'",
       "description":"",
       "internalScopeCidrBlocks": [
         {
@@ -109,27 +108,101 @@ done < <(echo "${vcf_a_ip_spaces}" | jq -c -r .[])
 #
 # Create external connection for the org
 #
-vcfa_api_endpoint="cloudapi/v1/providerGateways"
-http_method="POST"
-json_data='{"name":"test-ui-ext","description":"","orgRef":null,"backingRef":{"id":"t0-01","name":"t0-01"},"backingType":"NSX_TIER0","regionRef":{"id":"urn:vcloud:region:f8c8ad0d-0d1c-4825-b152-7da5aa09bc8f"},"inboundRemoteNetworks":null,"natConfig":null,"allowAdvertisingPrivateIpBlocks":false,"ipSpaceRefs":[{"id":"urn:vcloud:ipSpace:0625fa89-a15f-457c-b065-91b7e6b72a42","name":"test-ui"}]}'
-echo $json_data | jq .
-#{"name":"test3","description":"","regionRef":{"id":"urn:vcloud:region:4fa7269f-c0d2-45cb-a498-8226d10be9a9"},"internalScopeCidrBlocks":[{"cidr":"192.168.246.0/24"}],"ipAddressRanges":[],"reservedIpAddressRanges":[],"providerVisibilityOnly":false,"defaultQuota":{"maxSubnetSize":1,"maxCidrCount":-1,"maxIpCount":-1}}
-vcfa_api ${fqdn_vcfa} ${generic_password} ${vcfa_api_endpoint} ${http_method} "${json_data}" 2 2
-if [[ ${vcfa_api_state} == "FAIL" ]]; then log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-A API ${http_method} call to ${fqdn_vcfa}/${vcfa_api_endpoint} FAILED" "${log_file}" "${slack_webhook}" "${google_webhook}"; fi
+while read item
+do
+  if [ -n "$item" ] && [ "$item" != "null" ]; then
+    #
+    # Retrieve region id
+    #
+    vcfa_api_endpoint="cloudapi/v1/regions"
+    http_method="GET"
+    json_data=''
+    vcfa_api ${fqdn_vcfa} ${generic_password} ${vcfa_api_endpoint} ${http_method} "${json_data}" 2 2
+    if [[ ${vcfa_api_state} == "FAIL" ]]; then log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-A API ${http_method} call to ${fqdn_vcfa}/${vcfa_api_endpoint} FAILED" "${log_file}" "${slack_webhook}" "${google_webhook}"; fi
+    region_id=$(echo ${response_body} | jq -c -r --arg arg "$(echo ${item} | jq -c -r '.region_ref')" '.values[] | select(.name == $arg) | .id')
+    #
+    # Create a list of name and id for ip spaces
+    #
+    vcfa_api_endpoint="cloudapi/v1/ipSpaces"
+    http_method="GET"
+    ipspaces="[]"
+    while read ipspace
+    do
+      vcfa_api ${fqdn_vcfa} ${generic_password} ${vcfa_api_endpoint} ${http_method} "${json_data}" 2 2
+      ipspace_id=$(echo ${response_body} | jq -c -r --arg arg "${ipspace}" '.values[] | select(.name == $arg) | .id')
+      ipspaces=$(echo ${ipspaces} | jq '. += [{"name": "'${ipspace}'", "id": "'${ipspace_id}'"}]')
+    done < <(echo "${item}" | jq -c -r .ip_space_refs[])
+    #
+    # Create external IP space for the external connection
+    #
+    vcfa_api_endpoint="cloudapi/v1/providerGateways"
+    http_method="POST"
+    json_data='
+    {
+      "name": "'$(echo ${item} | jq -c -r '.name')'",
+      "description":"",
+      "backingRef":
+        {
+          "id":"'$(echo ${item} | jq -c -r '.tier0_ref')'",
+          "name":"'$(echo ${item} | jq -c -r '.tier0_ref')'"
+        },
+      "backingType":"NSX_TIER0",
+      "regionRef": {
+        "id": "'${region_id}'"
+      },
+      "ipSpaceRefs": '${ipspaces}'
+    }'
+    echo $json_data | jq .
+    #{"name":"test-ui-ext","description":"","orgRef":null,"backingRef":{"id":"t0-01","name":"t0-01"},"backingType":"NSX_TIER0","regionRef":{"id":"urn:vcloud:region:f8c8ad0d-0d1c-4825-b152-7da5aa09bc8f"},"inboundRemoteNetworks":null,"natConfig":null,"allowAdvertisingPrivateIpBlocks":false,"ipSpaceRefs":[{"id":"urn:vcloud:ipSpace:0625fa89-a15f-457c-b065-91b7e6b72a42","name":"test-ui"}]}
+    vcfa_api ${fqdn_vcfa} ${generic_password} ${vcfa_api_endpoint} ${http_method} "${json_data}" 2 2
+    if [[ ${vcfa_api_state} == "FAIL" ]]; then log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-A API ${http_method} call to ${fqdn_vcfa}/${vcfa_api_endpoint} FAILED" "${log_file}" "${slack_webhook}" "${google_webhook}"; fi
+  fi
+done < <(echo "${vcf_a_provider_gws}" | jq -c -r .[])
 #
-# configure org
+# configure orgs
 #
-vcfa_api_endpoint="cloudapi/1.0.0/orgs"
-http_method="POST"
-json_data='
-{
-  "name": "org-1",
-  "displayName": "org-1",
-  "isClassicTenant":false,
-  "isEnabled": true
-}'
-vcfa_api ${fqdn_vcfa} ${generic_password} ${vcfa_api_endpoint} ${http_method} "${json_data}" 2 2
-if [[ ${vcfa_api_state} == "FAIL" ]]; then log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-A API ${http_method} call to ${fqdn_vcfa}/${vcfa_api_endpoint} FAILED" "${log_file}" "${slack_webhook}" "${google_webhook}"; fi
+while read item
+do
+  if [ -n "$item" ] && [ "$item" != "null" ]; then
+    vcfa_api_endpoint="cloudapi/1.0.0/orgs"
+    http_method="POST"
+    json_data='
+    {
+      "name": "'$(echo ${item} | jq -c -r '.name')'",
+      "displayName": "'$(echo ${item} | jq -c -r '.name')'",
+      "isClassicTenant":false,
+      "isEnabled": true
+    }'
+    vcfa_api ${fqdn_vcfa} ${generic_password} ${vcfa_api_endpoint} ${http_method} "${json_data}" 2 2
+    if [[ ${vcfa_api_state} == "FAIL" ]]; then log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-A API ${http_method} call to ${fqdn_vcfa}/${vcfa_api_endpoint} FAILED" "${log_file}" "${slack_webhook}" "${google_webhook}"; fi
+    #
+    # Retrieve org id
+    #
+    vcfa_api_endpoint="cloudapi/1.0.0/orgs"
+    http_method="GET"
+    json_data=''
+    vcfa_api ${fqdn_vcfa} ${generic_password} ${vcfa_api_endpoint} ${http_method} "${json_data}" 2 2
+    if [[ ${vcfa_api_state} == "FAIL" ]]; then log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-A API ${http_method} call to ${fqdn_vcfa}/${vcfa_api_endpoint} FAILED" "${log_file}" "${slack_webhook}" "${google_webhook}"; fi
+    org_id=$(echo ${response_body} | jq -c -r --arg arg "$(echo ${item} | jq -c -r '.name')" '.values[] | select(.name == $arg) | .id')
+    #
+    # Retrieve region id
+    #
+    vcfa_api_endpoint="cloudapi/v1/regions"
+    http_method="GET"
+    json_data=''
+    vcfa_api ${fqdn_vcfa} ${generic_password} ${vcfa_api_endpoint} ${http_method} "${json_data}" 2 2
+    if [[ ${vcfa_api_state} == "FAIL" ]]; then log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-A API ${http_method} call to ${fqdn_vcfa}/${vcfa_api_endpoint} FAILED" "${log_file}" "${slack_webhook}" "${google_webhook}"; fi
+    region_id=$(echo ${response_body} | jq -c -r --arg arg "$(echo ${item} | jq -c -r '.region_ref')" '.values[] | select(.name == $arg) | .id')
+    #
+    # Create virtual dc
+    #
+    vcfa_api_endpoint="cloudapi/v1/virtualDatacenters"
+    http_method="POST"
+    json_data='{"name":"org-1_region-1","org":{"id":"'${org_id}'"},"region":{"id":"'${region_id}'"},"supervisors":[{"name":"'${supervisor_name}'","id":"'${supervisor_id}'"],"zoneResourceAllocation":[{"zone":{"id":"'${zone_id}'","name":"'${zone_name}'"},"resourceAllocation":{"cpuLimitMHz":100000,"cpuReservationMHz":0,"memoryLimitMiB":65536,"memoryReservationMiB":0}}],"isFullAllocation":false,"description":null}'
+    vcfa_api ${fqdn_vcfa} ${generic_password} ${vcfa_api_endpoint} ${http_method} "${json_data}" 2 2
+    if [[ ${vcfa_api_state} == "FAIL" ]]; then log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF-A API ${http_method} call to ${fqdn_vcfa}/${vcfa_api_endpoint} FAILED" "${log_file}" "${slack_webhook}" "${google_webhook}"; fi
+  fi
+done < <(echo "${vcf_a_organizations}" | jq -c -r .[])
 #
 # Retrieve org id
 #

@@ -1,0 +1,257 @@
+formatVersion: 1
+inputs:
+  namespace:
+    type: string
+    title: Namespace
+    description: |
+      <h4>Namespace</h4> <p>Provide existing namespace name which is used as deployment target</p>
+    $data: /data/namespaces?projectId={{project}}
+  vm_image_id:
+    title: VM image ID
+    type: string
+    description: the ID of the VM image for building the virtual machine
+    $data: /data/namespaceclass-vmimages
+  target_port:
+    type: integer
+    title: Target Port
+    description: Destination port for insecure communications
+    default: 80
+  webfarm_size:
+    type: string
+    title: Webfarm Size
+    enum:
+      - Small (1 node)
+      - Medium (3 node)
+      - Large (5 node)
+  loadbalancer:
+    title: Load Balancer
+    type: boolean
+  loadbalancer_size:
+    title: Load Balancer Performance
+    type: string
+    enum:
+      - No HA (dev-only)
+      - HA
+      - High Performance HA
+  environment:
+    title: Environment
+    type: string
+    enum:
+      - Prod
+      - Pre-Prod
+      - Dev
+  region:
+    title: Region
+    type: string
+    enum:
+      - us-north1
+      - us-east3
+      - eu-central1
+  dns:
+    title: DNS Record
+    type: boolean
+  ssl:
+    title: Enable SSL
+    type: boolean
+  ssl_cert:
+    type: string
+    title: SSL Certificate Type
+    enum:
+      - Internal CA
+      - External CA
+resources:
+  Namespace:
+    type: CCI.Supervisor.Namespace
+    properties:
+      name: ${input.namespace}
+      existing: true
+  Username_Secret:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.Namespace.id}
+      manifest:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: ${env.deploymentName}-bootstrap-secret
+        stringData:
+          aviuser-passwd: $1$xITZYmhL$wz6xxzHHCnaZBJFkzfXIz0
+  Virtual_Machine_2:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.Namespace.id}
+      manifest:
+        apiVersion: vmoperator.vmware.com/v1alpha5
+        kind: VirtualMachine
+        metadata:
+          name: ${env.deploymentName}-vm2
+          labels:
+            vm-selector: ${env.deploymentName}-vm2
+            vm-lb-selector: ${env.deploymentName}-lb
+        spec:
+          className: best-effort-xsmall
+          image:
+            kind: VirtualMachineImage
+            name: ${input.vm_image_id} #ID of the VM image to build from
+          storageClass: sddc01-cluster-vsan-storage-policy
+          powerState: PoweredOn
+          bootstrap:
+            cloudInit:
+              cloudConfig:
+                defaultUserEnabled: true
+                runcmd:
+                  - /usr/bin/apt update
+                  - /usr/bin/apt-get install -y apache2 php php-mysql libapache2-mod-php php-cli php-common php-intl php-gd php-mbstring php-xml php-zip php-curl php-xmlrpc unzip open-vm-tools
+                users:
+                  - name: aviuser
+                    passwd:
+                      name: ${env.deploymentName}-bootstrap-secret
+                      key: aviuser-passwd
+                    lock_passwd: false
+                    sudo: ALL=(ALL) NOPASSWD:ALL
+      wait:
+        conditions:
+          - type: VirtualMachineCreated
+            status: 'True'
+  Virtual_Machine_1:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.Namespace.id}
+      manifest:
+        apiVersion: vmoperator.vmware.com/v1alpha5
+        kind: VirtualMachine
+        metadata:
+          name: ${env.deploymentName}-vm1
+          labels:
+            vm-selector: ${env.deploymentName}-vm2
+            vm-lb-selector: ${env.deploymentName}-lb
+        spec:
+          className: best-effort-xsmall
+          image:
+            kind: VirtualMachineImage
+            name: ${input.vm_image_id} #ID of the VM image to build from
+          storageClass: sddc01-cluster-vsan-storage-policy
+          powerState: PoweredOn
+          bootstrap:
+            cloudInit:
+              cloudConfig:
+                defaultUserEnabled: true
+                runcmd:
+                  - /usr/bin/apt update
+                  - /usr/bin/apt-get install -y apache2 php php-mysql libapache2-mod-php php-cli php-common php-intl php-gd php-mbstring php-xml php-zip php-curl php-xmlrpc unzip open-vm-tools
+                users:
+                  - name: aviuser
+                    passwd:
+                      name: ${env.deploymentName}-bootstrap-secret
+                      key: aviuser-passwd
+                    lock_passwd: false
+                    sudo: ALL=(ALL) NOPASSWD:ALL
+      wait:
+        conditions:
+          - type: VirtualMachineCreated
+            status: 'True'
+  VM_Service:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.Namespace.id}
+      manifest:
+        apiVersion: vmoperator.vmware.com/v1alpha3
+        kind: VirtualMachineService
+        metadata:
+          name: ${env.deploymentName}-lb
+        spec:
+          selector:
+            vm-lb-selector: ${env.deploymentName}-lb
+          type: ClusterIP
+          #type: LoadBalancer
+          ports:
+            - name: http
+              protocol: TCP
+              port: 80
+              targetPort: ${input.target_port}
+      wait:
+        conditions:
+          - type: NonExistentCondition
+            status: 'True'
+            indicatesFailure: true
+  AVI_GATEWAY:
+    type: CCI.Supervisor.Resource
+    # Avi Gateway API resource: creates the Avi parent virtual service.
+    # Listens on port 80 (HTTP) and 443 (HTTPS with TLS termination).
+    # The GatewayClass avi-lb is pre-installed by AKO on the Supervisor.
+    # Remove the addresses block below if you want a dynamic VIP.
+    dependsOn:
+      - CERT_REQUEST
+    properties:
+      context: ${resource.Namespace.id}
+      manifest:
+        apiVersion: gateway.networking.k8s.io/v1
+        kind: Gateway
+        metadata:
+          name: ${env.deploymentName}-gateway
+        spec:
+          gatewayClassName: avi-lb
+          listeners:
+            - name: http
+              protocol: HTTP
+              port: 80
+              hostname: '*.app.vcf9.lab'
+            - name: https
+              protocol: HTTPS
+              port: 443
+              hostname: '*.app.vcf9.lab'
+              tls:
+                certificateRefs:
+                  - kind: Secret
+                    group: ''
+                    name: ${env.deploymentName}-cert
+  AVI_HTTPROUTE:
+    # Avi Gateway API resource: creates the Avi child virtual service.
+    # Routes all traffic for the domain to the ClusterIP backend.
+    # RouteBackendExtension attaches pool settings (LB algo + health check).
+    type: CCI.Supervisor.Resource
+    dependsOn:
+      - AVI_GATEWAY
+    properties:
+      context: ${resource.Namespace.id}
+      manifest:
+        apiVersion: gateway.networking.k8s.io/v1
+        kind: HTTPRoute
+        metadata:
+          name: ${env.deploymentName}-httproute
+        spec:
+          parentRefs:
+            - name: ${env.deploymentName}-gateway
+          hostnames:
+            - ${env.deploymentName}.app.vcf9.lab
+          rules:
+            - name: default
+              matches:
+                - path:
+                    type: PathPrefix
+                    value: /
+              backendRefs:
+                - name: ${env.deploymentName}-lb
+                  port: 80
+  CERT_REQUEST:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.Namespace.id}
+      manifest:
+        apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: ${env.deploymentName}-cert
+        spec:
+          secretName: ${env.deploymentName}-cert
+          issuerRef:
+            name: vault-issuer
+            kind: Issuer
+          commonName: '*.app.vcf9.lab'
+          dnsNames:
+            - '*.app.vcf9.lab'
+          duration: 8760h
+          renewBefore: 720h
+          privateKey:
+            algorithm: RSA
+            size: 2048

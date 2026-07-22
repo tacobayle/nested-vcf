@@ -26,28 +26,34 @@ table, th, td {
     <li>Integrate Cert Manager with Vault</a></li>
     <br>
     <p><table>
+    <tr>
+        <th>Authenticate towards Supervisor cluster</th>
+        <td><pre><code>/home/ubuntu/supervisor/auth_supervisor_custer.sh</code></pre>
+            <button onclick="copyToClipboard(0)">Copy Code</button>
+        </td>
+    </tr>
         <tr>
             <th>Replace namespace in /home/ubuntu/yaml-files/secret_vault.yaml</th>
             <td><pre><code>vi /home/ubuntu/yaml-files/secret_vault.yaml</code></pre>
-                <button onclick="copyToClipboard(0)">Copy Code</button>
+                <button onclick="copyToClipboard(1)">Copy Code</button>
             </td>
         </tr>
         <tr>
             <th>Create secret</th>
             <td><pre><code>kubectl apply -f  /home/ubuntu/yaml-files/secret_vault.yaml</code></pre>
-                <button onclick="copyToClipboard(1)">Copy Code</button>
+                <button onclick="copyToClipboard(2)">Copy Code</button>
             </td>
         </tr>
         <tr>
             <th>Replace namespace in /home/ubuntu/yaml-files/vault_issuer.yaml</th>
             <td><pre><code>vi /home/ubuntu/yaml-files/vault_issuer.yaml</code></pre>
-                <button onclick="copyToClipboard(2)">Copy Code</button>
+                <button onclick="copyToClipboard(3)">Copy Code</button>
             </td>
         </tr>
         <tr>
             <th>Create Issuer</th>
             <td><pre><code>kubectl apply -f  /home/ubuntu/yaml-files/vault_issuer.yaml</code></pre>
-                <button onclick="copyToClipboard(3)">Copy Code</button>
+                <button onclick="copyToClipboard(4)">Copy Code</button>
             </td>
         </tr>
     </table><br></p>
