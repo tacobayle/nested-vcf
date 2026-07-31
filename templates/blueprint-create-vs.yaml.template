@@ -1,0 +1,133 @@
+formatVersion: 1
+inputs:
+  namespace:
+    type: string
+    title: Namespace
+    description: current namespace
+    $data: /data/namespaces?projectId={{project}}
+  target_port:
+    type: integer
+    title: Target Port
+    description: Destination port for insecure communications
+    default: 80
+  app:
+    title: App Name
+    type: string
+    enum:
+      - app1
+      - app2
+  dns:
+    title: DNS Record
+    type: boolean
+  ssl:
+    title: Enable SSL
+    type: boolean
+  ssl_cert:
+    type: string
+    title: SSL Certificate Type
+    enum:
+      - Self Signed
+      - Trusted Public Certificate
+resources:
+  Namespace:
+    type: CCI.Supervisor.Namespace
+    properties:
+      name: ${input.namespace}
+      existing: true
+  VM_Service:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.Namespace.id}
+      manifest:
+        apiVersion: vmoperator.vmware.com/v1alpha3
+        kind: VirtualMachineService
+        metadata:
+          name: ${env.deploymentName}-lb
+        spec:
+          selector:
+            app: ${input.app}
+          type: ClusterIP
+          ports:
+            - name: http
+              protocol: TCP
+              port: 80
+              targetPort: ${input.target_port}
+      wait:
+        conditions:
+          - type: NonExistentCondition
+            status: 'True'
+            indicatesFailure: true
+  AVI_GATEWAY:
+    type: CCI.Supervisor.Resource
+    dependsOn:
+      - CERT_REQUEST
+    properties:
+      context: ${resource.Namespace.id}
+      manifest:
+        apiVersion: gateway.networking.k8s.io/v1
+        kind: Gateway
+        metadata:
+          name: ${env.deploymentName}-gateway
+        spec:
+          gatewayClassName: avi-lb
+          listeners:
+            - name: http
+              protocol: HTTP
+              port: 80
+              hostname: ${input.app}.${avi_subdomain}.${domain}
+            - name: https
+              protocol: HTTPS
+              port: 443
+              hostname: ${input.app}.${avi_subdomain}.${domain}
+              tls:
+                certificateRefs:
+                  - kind: Secret
+                    group: ''
+                    name: ${env.deploymentName}-cert
+  AVI_HTTPROUTE:
+    type: CCI.Supervisor.Resource
+    dependsOn:
+      - AVI_GATEWAY
+    properties:
+      context: ${resource.Namespace.id}
+      manifest:
+        apiVersion: gateway.networking.k8s.io/v1
+        kind: HTTPRoute
+        metadata:
+          name: ${env.deploymentName}-httproute
+        spec:
+          parentRefs:
+            - name: ${env.deploymentName}-gateway
+          hostnames:
+            - ${input.app}.${avi_subdomain}.${domain}
+          rules:
+            - name: default
+              matches:
+                - path:
+                    type: PathPrefix
+                    value: /
+              backendRefs:
+                - name: ${env.deploymentName}-lb
+                  port: 80
+  CERT_REQUEST:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.Namespace.id}
+      manifest:
+        apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: ${env.deploymentName}-cert
+        spec:
+          secretName: ${env.deploymentName}-cert
+          issuerRef:
+            name: vault-issuer
+            kind: Issuer
+          commonName: ${env.deploymentName}.${avi_subdomain}.${domain}
+          dnsNames:
+            - ${env.deploymentName}.${avi_subdomain}.${domain}
+          duration: 8760h
+          renewBefore: 720h
+          privateKey:
+            algorithm: RSA
+            size: 2048
