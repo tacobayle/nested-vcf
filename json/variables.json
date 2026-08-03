@@ -47,7 +47,7 @@
   "vcfi_scripts": [
     {
       "script_file": "/home/ubuntu/vcf-installer/vcfi.sh",
-      "test_remote_script_retry": 120,
+      "test_remote_script_retry": 180,
       "test_remote_script_pause": 300
     },
     {

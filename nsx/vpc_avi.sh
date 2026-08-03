@@ -402,4 +402,5 @@ log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: End of the N
 #
 #
 #
+log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: End of ${0%.*}.sh" "${log_file}" "${slack_webhook}" "${google_webhook}"
 touch ${resultFile}

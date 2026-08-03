@@ -130,12 +130,12 @@ if [[ ${name_vcf_installer} != "null" ]]; then
       if [[ ${resultStatus} != "SUCCEEDED" ]] ; then
         echo ${response_body} | jq -c -r '[.validationChecks[] | select( .resultStatus != "SUCCEEDED").errorResponse.nestedErrors.[].message]' | jq -c -r .[] | while read item
         do
-          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation not ERROR - ${item}" "${log_file}" "${slack_webhook}" "${google_webhook}"
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation item not SUCCEEDED - ${item}" "${log_file}" "${slack_webhook}" "${google_webhook}"
         done
-        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation not SUCCEEDED - exiting the automation" "${log_file}" "${slack_webhook}" "${google_webhook}"
         if [[ ${vcf_version_two_digit} == "9.1" ]]; then
           log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: v9.1 - ignoring the error" "${log_file}" "${slack_webhook}" "${google_webhook}"
         else
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: SDDC JSON validation not SUCCEEDED - exiting the automation" "${log_file}" "${slack_webhook}" "${google_webhook}"
           exit 100
         fi
       fi
@@ -188,4 +188,5 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     fi
   done
 fi
+log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: End of ${0%.*}.sh" "${log_file}" "${slack_webhook}" "${google_webhook}"
 touch ${resultFile}
