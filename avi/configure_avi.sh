@@ -456,18 +456,19 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   # checking DNS VS status
   #
   count=1
+  pause=10
   response_body=""
   until [[ $(echo ${response_body} | jq -c -r '.results[0].runtime.oper_status.state') == "OPER_UP" ]]
   do
     avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/virtualservice-inventory"
-    sleep 10
+    sleep ${pause}
     count=$((count+1))
-      if [[ "${count}" -eq 60 ]]; then
-        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: Unable to get the DNS VS UP" "${log_file}" "${slack_webhook}" "${google_webhook}"
+      if [[ "${count}" -eq 120 ]]; then
+        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: Unable to get the DNS VS UP after ${count} attempts of ${pause} seconds" "${log_file}" "${slack_webhook}" "${google_webhook}"
         exit 100
       fi
   done
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: DNS VS UP" "${log_file}" "${slack_webhook}" "${google_webhook}"
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: DNS VS UP after ${count} attempts of ${pause} seconds" "${log_file}" "${slack_webhook}" "${google_webhook}"
 fi
 #
 # VCF 9.0 or 5.2 use case
