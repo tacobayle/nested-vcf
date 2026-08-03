@@ -415,7 +415,7 @@
     ],
     "ip_spaces": [
       {
-          "name": "ip_space-1",
+        "name": "ip_space-1",
         "region_ref": "region-1",
         "quota": {
           "single_ip": "unlimited",
