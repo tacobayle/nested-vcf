@@ -363,16 +363,14 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   sleep 10
   avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/cloud"
   cloud_uuid=$(echo ${response_body} | jq -c -r --arg arg "CLOUD_NSXT" '.results[] | select(.vtype == $arg) | .uuid')
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 10 seconds" "${log_file}" "" ""
-  sleep 10
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 60 seconds" "${log_file}" "" ""
+  sleep 60
   json_data='
     {
       "cloud_uuid": "'${cloud_uuid}'",
       "vcenter_uuid": "'${vcenter_uuid}'"
     }'
   avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/nsxt/transportnodes"
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 10 seconds" "${log_file}" "" ""
-  sleep 10
   list_az_uuids="[]"
   while read item
   do
