@@ -16,35 +16,30 @@ do
     if [[ $(echo $curl_virtualservice | jq -c -r '.results | length') -gt 0 ]] ; then
       for vs in $(echo $curl_virtualservice | jq -c -r .results[])
       do
-        if [[ $(echo $vs | jq -c -r .type) == "VS_TYPE_VH_PARENT" || $(echo $vs | jq -c -r .type) == "VS_TYPE_NORMAL" ]] ; then
-          for service in $(echo $vs | jq -c -r .services[])
+        if [[ $(echo $vs | jq -c -r .type) == "VS_TYPE_VH_CHILD" ]] ; then
+          for vh_match in $(echo $vs | jq -c -r .vh_matches[])
           do
-            if [[ $(echo $service | jq -c -r .port) -eq 443 ]] ; then
-              curl_vsvip=$(curl -s -k -X GET -H "Content-Type: application/json" -H "X-Avi-Tenant: $tenant" -b avi_cookie.txt $(echo $vs | jq -c -r .vsvip_ref))
-              ip_vip=$(echo $curl_vsvip | jq -c -r .vip[0].ip_address.addr)
-              echo $curl_vsvip | jq -c -r '.dns_info[].fqdn' | while read fqdn
-              do
-                random_number=$(echo $(( $RANDOM % 45 + 1 )))
-                for i in $(seq 1 "$random_number")
-                do
-                  ip_index=$(( $RANDOM % $amount_of_ip + 1 ))
-                  user_agent_index=$(( $RANDOM % $amount_of_user_agent ))
-                  user_agent=$(jq -c -r --arg user_agent_index $user_agent_index '.[$user_agent_index | tonumber]' user_agents.json)
-                  ip_source=$(ip a show lo: | grep -v 127 | grep -v inet6 | grep inet | cut -d" " -f6 | cut -d"/" -f1 | head -$ip_index | tail +$ip_index)
-                  curl --interface $ip_source -A "$user_agent" -k -o /dev/null https://$fqdn
-                  sleep 0.5
-                done
-                for i in $(seq 1 2)
-                do
-                  ip_index=$(( $RANDOM % $amount_of_ip + 1 ))
-                  user_agent_index=$(( $RANDOM % $amount_of_user_agent ))
-                  user_agent=$(jq -c -r --arg user_agent_index $user_agent_index '.[$user_agent_index | tonumber]' user_agents.json)
-                  ip_source=$(ip a show lo: | grep -v 127 | grep -v inet6 | grep inet | cut -d" " -f6 | cut -d"/" -f1 | head -$ip_index | tail +$ip_index)
-                  curl --interface $ip_source -A "$user_agent" -k -o /dev/null https://$fqdn/wrong-path
-                  sleep 0.5
-                done
-              done
-            fi
+            host=$(echo $vh_match | jq -c -r '.host')
+            random_number=$(echo $(( $RANDOM % 45 + 1 )))
+            for i in $(seq 1 "$random_number")
+            do
+              ip_index=$(( $RANDOM % $amount_of_ip + 1 ))
+              user_agent_index=$(( $RANDOM % $amount_of_user_agent ))
+              user_agent=$(jq -c -r --arg user_agent_index $user_agent_index '.[$user_agent_index | tonumber]' /home/ubuntu/json/user_agents.json)
+              ip_source=$(ip a show lo: | grep -v 127 | grep -v inet6 | grep inet | cut -d" " -f6 | cut -d"/" -f1 | head -$ip_index | tail +$ip_index)
+              curl --interface $ip_source -A "$user_agent" -k -o /dev/null https://$host
+              curl --interface $ip_source -A "$user_agent" -k -o /dev/null http://$host
+              sleep 0.5
+            done
+            for i in $(seq 1 2)
+            do
+              ip_index=$(( $RANDOM % $amount_of_ip + 1 ))
+              user_agent_index=$(( $RANDOM % $amount_of_user_agent ))
+              user_agent=$(jq -c -r --arg user_agent_index $user_agent_index '.[$user_agent_index | tonumber]' /home/ubuntu/json/user_agents.json)
+              ip_source=$(ip a show lo: | grep -v 127 | grep -v inet6 | grep inet | cut -d" " -f6 | cut -d"/" -f1 | head -$ip_index | tail +$ip_index)
+              curl --interface $ip_source -A "$user_agent" -k -o /dev/null https://$host/wrong-path
+              sleep 0.5
+            done
           done
         fi
       done
