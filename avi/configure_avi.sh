@@ -543,6 +543,15 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" 
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: Avi ctrl configured" "${log_file}" "${slack_webhook}" "${google_webhook}"
 fi
 #
+# traffic gen from gw
+#
+sed -e "s/\${controllerPrivateIp}/${ip_avi}/" \
+    -e "s/\${avi_password}/${generic_password}/" \
+    -e "s/\${avi_username}/admin/" /home/ubuntu/templates/traffic_gen_client.sh.template | tee /home/ubuntu/avi/traffic_gen_client.sh
+chmod u+x /home/ubuntu/avi/traffic_gen_client.sh
+jq -c -r '.[]' /home/ubuntu/json/loopback_ips.json | while read ip ; do sudo ip a add ${ip} dev lo: ; done
+crontab -l 2>/dev/null; echo "* * * * * /home/ubuntu/avi/traffic_gen_client.sh" | crontab -
+#
 #
 #
 log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: End of ${0%.*}.sh" "${log_file}" "${slack_webhook}" "${google_webhook}"
