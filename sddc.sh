@@ -515,11 +515,6 @@ if [[ ${operation} == "apply" ]] ; then
       test_remote_script_retry=$(echo ${item} | jq -c -r '.test_remote_script_retry')
       test_remote_script_pause=$(echo ${item} | jq -c -r '.test_remote_script_pause')
       #
-      if [[ ${vcf_version_two_digit} == "9.1" && ${script_file} == "/home/ubuntu/avi/configure_avi.sh" ]]; then
-        log_message "VCF 9.1 exit" "${log_file}" "" ""
-        exit
-      fi
-      #
       log_message "running the following command from the gw: ${script_file} ${jsonFile_remote}" ${log_file} ${slack_webhook} ${google_webhook}
       ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${jsonFile_remote}" < /dev/null 2>/dev/null &
       test_remote_script ${log_file} ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
