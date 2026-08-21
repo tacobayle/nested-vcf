@@ -21,6 +21,91 @@ if [[ ${name_vcf_installer} != "null" ]]; then
   # Find the machineId for 9.1 use case and update the depot config with the obtained activation_code
   #
   if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+    #
+    # Patch the VCF Installer appliance's lcm/domainmanager config before
+    # driving its API further - doing this after already using the API
+    # would mean the service restarts below interrupt in-flight calls.
+    # Confirmed empirically (epc-vapp project, VCD-based nested lab): the
+    # "vcf" account's sudo access is restricted to a single support-bundle
+    # command (`sudo -l` only allows /opt/vmware/sddc-support/sos) - real
+    # root access is via `su -` with the root password (= generic_password),
+    # and `su` refuses to run without a real controlling terminal ("must be
+    # run from a terminal"), so a plain ssh+heredoc can't drive its password
+    # prompt - this needs expect instead.
+    #
+    export VCF_ROOT_PASSWORD="$(jq -c -r .generic_password $jsonFile)"
+    export VCF_INSTALLER_IP="${ip_vcf_installer}"
+
+    # Points lcm/domainmanager at the staging depot+license-service
+    # infrastructure instead of production defaults - built here (real bash
+    # variables, no escaping needed) and relayed through the ssh/expect
+    # layers as base64, since the domainmanager line is a JSON blob full of
+    # double quotes that would otherwise have to survive bash heredoc ->
+    # Tcl string -> remote-shell quoting all at once. lcm_depot_host,
+    # lcm_depot_metadata_dir, lcm_depot_vcenter_upgrade_info_dir, vvs_host,
+    # vvs_lcm_bundle_path, vvs_interop_bundle_path,
+    # vvs_vlcm_interop_vcg_bundle_path, vsan_hcl_host, packages_host need to
+    # be defined in variables.sh alongside vcf_installer_bearer_url etc.
+    lcm_patch_b64=$(printf '%s\n%s\n%s\n%s\n' \
+      "lcm.depot.adapter.host=${lcm_depot_host}" \
+      "lcm.depot.adapter.remote.vcfMetadataDir=${lcm_depot_metadata_dir}" \
+      "lcm.depot.adapter.vCenterUpgradeInfoDir=${lcm_depot_vcenter_upgrade_info_dir}" \
+      "lcm.access_token.broadcom.authorization.server.url=${vcf_installer_bearer_url}" \
+      | base64 -w0)
+    dm_override_json=$(printf '{"publicDepotHost":"%s","authorizationServer":"%s","publicVvsHost":"%s","publicVvsVcfLcmBundlePath":"%s","publicVvsVcfInteropBundlePath":"%s","publicVvsVlcmInteropVcgBundlePath":"%s","publicVsanHclHost":"%s","publicPackagesHost":"%s"}' \
+      "${lcm_depot_host}" "${vcf_installer_bearer_url}" "${vvs_host}" "${vvs_lcm_bundle_path}" "${vvs_interop_bundle_path}" "${vvs_vlcm_interop_vcg_bundle_path}" "${vsan_hcl_host}" "${packages_host}")
+    dm_patch_b64=$(printf 'lcm.depot.service.online.config.override=%s\n' "${dm_override_json}" | base64 -w0)
+    export VCF_LCM_PATCH_B64="${lcm_patch_b64}"
+    export VCF_DM_PATCH_B64="${dm_patch_b64}"
+
+    # The staging depot host/URLs above only take effect once these
+    # production defaults are cleared out of the way (remote.v2.rootDir/
+    # port have no staging equivalent at all, so leaving them active
+    # conflicts with the appended settings rather than being harmlessly
+    # superseded) and cert checking is disabled (the staging depot doesn't
+    # present a cert the default enableCertCheck=true would accept).
+    # Confirmed by diffing a real patched appliance against its own
+    # pre-patch backup. Static/structural, not deployment-specific, so
+    # hardcoded here.
+    lcm_sed_fix_b64=$(base64 -w0 <<'SED_FIX_EOF'
+sed -i '/^lcm\.depot\.adapter\.host=dl\.broadcom\.com$/d;/^lcm\.depot\.adapter\.port=443$/d;/^lcm\.depot\.adapter\.remote\.v2\.rootDir=\/PROD$/d' /opt/vmware/vcf/lcm/lcm-app/conf/application-prod.properties
+sed -i 's/^lcm\.depot\.adapter\.certificateCheckEnabled=true$/lcm.depot.adapter.certificateCheckEnabled=false/' /opt/vmware/vcf/lcm/lcm-app/conf/application-prod.properties
+SED_FIX_EOF
+)
+    export VCF_LCM_SED_FIX_B64="${lcm_sed_fix_b64}"
+
+    expect <<'VCFI_EXPECT_EOF'
+set timeout 30
+set password $env(VCF_ROOT_PASSWORD)
+spawn ssh -tt -o StrictHostKeyChecking=no vcf@$env(VCF_INSTALLER_IP)
+expect "*assword:" { send "$password\r" }
+expect "*$ " { send "su -\r" }
+expect "*assword:" { send "$password\r" }
+expect "*# " { send "cp /opt/vmware/vcf/lcm/lcm-app/conf/application-prod.properties /opt/vmware/vcf/lcm/lcm-app/conf/application-prod.properties.bck\r" }
+expect "*# " { send "cp /etc/vmware/vcf/domainmanager/application-prod.properties /etc/vmware/vcf/domainmanager/application-prod.properties.bck\r" }
+expect "*# " { send "echo $env(VCF_LCM_SED_FIX_B64) | base64 -d | bash\r" }
+expect "*# " { send "echo $env(VCF_LCM_PATCH_B64) | base64 -d | tee -a /opt/vmware/vcf/lcm/lcm-app/conf/application-prod.properties > /dev/null\r" }
+expect "*# " { send "echo $env(VCF_DM_PATCH_B64) | base64 -d | tee -a /etc/vmware/vcf/domainmanager/application-prod.properties > /dev/null\r" }
+expect "*# " {
+  send "chown vcf_lcm:vcf /opt/vmware/vcf/lcm/lcm-app/conf/application-prod.properties\r"
+}
+expect "*# " { send "chown vcf_domainmanager:vcf /etc/vmware/vcf/domainmanager/application-prod.properties\r" }
+expect "*# " {
+  send "systemctl restart lcm.service\r"
+}
+expect "*# " { send "systemctl restart domainmanager\r" }
+expect "*# " { send "exit\r" }
+expect "*$ " { send "exit\r" }
+expect eof
+VCFI_EXPECT_EOF
+    unset VCF_ROOT_PASSWORD VCF_LCM_PATCH_B64 VCF_DM_PATCH_B64 VCF_LCM_SED_FIX_B64
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: patched and restarted lcm/domainmanager services" "${log_file}" "${slack_webhook}" "${google_webhook}"
+
+    # lcm/domainmanager just restarted - re-authenticate so the
+    # machine-details call below uses a fresh session rather than the
+    # token created (at the top of this script) before the restart.
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, Re-creating VCF Installer API session after patch/restart" "${log_file}" "" ""
+    /home/ubuntu/bash/sddc_manager/create_api_session.sh "admin@local" ''$(jq -c -r .generic_password $jsonFile)'' ${ip_vcf_installer} /tmp/token_vcfi.json
     sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/system/settings/depot/machine-details $(jq -c -r .accessToken /tmp/token_vcfi.json)
     vcfi_machineId=$(echo ${response_body} | jq -c -r '.machineId')
     if [ -z "$vcfi_machineId" ] || [ "$vcfi_machineId" == "null" ]; then
