@@ -457,7 +457,7 @@ if [[ ${operation} == "apply" ]] ; then
         fi
       done
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM configured and reachable" ${log_file} "" ""
-      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM: please patch it: ssh vcf@${ip_vcf_installer}" ${log_file} ${slack_webhook} ${google_webhook}
+#      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM: please patch it: ssh vcf@${ip_vcf_installer}" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   fi
   #
@@ -498,14 +498,14 @@ if [[ ${operation} == "apply" ]] ; then
   # VCF 9 - vcf_installer use case
   #
   if [[ ${name_vcf_installer} != "null" ]]; then
-    echo '------------------------------------------------------------' | tee -a ${log_file}
-    echo "VCF Installer configuration" | tee -a ${log_file}
-    while [ ! -f "/root/vcfi-${ip_vcf_installer}-patched.json" ]; do
-        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: please patch vcf installer" ${log_file} ${slack_webhook} ${google_webhook}
-        sleep 30
-    done
-    sleep 60
-    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM patched" ${log_file} ${slack_webhook} ${google_webhook}
+#    echo '------------------------------------------------------------' | tee -a ${log_file}
+#    echo "VCF Installer configuration" | tee -a ${log_file}
+#    while [ ! -f "/root/vcfi-${ip_vcf_installer}-patched.json" ]; do
+#        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: please patch vcf installer" ${log_file} ${slack_webhook} ${google_webhook}
+#        sleep 30
+#    done
+#    sleep 60
+#    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM patched" ${log_file} ${slack_webhook} ${google_webhook}
     #
     # Configuring VCF 9 deployment
     #

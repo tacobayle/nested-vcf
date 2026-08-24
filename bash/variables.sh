@@ -78,6 +78,15 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   vcf_installer_bearer_url=$(jq -c -r .vcf_installer.bearer_url $jsonFile)
   vcf_installer_token_url=$(jq -c -r .vcf_installer.token_url $jsonFile)
   vcf_installer_token_url_suffix=$(jq -c -r .vcf_installer.token_url_suffix $jsonFile)
+  vcf_installer_lcm_depot_host=$(jq -c -r .vcf_installer.lcm_depot_host $jsonFile)
+  vcf_installer_lcm_depot_metadata_dir=$(jq -c -r .vcf_installer.lcm_depot_metadata_dir $jsonFile)
+  vcf_installer_lcm_depot_vcenter_upgrade_info_dir=$(jq -c -r .vcf_installer.lcm_depot_vcenter_upgrade_info_dir $jsonFile)
+  vcf_installer_vvs_host=$(jq -c -r .vcf_installer.vvs_host $jsonFile)
+  vcf_installer_vvs_lcm_bundle_path=$(jq -c -r .vcf_installer.vvs_lcm_bundle_path $jsonFile)
+  vcf_installer_vvs_interop_bundle_path=$(jq -c -r .vcf_installer.vvs_interop_bundle_path $jsonFile)
+  vcf_installer_vvs_vlcm_interop_vcg_bundle_path=$(jq -c -r .vcf_installer.vvs_vlcm_interop_vcg_bundle_path $jsonFile)
+  vcf_installer_vsan_hcl_host=$(jq -c -r .vcf_installer.vsan_hcl_host $jsonFile)
+  vcf_installer_packages_host=$(jq -c -r .vcf_installer.packages_host $jsonFile)
 fi
 cidr_mgmt=$(jq -c -r --arg arg "MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | cut -d"/" -f1)
 if [[ ${cidr_mgmt} =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.[0-9]{1,3}$ ]] ; then

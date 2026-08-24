@@ -114,6 +114,12 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   json_data=$(echo ${response_body} | jq -c -r '. += {"welcome_workflow_complete": true, "default_license_tier":"ENTERPRISE_WITH_CLOUD_SERVICES"}')
   avi_api 2 2 "PUT" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/systemconfiguration"
   #
+  # update inventoryfaultconfig
+  #
+  avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/inventoryfaultconfig"
+  json_data=$(echo ${response_body} | jq -c -r '. += {"sslprofile_faults": false, "license_faults": false}')
+  avi_api 2 2 "PUT" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/inventoryfaultconfig"
+  #
   # cloud update
   #
   avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/cloud"

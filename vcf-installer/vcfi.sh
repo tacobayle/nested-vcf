@@ -41,19 +41,19 @@ if [[ ${name_vcf_installer} != "null" ]]; then
     # variables, no escaping needed) and relayed through the ssh/expect
     # layers as base64, since the domainmanager line is a JSON blob full of
     # double quotes that would otherwise have to survive bash heredoc ->
-    # Tcl string -> remote-shell quoting all at once. lcm_depot_host,
-    # lcm_depot_metadata_dir, lcm_depot_vcenter_upgrade_info_dir, vvs_host,
-    # vvs_lcm_bundle_path, vvs_interop_bundle_path,
-    # vvs_vlcm_interop_vcg_bundle_path, vsan_hcl_host, packages_host need to
+    # Tcl string -> remote-shell quoting all at once. vcf_installer_lcm_depot_host,
+    # vcf_installer_lcm_depot_metadata_dir, vcf_installer_lcm_depot_vcenter_upgrade_info_dir, vcf_installer_vvs_host,
+    # vcf_installer_vvs_lcm_bundle_path, vcf_installer_vvs_interop_bundle_path,
+    # vcf_installer_vvs_vlcm_interop_vcg_bundle_path, vcf_installer_vsan_hcl_host, vcf_installer_packages_host need to
     # be defined in variables.sh alongside vcf_installer_bearer_url etc.
     lcm_patch_b64=$(printf '%s\n%s\n%s\n%s\n' \
-      "lcm.depot.adapter.host=${lcm_depot_host}" \
-      "lcm.depot.adapter.remote.vcfMetadataDir=${lcm_depot_metadata_dir}" \
-      "lcm.depot.adapter.vCenterUpgradeInfoDir=${lcm_depot_vcenter_upgrade_info_dir}" \
+      "lcm.depot.adapter.host=${vcf_installer_lcm_depot_host}" \
+      "lcm.depot.adapter.remote.vcfMetadataDir=${vcf_installer_lcm_depot_metadata_dir}" \
+      "lcm.depot.adapter.vCenterUpgradeInfoDir=${vcf_installer_lcm_depot_vcenter_upgrade_info_dir}" \
       "lcm.access_token.broadcom.authorization.server.url=${vcf_installer_bearer_url}" \
       | base64 -w0)
     dm_override_json=$(printf '{"publicDepotHost":"%s","authorizationServer":"%s","publicVvsHost":"%s","publicVvsVcfLcmBundlePath":"%s","publicVvsVcfInteropBundlePath":"%s","publicVvsVlcmInteropVcgBundlePath":"%s","publicVsanHclHost":"%s","publicPackagesHost":"%s"}' \
-      "${lcm_depot_host}" "${vcf_installer_bearer_url}" "${vvs_host}" "${vvs_lcm_bundle_path}" "${vvs_interop_bundle_path}" "${vvs_vlcm_interop_vcg_bundle_path}" "${vsan_hcl_host}" "${packages_host}")
+      "${vcf_installer_lcm_depot_host}" "${vcf_installer_bearer_url}" "${vcf_installer_vvs_host}" "${vcf_installer_vvs_lcm_bundle_path}" "${vcf_installer_vvs_interop_bundle_path}" "${vcf_installer_vvs_vlcm_interop_vcg_bundle_path}" "${vcf_installer_vsan_hcl_host}" "${vcf_installer_packages_host}")
     dm_patch_b64=$(printf 'lcm.depot.service.online.config.override=%s\n' "${dm_override_json}" | base64 -w0)
     export VCF_LCM_PATCH_B64="${lcm_patch_b64}"
     export VCF_DM_PATCH_B64="${dm_patch_b64}"
@@ -100,7 +100,18 @@ expect eof
 VCFI_EXPECT_EOF
     unset VCF_ROOT_PASSWORD VCF_LCM_PATCH_B64 VCF_DM_PATCH_B64 VCF_LCM_SED_FIX_B64
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: patched and restarted lcm/domainmanager services" "${log_file}" "${slack_webhook}" "${google_webhook}"
-
+    sleep 60
+    count=1
+    until $(curl --output /dev/null --silent --head -k https://${ip_vcf_installer})
+    do
+      echo "Attempt ${count}: Waiting for VCF Installer at https://${ip_vcf_installer} to be reachable after service restart..."
+      sleep 10
+      count=$((count+1))
+      if [[ "${count}" -eq 60 ]]; then
+        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I not reachable after patch" "${log_file}" "${slack_webhook}" "${google_webhook}"
+        exit 100
+      fi
+    done
     # lcm/domainmanager just restarted - re-authenticate so the
     # machine-details call below uses a fresh session rather than the
     # token created (at the top of this script) before the restart.
