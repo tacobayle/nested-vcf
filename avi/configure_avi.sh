@@ -117,7 +117,7 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   # update inventoryfaultconfig
   #
   avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/inventoryfaultconfig"
-  json_data=$(echo ${response_body} | jq -c -r '. += {"sslprofile_faults": false, "license_faults": false}')
+  json_data=$(echo ${response_body} | jq -c -r '. += {"controller_faults": {"sslprofile_faults": false, "license_faults": false}}')
   avi_api 2 2 "PUT" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/inventoryfaultconfig"
   #
   # update controllerproperties
