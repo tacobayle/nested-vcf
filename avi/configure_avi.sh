@@ -120,6 +120,12 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   json_data=$(echo ${response_body} | jq -c -r '. += {"sslprofile_faults": false, "license_faults": false}')
   avi_api 2 2 "PUT" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/inventoryfaultconfig"
   #
+  # update controllerproperties
+  #
+  avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/controllerproperties"
+  json_data=$(echo ${response_body} | jq -c -r '. += {"api_idle_timeout": 240}')
+  avi_api 2 2 "PUT" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/controllerproperties"
+  #
   # cloud update
   #
   avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/cloud"
