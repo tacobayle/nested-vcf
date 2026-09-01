@@ -185,10 +185,18 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "9.1" ]];
   sed -e "s/\${generic_password}/${generic_password}/" \
       -e "s/\${supervisor_cluster_name}/${supervisor_cluster_name}/" /home/ubuntu/templates/auth_supervisor_custer.sh.template | tee /home/ubuntu/supervisor/auth_supervisor_custer.sh > /dev/null
   chmod u+x /home/ubuntu/supervisor/auth_supervisor_custer.sh
-  sed -e "s/\${generic_password}/${generic_password}/" \
-      -e "s/\${api_server_cluster_endpoint}/${api_server_cluster_endpoint}/" \
-      -e "s/\${ssoDomain}/${ssoDomain}/" /home/ubuntu/templates/auth_vks_context.sh.template | tee /home/ubuntu/supervisor/auth_vks_context.sh > /dev/null
-  chmod u+x /home/ubuntu/supervisor/auth_vks_context.sh
+  if [[ ${vcf_version_two_digit} == "9.0" ]]; then
+    sed -e "s/\${generic_password}/${generic_password}/" \
+        -e "s/\${api_server_cluster_endpoint}/${api_server_cluster_endpoint}/" \
+        -e "s/\${ssoDomain}/${ssoDomain}/" /home/ubuntu/templates/auth_vks_context_9.0.sh.template | tee /home/ubuntu/supervisor/auth_vks_context.sh > /dev/null
+    chmod u+x /home/ubuntu/supervisor/auth_vks_context.sh
+  fi
+  if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+    sed -e "s/\${generic_password}/${generic_password}/" \
+        -e "s/\${api_server_cluster_endpoint}/${api_server_cluster_endpoint}/" \
+        -e "s/\${ssoDomain}/${ssoDomain}/" /home/ubuntu/templates/auth_vks_context_9.1.sh.template | tee /home/ubuntu/supervisor/auth_vks_context.sh > /dev/null
+    chmod u+x /home/ubuntu/supervisor/auth_vks_context.sh
+  fi
 fi
 #
 #
