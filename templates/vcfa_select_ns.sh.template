@@ -1,0 +1,186 @@
+#!/bin/bash
+#
+# Browses VCF Automation in provider mode, lets you pick an org and a
+# supervisor namespace within it, then assigns the chosen namespace to the
+# variable "namespace" (auto-assigned if there's only one).
+#
+# Auth uses the programmatic token-generation flow (provider bearer token ->
+# org-scoped OAuth token via jwt-bearer exchange), not a service account:
+# https://vrealize.it/2025/12/04/vcf-automation-9-programmatic-token-generation/
+#
+set -euo pipefail
+
+show_help() {
+    cat << EOF
+Usage: $0 [-H host] [-u username]
+
+Browses VCF Automation (provider mode) to pick an org and a supervisor
+namespace interactively (auto-selecting when there's only one option), then
+assigns the result to the variable "namespace". Run with 'source $0' if you
+want "namespace" to persist in your current shell.
+
+Options:
+  -H, --host HOST        VCF Automation FQDN/URL (default: \$VCFA_HOST or https://sddc01-auto-vip.vcf9.lab)
+  -u, --username USER    Provider username (default: \$VCFA_USERNAME or admin)
+  -h, --help             Show this help message and exit
+
+Password is read from \$VCFA_PASSWORD if set, otherwise prompted for.
+EOF
+}
+
+HOST="https://${fqdn_vcfa}"
+USERNAME="${VCFA_USERNAME:-admin}"
+VCFA_PASSWORD='${generic_password}'
+
+# Files to update, paired with the jq path of the key to set in each.
+NAMESPACE_UPDATE_FILES=(
+    /home/ubuntu/yaml-files/secret_vault.yaml
+    /home/ubuntu/yaml-files/vault_issuer.yaml
+)
+NAMESPACE_UPDATE_JQ_PATHS=(
+    .metadata.namespace
+    .metadata.namespace
+)
+
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -H|--host) HOST="$2"; shift 2 ;;
+        -u|--username) USERNAME="$2"; shift 2 ;;
+        -h|--help) show_help; exit 0 ;;
+        *) echo "Unknown argument: $1" >&2; show_help; exit 1 ;;
+    esac
+done
+
+for cmd in curl jq base64; do
+    command -v "$cmd" >/dev/null 2>&1 || { echo "Error: '$cmd' is required but not installed." >&2; exit 1; }
+done
+
+if [ -n "${VCFA_PASSWORD:-}" ]; then
+    PASSWORD="$VCFA_PASSWORD"
+else
+    read -rsp "Password for ${USERNAME}@${HOST}: " PASSWORD
+    echo
+fi
+
+ACCEPT="Accept: application/json;version=9.0.0"
+
+# Prompts among multiple choices; auto-selects if there's only one.
+# Usage: prompt_choice "Prompt text" "${array[@]}" ; result left in CHOICE
+prompt_choice() {
+    local prompt="$1"; shift
+    local -a options=("$@")
+    if [ "${#options[@]}" -eq 0 ]; then
+        echo "Error: no options available for: $prompt" >&2
+        exit 1
+    fi
+    if [ "${#options[@]}" -eq 1 ]; then
+        CHOICE="${options[0]}"
+        echo "$prompt -> only one option, auto-selected: $CHOICE" >&2
+        return
+    fi
+    echo "$prompt" >&2
+    local PS3="Select a number: "
+    select opt in "${options[@]}"; do
+        if [ -n "${opt:-}" ]; then
+            CHOICE="$opt"
+            break
+        fi
+        echo "Invalid selection, try again." >&2
+    done
+}
+
+echo "Logging in to ${HOST} as provider..." >&2
+CREDS=$(printf '%s@system:%s' "$USERNAME" "$PASSWORD" | base64 -w0)
+PROVIDER_RESP=$(curl -sk -i -X POST "${HOST}/cloudapi/1.0.0/sessions/provider" \
+    -H "$ACCEPT" \
+    -H "Content-Type: application/json;version=9.0.0" \
+    -H "Authorization: Basic ${CREDS}")
+
+PROVIDER_TOKEN=$(printf '%s' "$PROVIDER_RESP" | grep -i '^x-vmware-vcloud-access-token:' | awk '{print $2}' | tr -d '\r')
+if [ -z "$PROVIDER_TOKEN" ]; then
+    echo "Error: provider login failed. Response:" >&2
+    printf '%s\n' "$PROVIDER_RESP" >&2
+    exit 1
+fi
+
+CLIENT_ID=$(curl -sk "${HOST}/cloudapi/1.0.0/openIdProvider/relyingParties" \
+    -H "$ACCEPT" \
+    -H "Authorization: Bearer ${PROVIDER_TOKEN}" \
+    | jq -r '[.values[] | select(.clientName == "automation-relying-party")][0].clientId // [.values[] | select(.isPublic == true)][0].clientId')
+if [ -z "$CLIENT_ID" ] || [ "$CLIENT_ID" == "null" ]; then
+    echo "Error: could not determine the automation relying party clientId." >&2
+    exit 1
+fi
+
+# "System" is the built-in provider bucket, not a real tenant org - exclude it.
+readarray -t ORG_LINES < <(curl -sk "${HOST}/cloudapi/1.0.0/orgs" \
+    -H "$ACCEPT" \
+    -H "Authorization: Bearer ${PROVIDER_TOKEN}" \
+    | jq -r '.values[] | select(.name != "System") | "\(.name)\t\(.id)"')
+if [ "${#ORG_LINES[@]}" -eq 0 ]; then
+    echo "Error: no organizations found." >&2
+    exit 1
+fi
+ORG_NAMES=()
+for line in "${ORG_LINES[@]}"; do ORG_NAMES+=("${line%%$'\t'*}"); done
+
+prompt_choice "Available organizations:" "${ORG_NAMES[@]}"
+SELECTED_ORG="$CHOICE"
+for line in "${ORG_LINES[@]}"; do
+    if [ "${line%%$'\t'*}" == "$SELECTED_ORG" ]; then
+        ORG_URN="${line##*$'\t'}"
+        break
+    fi
+done
+ORG_UUID="${ORG_URN##*:}"
+
+echo "Requesting org-scoped token for '${SELECTED_ORG}'..." >&2
+ORG_TOKEN=$(curl -sk -X POST "${HOST}/oidc/oauth2/token" \
+    -H "$ACCEPT" \
+    -H "x-vmware-vcloud-tenant-context: ${ORG_UUID}" \
+    --data-urlencode "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" \
+    --data-urlencode "scope=openid profile email phone groups vcd_idp" \
+    --data-urlencode "assertion=${PROVIDER_TOKEN}" \
+    --data-urlencode "client_id=${CLIENT_ID}" \
+    | jq -r '.access_token')
+if [ -z "$ORG_TOKEN" ] || [ "$ORG_TOKEN" == "null" ]; then
+    echo "Error: failed to obtain an org-scoped token for ${SELECTED_ORG}." >&2
+    exit 1
+fi
+
+readarray -t NAMESPACES < <(curl -sk "${HOST}/cci/kubernetes/apis/infrastructure.cci.vmware.com/v1alpha3/supervisornamespaces?limit=500" \
+    -H "Accept: application/json" \
+    -H "Authorization: Bearer ${ORG_TOKEN}" \
+    | jq -r '.items[].metadata.name')
+if [ "${#NAMESPACES[@]}" -eq 0 ]; then
+    echo "Error: no supervisor namespaces found in org '${SELECTED_ORG}'." >&2
+    exit 1
+fi
+
+prompt_choice "Available namespaces in org '${SELECTED_ORG}':" "${NAMESPACES[@]}"
+
+export namespace="$CHOICE"
+echo "Selected namespace: ${namespace}" >&2
+echo "namespace=${namespace}"
+
+echo "Updating namespace in the following YAML files:" >&2
+for i in "${!NAMESPACE_UPDATE_FILES[@]}"; do
+    echo "  - ${NAMESPACE_UPDATE_FILES[$i]} (${NAMESPACE_UPDATE_JQ_PATHS[$i]})" >&2
+done
+
+yaml_to_json() { python3 -c 'import sys, json, yaml; json.dump(yaml.safe_load(sys.stdin), sys.stdout)'; }
+# width=100000 prevents PyYAML from line-folding long plain scalars (e.g. base64 blobs).
+json_to_yaml() { python3 -c 'import sys, json, yaml; yaml.safe_dump(json.load(sys.stdin), sys.stdout, default_flow_style=False, sort_keys=False, width=100000)'; }
+
+for i in "${!NAMESPACE_UPDATE_FILES[@]}"; do
+    f="${NAMESPACE_UPDATE_FILES[$i]}"
+    jq_path="${NAMESPACE_UPDATE_JQ_PATHS[$i]}"
+    if [ ! -f "$f" ]; then
+        echo "Error: ${f} not found." >&2
+        exit 1
+    fi
+    tmp=$(mktemp)
+    yaml_to_json < "$f" | jq --arg ns "$namespace" "${jq_path} = \$ns" | json_to_yaml > "$tmp"
+    mv "$tmp" "$f"
+done
