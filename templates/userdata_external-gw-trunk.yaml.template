@@ -504,12 +504,91 @@ write_files:
       cp /var/lib/bind/db.${reverse_vm_network} /var/www/html/ptr_vm_network_raw.html
       while read -r line; do echo "$line<br>" ; done < /var/www/html/ptr_vm_network_raw.html | sudo tee /var/www/html/ptr_vm_network.html
       #
-      #
       # Patching DNS to localhost
       #
       mv /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.patching_dns
       cat /etc/netplan/50-cloud-init.yaml.patching_dns | sed -e "s/${forwarders_netplan}/127.0.0.1/" | tee /etc/netplan/50-cloud-init.yaml
       netplan apply
+      #
+      # Getting Yaml files and update them
+      #
+      cd /home/ubuntu/${yaml_folder}
+      yaml_links='${yaml_links}'
+      echo $yaml_links | jq -c -r .[] | while read yaml_link
+      do
+        sudo -u ubuntu wget $yaml_link
+      done
+      full_domain="${avi_subdomain}.${domain}"
+      # ingress - update host
+      ingress=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-http-ingress.yml)
+      ingress=$(echo $ingress | jq '. | del (.spec.rules[0].host)')
+      ingress=$(echo $ingress | jq '.spec.rules[0] += {"host": "v1.'${full_domain}'"}')
+      ingress=$(echo $ingress | jq '. | del (.spec.rules[1].host)')
+      ingress=$(echo $ingress | jq '.spec.rules[1] += {"host": "v2.'${full_domain}'"}')
+      ingress=$(echo $ingress | jq '. | del (.spec.rules[2].host)')
+      ingress=$(echo $ingress | jq '.spec.rules[2] += {"host": "v3.'${full_domain}'"}')
+      echo $ingress | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-http-ingress.yml > /dev/null
+      #
+      crd=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-http-crd-1.yml)
+      crd=$(echo $crd | jq '. | del (.spec.virtualhost.fqdn)')
+      crd=$(echo $crd | jq '.spec.virtualhost += {"fqdn": "v1.'${full_domain}'"}')
+      echo $crd | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-http-crd-1.yml > /dev/null
+      #
+      crd=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-http-crd-2.yml)
+      crd=$(echo $crd | jq '. | del (.spec.virtualhost.fqdn)')
+      crd=$(echo $crd | jq '.spec.virtualhost += {"fqdn": "v2.'${full_domain}'"}')
+      echo $crd | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-http-crd-2.yml > /dev/null
+      #
+      crd=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-http-crd-3.yml)
+      crd=$(echo $crd | jq '. | del (.spec.virtualhost.fqdn)')
+      crd=$(echo $crd | jq '.spec.virtualhost += {"fqdn": "v3.'${full_domain}'"}')
+      echo $crd | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-http-crd-3.yml > /dev/null
+      # gw - domain update and cert update
+      gw=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-gw-multiple-listeners.yml)
+      gw=$(echo ${gw} | jq '. | del (.spec.listeners[0].hostname)')
+      gw=$(echo ${gw} | jq '. | del (.spec.listeners[1].hostname)')
+      gw=$(echo ${gw} | jq '.spec.listeners[0] += {"hostname": "*.'${full_domain}'"}')
+      gw=$(echo ${gw} | jq '.spec.listeners[1] += {"hostname": "*.'${full_domain}'"}')
+      echo ${gw} | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-gw-multiple-listeners.yml > /dev/null
+      #
+      gw=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-gw-multiple-listeners-static-ip.yml)
+      gw=$(echo ${gw} | jq '. | del (.spec.listeners[0].hostname)')
+      gw=$(echo ${gw} | jq '. | del (.spec.listeners[1].hostname)')
+      gw=$(echo ${gw} | jq '.spec.listeners[0] += {"hostname": "static-ip.'${full_domain}'"}')
+      gw=$(echo ${gw} | jq '.spec.listeners[1] += {"hostname": "static-ip.'${full_domain}'"}')
+      echo ${gw} | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-gw-multiple-listeners-static-ip.yml > /dev/null
+      # gw http routes update
+      route=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-gw-http-route-1.yml)
+      route=$(echo ${route} | jq '. | del (.spec.hostnames)')
+      route=$(echo ${route} | jq '.spec += {"hostnames": ["gw-v1.'"${full_domain}"'"]}')
+      echo ${route} | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-gw-http-route-1.yml > /dev/null
+      route=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-gw-http-route-1-crd.yaml)
+      route=$(echo ${route} | jq '. | del (.spec.hostnames)')
+      route=$(echo ${route} | jq '.spec += {"hostnames": ["gw-v1.'"${full_domain}"'"]}')
+      echo ${route} | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-gw-http-route-1-crd.yaml > /dev/null
+      route=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-gw-http-route-2.yml)
+      route=$(echo ${route} | jq '. | del (.spec.hostnames)')
+      route=$(echo ${route} | jq '.spec += {"hostnames": ["gw-v2.'"${full_domain}"'"]}')
+      echo ${route} | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-gw-http-route-2.yml > /dev/null
+      route=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-gw-http-route-3.yml)
+      route=$(echo ${route} | jq '. | del (.spec.hostnames)')
+      route=$(echo ${route} | jq '.spec += {"hostnames": ["gw-v3.'"${full_domain}"'"]}')
+      echo ${route} | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-gw-http-route-3.yml > /dev/null
+      route=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-gw-http-route-multiple-2-3.yml)
+      route=$(echo ${route} | jq '. | del (.spec.hostnames)')
+      route=$(echo ${route} | jq '.spec += {"hostnames": ["gw-migration.'"${full_domain}"'"]}')
+      echo ${route} | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-gw-http-route-multiple-2-3.yml > /dev/null
+      # GatewayApi CRD
+      l7rule=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-backendExtension.yaml)
+      l7rule=$(echo ${l7rule} | jq '. | del (.spec.backendTLS)')
+      l7rule=$(echo ${l7rule} | jq '.spec += {"backendTLS": {"hostCheckEnabled": true, "domainName": ["gw-v1.'"${full_domain}"'"]}}')
+      echo ${l7rule} | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-backendExtension.yaml > /dev/null
+      # GatewayApi CRD
+      l7rule=$(/home/ubuntu/.local/bin/yq . /home/ubuntu/yaml-files/demo-backendExtension.yaml)
+      l7rule=$(echo ${l7rule} | jq '. | del (.spec.backendTLS)')
+      l7rule=$(echo ${l7rule} | jq '.spec += {"backendTLS": {"hostCheckEnabled": true, "domainName": ["gw-v1.'"${full_domain}"'"]}}')
+      echo ${l7rule} | /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/yaml-files/demo-backendExtension.yaml > /dev/null
+      #
       #
       echo "cloud init done" | tee /tmp/cloudInitDone.log
     path: /opt/bootstrap.sh

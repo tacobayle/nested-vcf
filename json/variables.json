@@ -7,6 +7,28 @@
   "K8s_version_short": "v1.31",
   "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer", "avi", "supervisor", "vcf-automation", "html", "sddc-manager"],
   "directories": ["bin", "esxi", "vault", "yaml-files"],
+  "yaml_folder": "yaml-files",
+  "yaml_links": [
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-http-apps.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-http-ingress.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-http-crd-1.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-http-crd-2.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-http-crd-3.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-svc-LB-1.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-svc-LB-1-fixed-IP.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-svc-LB-2.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-svc-LB-3.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-gw-multiple-listeners.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-gw-multiple-listeners-static-ip.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-gw-http-route-1.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/refs/heads/main/demo-http-apps/demo-gw-http-route-1-crd.yaml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-gw-http-route-2.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-gw-http-route-3.yml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/master/demo-http-apps/demo-gw-http-route-multiple-2-3.yaml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/refs/heads/main/demo-http-apps/demo-backendExtension.yaml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/refs/heads/main/demo-http-apps/demo-health-monitor.yaml",
+    "https://raw.githubusercontent.com/tacobayle/k8sYaml/refs/heads/main/demo-http-apps/demo-l7rule.yaml"
+  ],
   "vault": {
     "secret_file_path": "/home/ubuntu/vault/secret.json",
     "pki": {
