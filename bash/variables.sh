@@ -355,6 +355,7 @@ supervisor_cluster_service_address_count=$(jq -c -r '.supervisor_cluster.service
 supervisor_cluster_vpc_profile=$(jq -c -r '.supervisor_cluster.vpc_profile_ref' $jsonFile)
 supervisor_cluster_vpc_private_cidr_address=$(jq -c -r '.supervisor_cluster.vpc_private_cidr_address' $jsonFile)
 supervisor_cluster_vpc_private_cidr_prefix=$(jq -c -r '.supervisor_cluster.vpc_private_cidr_prefix' $jsonFile)
+supervisor_services=$(jq -c -r .sddc.vcenter.supervisor_services ${jsonFile})
 #
 # VCF-A
 #

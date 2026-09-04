@@ -7,6 +7,7 @@ touch ${log_file}
 source /home/ubuntu/bash/variables.sh
 source /home/ubuntu/bash/log_message.sh
 source /home/ubuntu/bash/vcenter/vcenter_api.sh
+source /home/ubuntu/bash/download_file.sh
 #
 #
 #
@@ -198,6 +199,20 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "9.1" ]];
     sed -e "s/\${generic_password}/${generic_password}/" \
         -e "s/\${fqdn_vcfa}/${fqdn_vcfa}/" /home/ubuntu/templates/vcfa_select_ns.sh.template | tee /home/ubuntu/supervisor/vcfa_select_ns.sh > /dev/null
     chmod u+x /home/ubuntu/supervisor/vcfa_select_ns.sh
+    sed -e "s/\${generic_password}/${generic_password}/" \
+        -e "s/\${ssoDomain}}/${ssoDomain}/" \
+        -e "s/\${vsphere_nested_username}/${vsphere_nested_username}/" \
+        -e "s/\${vcsa_fqdn}/${vcsa_fqdn}/" /home/ubuntu/templates/enable_supervisor_service.sh.template | tee /home/ubuntu/supervisor/enable_supervisor_service.sh > /dev/null
+    chmod u+x /home/ubuntu/supervisor/enable_supervisor_service.sh
+    #
+    # download yaml supervisor services
+    #
+    while read item
+    do
+      url="$(echo ${item} | jq -c -r '.url')"
+      download_file_from_url_to_location "${url}" "/home/ubuntu/supervisor/$(basename ${url})" "$(basename ${url})"
+      /home/ubuntu/supervisor/enable_supervisor_service.sh "/home/ubuntu/supervisor/$(basename ${url})"
+    done < <(echo "${supervisor_services}" | jq -c -r .[])
   fi
 fi
 #

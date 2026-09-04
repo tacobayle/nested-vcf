@@ -1,0 +1,258 @@
+#!/bin/bash
+#
+# Registers and activates a vCenter Supervisor Service from a Carvel package
+# YAML manifest (a "Package" doc plus a "PackageMetadata" doc), via the
+# vCenter REST API (com.vmware.vcenter.namespace_management.supervisor_services).
+#
+# A single POST with version_spec.registered_by_default=true both registers
+# and activates the service and its version in one call.
+#
+set -euo pipefail
+
+show_help() {
+    cat << EOF
+Usage: $0 [-H host] [-u username] <path-to-supervisor-service-yaml>
+
+Registers and activates a vCenter Supervisor Service from the given YAML
+manifest. The service identifier, version, display name and description are
+derived from the manifest's own Package/PackageMetadata content.
+
+Options:
+  -H, --host HOST        vCenter FQDN/URL (default: \$VC_HOST or https://sddc01-vc01.vcf9.lab)
+  -u, --username USER    vCenter username (default: \$VC_USERNAME or administrator@vsphere.local)
+  -h, --help             Show this help message and exit
+
+Password is read from \$VC_PASSWORD if set, otherwise prompted for.
+
+Example:
+  $0 /home/ubuntu/supervisor/supervisor-service-argocd-1.2.0-25642124.yml
+EOF
+}
+
+VC_HOST="https://${vcsa_fqdn}"
+VC_USERNAME="${vsphere_nested_username}@${ssoDomain}"
+VC_PASSWORD='${generic_password}'
+POSITIONAL=()
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -H|--host) VC_HOST="$2"; shift 2 ;;
+        -u|--username) VC_USERNAME="$2"; shift 2 ;;
+        -h|--help) show_help; exit 0 ;;
+        -*) echo "Unknown argument: $1" >&2; show_help; exit 1 ;;
+        *) POSITIONAL+=("$1"); shift ;;
+    esac
+done
+
+if [ "${#POSITIONAL[@]}" -ne 1 ]; then
+    echo "Error: expected exactly one argument, the path to the Supervisor Service YAML." >&2
+    show_help
+    exit 1
+fi
+YAML_FILE="${POSITIONAL[0]}"
+
+if [ ! -f "$YAML_FILE" ]; then
+    echo "Error: ${YAML_FILE} not found." >&2
+    exit 1
+fi
+
+for cmd in curl python3 base64; do
+    command -v "$cmd" >/dev/null 2>&1 || { echo "Error: '$cmd' is required but not installed." >&2; exit 1; }
+done
+
+if [ -n "${VC_PASSWORD:-}" ]; then
+    PASSWORD="$VC_PASSWORD"
+else
+    read -rsp "Password for ${VC_USERNAME}@${VC_HOST}: " PASSWORD
+    echo
+fi
+
+# Prompts among multiple choices; auto-selects if there's only one.
+# Usage: prompt_choice "Prompt text" "${array[@]}" ; result left in CHOICE
+prompt_choice() {
+    local prompt="$1"; shift
+    local -a options=("$@")
+    if [ "${#options[@]}" -eq 0 ]; then
+        echo "Error: no options available for: $prompt" >&2
+        exit 1
+    fi
+    if [ "${#options[@]}" -eq 1 ]; then
+        CHOICE="${options[0]}"
+        echo "$prompt -> only one option, auto-selected: $CHOICE" >&2
+        return
+    fi
+    echo "$prompt" >&2
+    local PS3="Select a number: "
+    select opt in "${options[@]}"; do
+        if [ -n "${opt:-}" ]; then
+            CHOICE="$opt"
+            break
+        fi
+        echo "Invalid selection, try again." >&2
+    done
+}
+
+# Derive the service identity from the manifest itself rather than hardcoding it,
+# so this script works for any supervisor-service-*.yml file.
+IFS=$'\t' read -r SUPERVISOR_SERVICE VERSION DISPLAY_NAME DESCRIPTION DEFAULT_NAMESPACE < <(python3 - "$YAML_FILE" <<'PYEOF'
+import sys, yaml
+
+docs = list(yaml.safe_load_all(open(sys.argv[1])))
+package = next(d for d in docs if d.get("kind") == "Package")
+metadata = next(d for d in docs if d.get("kind") == "PackageMetadata")
+
+ref_name = package["spec"]["refName"]
+version = package["spec"]["version"]
+supervisor_service = ref_name.split(".")[0]
+if supervisor_service.endswith("-service"):
+    supervisor_service = supervisor_service[: -len("-service")]
+display_name = metadata["spec"]["displayName"]
+description = metadata["spec"]["shortDescription"]
+default_namespace = package["spec"]["valuesSchema"]["openAPIv3"]["properties"]["namespace"]["default"]
+
+print(f"{supervisor_service}\t{version}\t{display_name}\t{description}\t{default_namespace}")
+PYEOF
+)
+
+echo "Logging in to ${VC_HOST}..." >&2
+SESSION_ID=$(curl -sk -X POST "${VC_HOST}/api/session" -u "${VC_USERNAME}:${PASSWORD}" | tr -d '"')
+if [ -z "$SESSION_ID" ]; then
+    echo "Error: vCenter login failed." >&2
+    exit 1
+fi
+
+echo "Checking whether '${SUPERVISOR_SERVICE}' is already registered..." >&2
+EXISTING_STATE=$(curl -sk "${VC_HOST}/api/vcenter/namespace-management/supervisor-services" \
+    -H "vmware-api-session-id: ${SESSION_ID}" \
+    | python3 -c "
+import sys, json
+services = json.load(sys.stdin)
+match = next((s for s in services if s['supervisor_service'] == '${SUPERVISOR_SERVICE}'), None)
+print(match['state'] if match else '')
+")
+
+if [ -n "$EXISTING_STATE" ]; then
+    echo "Supervisor Service '${SUPERVISOR_SERVICE}' is already registered (state: ${EXISTING_STATE})." >&2
+else
+    echo "Registering and activating '${SUPERVISOR_SERVICE}' (version ${VERSION}) from ${YAML_FILE}..." >&2
+    CONTENT_B64=$(base64 -w0 "$YAML_FILE")
+
+    python3 -c "
+import json
+body = {
+    'custom_spec': {
+        'supervisor_service': '${SUPERVISOR_SERVICE}',
+        'display_name': '''${DISPLAY_NAME}''',
+        'description': '''${DESCRIPTION}''',
+        'version_spec': {
+            'version': '${VERSION}',
+            'display_name': '''${DISPLAY_NAME}''',
+            'description': '''${DESCRIPTION}''',
+            'content': '${CONTENT_B64}',
+            'content_type': 'CARVEL_APPS_YAML',
+            'registered_by_default': True
+        }
+    }
+}
+print(json.dumps(body))
+" > /tmp/supervisor_service_create_body.json
+
+    HTTP_CODE=$(curl -sk -o /tmp/supervisor_service_create_response.json -w "%{http_code}" \
+        -X POST "${VC_HOST}/api/vcenter/namespace-management/supervisor-services" \
+        -H "vmware-api-session-id: ${SESSION_ID}" -H "Content-Type: application/json" \
+        --data-binary @/tmp/supervisor_service_create_body.json)
+    rm -f /tmp/supervisor_service_create_body.json
+
+    if [ "$HTTP_CODE" != "201" ]; then
+        echo "Error: failed to create Supervisor Service (HTTP ${HTTP_CODE}):" >&2
+        cat /tmp/supervisor_service_create_response.json >&2
+        rm -f /tmp/supervisor_service_create_response.json
+        exit 1
+    fi
+    rm -f /tmp/supervisor_service_create_response.json
+
+    STATE=$(curl -sk "${VC_HOST}/api/vcenter/namespace-management/supervisor-services/${SUPERVISOR_SERVICE}" \
+        -H "vmware-api-session-id: ${SESSION_ID}" | python3 -c "import sys,json; print(json.load(sys.stdin)['state'])")
+    echo "Supervisor Service '${SUPERVISOR_SERVICE}' registered. Current state: ${STATE}"
+fi
+
+# Pick which Supervisor cluster to enable the service on.
+readarray -t CLUSTER_LINES < <(curl -sk "${VC_HOST}/api/vcenter/namespace-management/clusters" \
+    -H "vmware-api-session-id: ${SESSION_ID}" \
+    | python3 -c "
+import sys, json
+for c in json.load(sys.stdin):
+    print(f\"{c['cluster_name']}\t{c['cluster']}\")
+")
+if [ "${#CLUSTER_LINES[@]}" -eq 0 ]; then
+    echo "Error: no Supervisor-enabled clusters found." >&2
+    exit 1
+fi
+CLUSTER_NAMES=()
+for line in "${CLUSTER_LINES[@]}"; do CLUSTER_NAMES+=("${line%%$'\t'*}"); done
+
+prompt_choice "Available clusters:" "${CLUSTER_NAMES[@]}"
+SELECTED_CLUSTER_NAME="$CHOICE"
+for line in "${CLUSTER_LINES[@]}"; do
+    if [ "${line%%$'\t'*}" == "$SELECTED_CLUSTER_NAME" ]; then
+        CLUSTER_ID="${line##*$'\t'}"
+        break
+    fi
+done
+
+echo "Checking whether '${SUPERVISOR_SERVICE}' is already enabled on cluster '${SELECTED_CLUSTER_NAME}'..." >&2
+CLUSTER_SVC_HTTP=$(curl -sk -o /tmp/cluster_svc_status.json -w "%{http_code}" \
+    "${VC_HOST}/api/vcenter/namespace-management/clusters/${CLUSTER_ID}/supervisor-services/${SUPERVISOR_SERVICE}" \
+    -H "vmware-api-session-id: ${SESSION_ID}")
+
+if [ "$CLUSTER_SVC_HTTP" == "200" ]; then
+    CONFIG_STATUS=$(python3 -c "import json; print(json.load(open('/tmp/cluster_svc_status.json')).get('config_status'))")
+    rm -f /tmp/cluster_svc_status.json
+    echo "Supervisor Service '${SUPERVISOR_SERVICE}' is already enabled on '${SELECTED_CLUSTER_NAME}' (config_status: ${CONFIG_STATUS})."
+    exit 0
+fi
+rm -f /tmp/cluster_svc_status.json
+
+echo "Enabling '${SUPERVISOR_SERVICE}' (version ${VERSION}) on cluster '${SELECTED_CLUSTER_NAME}'..." >&2
+CONFIG_B64=$(printf 'namespace: %s\n' "$DEFAULT_NAMESPACE" | base64 -w0)
+
+python3 -c "
+import json
+body = {'supervisor_service': '${SUPERVISOR_SERVICE}', 'version': '${VERSION}', 'yaml_service_config': '${CONFIG_B64}'}
+print(json.dumps(body))
+" > /tmp/cluster_svc_enable_body.json
+
+HTTP_CODE=$(curl -sk -o /tmp/cluster_svc_enable_response.json -w "%{http_code}" \
+    -X POST "${VC_HOST}/api/vcenter/namespace-management/clusters/${CLUSTER_ID}/supervisor-services" \
+    -H "vmware-api-session-id: ${SESSION_ID}" -H "Content-Type: application/json" \
+    --data-binary @/tmp/cluster_svc_enable_body.json)
+rm -f /tmp/cluster_svc_enable_body.json
+
+if [ "$HTTP_CODE" != "204" ]; then
+    echo "Error: failed to enable Supervisor Service on cluster (HTTP ${HTTP_CODE}):" >&2
+    cat /tmp/cluster_svc_enable_response.json >&2
+    rm -f /tmp/cluster_svc_enable_response.json
+    exit 1
+fi
+rm -f /tmp/cluster_svc_enable_response.json
+
+echo "Waiting for '${SUPERVISOR_SERVICE}' to reconcile on '${SELECTED_CLUSTER_NAME}'..." >&2
+CONFIG_STATUS="CONFIGURING"
+for i in $(seq 1 30); do
+    POLL_HTTP_CODE=$(curl -sk -o /tmp/cluster_svc_poll.json -w "%{http_code}" \
+        "${VC_HOST}/api/vcenter/namespace-management/clusters/${CLUSTER_ID}/supervisor-services/${SUPERVISOR_SERVICE}" \
+        -H "vmware-api-session-id: ${SESSION_ID}")
+    # A non-200 response here is a transient race right after enabling, not a real
+    # terminal state - keep polling instead of treating it as done.
+    if [ "$POLL_HTTP_CODE" == "200" ]; then
+        CONFIG_STATUS=$(python3 -c "import json; print(json.load(open('/tmp/cluster_svc_poll.json')).get('config_status') or 'CONFIGURING')")
+    fi
+    rm -f /tmp/cluster_svc_poll.json
+    echo "  [$i] (HTTP ${POLL_HTTP_CODE}) config_status=${CONFIG_STATUS}" >&2
+    if [ "$CONFIG_STATUS" != "CONFIGURING" ]; then
+        break
+    fi
+    sleep 10
+done
+
+echo "Supervisor Service '${SUPERVISOR_SERVICE}' on cluster '${SELECTED_CLUSTER_NAME}': config_status=${CONFIG_STATUS}"
