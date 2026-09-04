@@ -194,7 +194,7 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "9.1" ]];
   if [[ ${vcf_version_two_digit} == "9.1" ]]; then
     sed -e "s/\${generic_password}/${generic_password}/" \
         -e "s/\${api_server_cluster_endpoint}/${api_server_cluster_endpoint}/" \
-        -e "s/\${ssoDomain}/${ssoDomain}/" /home/ubuntu/templates/auth_vks_context_9.1.sh.template | tee /home/ubuntu/supervisor/auth_vks_context.sh > /dev/null
+        -e "s/\${ssoDomain}/${ssoDomain}/" /home/ubuntu/templates/vcfa_select_vks_cluster.sh.template | tee /home/ubuntu/supervisor/auth_vks_context.sh > /dev/null
     chmod u+x /home/ubuntu/supervisor/auth_vks_context.sh
   fi
 fi

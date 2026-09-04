@@ -16,6 +16,12 @@ fqdn=${ip_avi}
 username='admin'
 password=''${generic_password}''
 #
+# check if avi_pkg_url is defined
+#
+if [ -z "$avi_pkg_url" ] || [ "$avi_pkg_url" == "null" ]; then
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, Avi no upgrade required" "${log_file}" "${slack_webhook}" "${google_webhook}"
+fi
+#
 # VCF 9.1 to retrieve avi_version
 #
 if [[ ${vcf_version_two_digit} == "9.1" ]]; then
@@ -50,7 +56,7 @@ target_version=$(basename "${avi_pkg_url}" .pkg | cut -d"-" -f2-3)
 if [[ ${current_version} == ${target_version} ]]; then
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, Avi no upgrade required" "${log_file}" "" ""
 else
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, Avi upgrade required" "${log_file}" "" ""
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, Avi upgrade required" "${log_file}" "${slack_webhook}" "${google_webhook}"
   if [ -f "/home/ubuntu/avi/$(basename ${avi_pkg_url})" ]; then
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, starts upgrade from ${current_version} to ${target_version}" "${log_file}" "${slack_webhook}" "${google_webhook}"
     avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${fqdn}" "api/image" "/home/ubuntu/avi/$(basename ${avi_pkg_url})"
