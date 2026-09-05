@@ -19,7 +19,7 @@ if [ $? -ne 0 ] ; then
 fi
 #
 rm -f /tmp/cl_state
-govc library.ls -json | jq -c -r '.[]' | while read cl
+govc library.ls -json | jq -c -r '(. // [])[]' | while read cl
 do
    if [[ $(echo ${cl} | jq -c -r '.name') == ${avi_content_library_name} ]]; then
      echo $(echo ${cl} | jq -c -r '.id') > /tmp/cl_state
@@ -380,7 +380,8 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   json_data='
     {
       "cloud_uuid": "'${cloud_uuid}'",
-      "vcenter_uuid": "'${vcenter_uuid}'"
+      "vcenter_uuid": "'${vcenter_uuid}'",
+      "transport_zone_id": "'${tz_id}'"
     }'
   avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/nsxt/transportnodes"
   list_az_uuids="[]"
