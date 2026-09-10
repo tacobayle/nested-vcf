@@ -66,7 +66,9 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, avi config: sddcm_token is undefined or null" "${log_file}" "${slack_webhook}" "${google_webhook}"
     exit 100
   fi
-  avi_version=$(curl -s -k -H "Authorization: Bearer $sddcm_token" -H "Content-Type: application/json" -X GET "https://$sddcm/v1/bundles" | jq -c -r --arg arg "NSX_ALB" '.elements[] | select(.components[0].description == $arg) | .version' | cut -d"-" -f1)
+  if [ -z "${avi_version}" ]; then
+    avi_version=$(curl -s -k -H "Authorization: Bearer $sddcm_token" -H "Content-Type: application/json" -X GET "https://$sddcm/v1/bundles" | jq -c -r --arg arg "NSX_ALB" '.elements[] | select(.components[0].description == $arg and .downloadStatus == "SUCCESSFUL") | .version' | head -1 | cut -d"-" -f1)
+  fi
   #
   # API auth
   #
