@@ -68,6 +68,7 @@ name_vcf_installer="vcf-installer"
 if [[ ${name_vcf_installer} != "null" ]]; then
   vcf_version=$(echo ${iso_url} | cut -d"-" -f4 | cut -d"." -f1-3)
   vcf_version_two_digit=$(echo ${iso_url} | cut -d"-" -f4 | cut -d"." -f1-2)
+  vcf_version_three_digit=$(echo ${iso_url} | cut -d"-" -f4 | cut -d"." -f1-3)
   vcf_version_full=$(echo ${iso_url} | cut -d"-" -f4 | cut -d"." -f1-4)
 fi
 if [[ ${vcf_version_two_digit} == "9.0" ]]; then
@@ -327,7 +328,12 @@ nsx_cloud_name=$(jq -c -r '.avi.nsx_cloud_name' $jsonFile)
 cloud_obj_name_prefix=$(jq -c -r '.avi.cloud_obj_name_prefix' $jsonFile)
 avi_subdomain=$(jq -c -r '.avi.avi_subdomain' $jsonFile)
 avi_nsx_transport_zone="VCF-Created-Overlay-Zone"
-service_engine_groups=$(jq -c -r '.avi.service_engine_groups' $jsonFile)
+if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" ]]; then
+  service_engine_groups=$(jq -c -r '.avi.service_engine_groups' $jsonFile)
+fi
+if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+  service_engine_groups=$(jq -c -r 'sddc.avi.service_engine_groups' $jsonFile)
+fi
 network_services="[]"
 pools="[]"
 pool_groups="[]"
@@ -362,18 +368,18 @@ supervisor_services=$(jq -c -r .sddc.vcenter.supervisor_services ${jsonFile})
 #
 # VCF-A
 #
-vcf_a_regions=$(jq -c -r '.vcf_a.regions' $jsonFile)
+vcf_a_regions=$(jq -c -r '.sddc.vcf_a.regions' $jsonFile)
 vcf_a_ip_spaces="[]"
 supernet_vpc_public=$(jq -c -r '.sddc.nsx.supernet_vpc_public' $jsonFile)
 supernet_vpc_public_two_octets=$(echo "${supernet_vpc_public}" | cut -d'.' -f1-2)
 ipspace_count=0
-last_public_third_octet_vcf_a=$((${first_public_third_octet_vcf_a} + $(jq '.vcf_a.ip_spaces | length' $jsonFile) - 1))
+last_public_third_octet_vcf_a=$((${first_public_third_octet_vcf_a} + $(jq '.sddc.vcf_a.ip_spaces | length' $jsonFile) - 1))
 for third_octet in $(seq ${first_public_third_octet_vcf_a} ${last_public_third_octet_vcf_a})
 do
   cidr="${supernet_vpc_public_two_octets}.${third_octet}.0/24"
-  vcf_a_ip_space=$(jq -c -r '.vcf_a.ip_spaces['${ipspace_count}'] + {"cidr": "'${cidr}'"}' $jsonFile)
+  vcf_a_ip_space=$(jq -c -r '.sddc.vcf_a.ip_spaces['${ipspace_count}'] + {"cidr": "'${cidr}'"}' $jsonFile)
   vcf_a_ip_spaces=$(echo ${vcf_a_ip_spaces} | jq '. + ['${vcf_a_ip_space}'] ')
   ((ipspace_count++))
 done
-vcf_a_provider_gws=$(jq -c -r '.vcf_a.provider_gws' $jsonFile)
-vcf_a_organizations=$(jq -c -r '.vcf_a.organizations' $jsonFile)
+vcf_a_provider_gws=$(jq -c -r '.sddc.vcf_a.provider_gws' $jsonFile)
+vcf_a_organizations=$(jq -c -r '.sddc.vcf_a.organizations' $jsonFile)

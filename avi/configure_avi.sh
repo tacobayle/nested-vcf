@@ -415,6 +415,18 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   json_data='{"replace": {"availability_zone_refs": '$(echo ${list_az_uuids} | jq -c -r '.[-3:]')', "cpu_reserve": false, "mem_reserve": false, "se_deprovision_delay": 120, "buffer_se": 0, "min_scaleout_per_vs": 1, "algo": "PLACEMENT_ALGO_PACKED", "ha_mode": "HA_MODE_SHARED", "vcpus_per_se": 1, "memory_per_se": 2048, "disk_per_se": 15, "realtime_se_metrics": {"duration": 30, "enable": false}}}'
   avi_api 2 2 "PATCH" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/serviceenginegroup/${serviceneginegroup_uuid}"
   #
+  # seg creation
+  #
+  if [ -z "${service_engine_groups}" ] || [ ${service_engine_groups} == "null" ]; then
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, skipping seg creation" "${log_file}" "" ""
+  else
+    while read item
+    do
+      json_data=$(echo ${item} | jq -c -r '.')
+      avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/serviceenginegroup"
+    done < <(echo "${service_engine_groups}" | jq -c -r '.[]')
+  fi
+  #
   # DNS vsvip
   #
   json_data='
