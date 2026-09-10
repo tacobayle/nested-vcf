@@ -382,4 +382,24 @@ do
   ((ipspace_count++))
 done
 vcf_a_provider_gws=$(jq -c -r '.sddc.vcf_a.provider_gws' $jsonFile)
-vcf_a_organizations=$(jq -c -r '.sddc.vcf_a.organizations' $jsonFile)
+vcf_a_organizations=$(jq -c '
+  .sddc.vcf_a as $vcfa
+  | ($vcfa.organizations // []) as $flat
+  | ($vcfa.organization_overrides // []) as $overrides
+  | (
+      [
+        ($vcfa.organization_templates // [])[] as $t
+        | range(0; $t.count) as $i
+        | ($t.start_index + $i) as $idx
+        | ($t.name_prefix + ($idx|tostring)) as $orgname
+        | ($t | del(.name_prefix, .start_index, .count)) + {name: $orgname}
+      ]
+    ) as $expanded
+  | ($expanded | map(
+        . as $org
+        | (($overrides | map(select(.name == $org.name)))[0]) as $ov
+        | if $ov then ($org * $ov) else $org end
+      )
+    ) as $merged
+  | $flat + $merged
+' $jsonFile)
