@@ -158,7 +158,8 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${ip_gw_last_octet}@${ip_gw_last_octet}@" \
         -e "s/\${forwarders_bind}/${forwarders_bind}/" \
         -e "s/\${yaml_folder}/${yaml_folder}/" \
-        -e "s/\${yaml_links}/${yaml_links}/" \
+        -e "s@\${yaml_links}@${yaml_links}@" \
+        -e "s@\${yaml_links}@${yaml_links}@" \
         -e "s@\${vault_secret_file_path}@${vault_secret_file_path}@" \
         -e "s@\${vault_pki_name}@${vault_pki_name}@" \
         -e "s@\${vault_pki_max_lease_ttl}@${vault_pki_max_lease_ttl}@" \
