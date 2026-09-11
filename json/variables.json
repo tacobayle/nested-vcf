@@ -61,7 +61,7 @@
       }
     }
   },
-  "pip3_packages": ["ansible-core==2.18.6", "ansible==11.7.0", "avisdk", "dnspython", "netaddr"],
+  "pip3_packages": ["ansible-core==2.18.6", "ansible==11.7.0", "avisdk", "dnspython", "netaddr", "yq"],
   "apt_packages": ["iptables-persistent", "expect", "bind9", "bind9utils", "dnsutils", "chrony", "nginx", "python3-pip", "vault", "sshpass"],
   "vsphere_nested_username": "administrator",
   "vsphere_cl_name": "cl-ubuntu",
@@ -114,6 +114,11 @@
     },
     {
       "script_file": "/home/ubuntu/supervisor/configure_supervisor.sh",
+      "test_remote_script_retry": 120,
+      "test_remote_script_pause": 30
+    },
+    {
+      "script_file": "/home/ubuntu/vcf-automation/configure_vcfa.sh",
       "test_remote_script_retry": 120,
       "test_remote_script_pause": 30
     }

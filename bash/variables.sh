@@ -373,11 +373,25 @@ vcf_a_ip_spaces="[]"
 supernet_vpc_public=$(jq -c -r '.sddc.nsx.supernet_vpc_public' $jsonFile)
 supernet_vpc_public_two_octets=$(echo "${supernet_vpc_public}" | cut -d'.' -f1-2)
 ipspace_count=0
-last_public_third_octet_vcf_a=$((${first_public_third_octet_vcf_a} + $(jq '.sddc.vcf_a.ip_spaces | length' $jsonFile) - 1))
+#
+# ip_space_template is a TEMPLATE, not a literal list - the number of
+# ip_spaces to actually create is derived from total org count x
+# ips_per_org, not authored (confirmed live via a 51-org x 20-VIP batch
+# test that a provider gateway pools cleanly across every ip_space
+# associated to it - see ip_space_template's own comments in the CRD/CR
+# for the full rationale). A /24 yields 256 usable addresses (.0-.255,
+# confirmed live - NOT 254), hence dividing by 256 below.
+#
+ip_space_basename=$(jq -c -r '.sddc.vcf_a.ip_space_template.basename' $jsonFile)
+ips_per_org=$(jq -c -r '.sddc.vcf_a.ip_space_template.ips_per_org' $jsonFile)
+vcf_a_total_org_count=$(jq '[.sddc.vcf_a.organization_templates[].count] | add // 0' $jsonFile)
+vcf_a_ip_space_count=$(( (vcf_a_total_org_count * ips_per_org + 255) / 256 ))
+last_public_third_octet_vcf_a=$((${first_public_third_octet_vcf_a} + ${vcf_a_ip_space_count} - 1))
 for third_octet in $(seq ${first_public_third_octet_vcf_a} ${last_public_third_octet_vcf_a})
 do
   cidr="${supernet_vpc_public_two_octets}.${third_octet}.0/24"
-  vcf_a_ip_space=$(jq -c -r '.sddc.vcf_a.ip_spaces['${ipspace_count}'] + {"cidr": "'${cidr}'"}' $jsonFile)
+  vcf_a_ip_space=$(jq -c -r --arg n "${ip_space_basename}-$((ipspace_count + 1))" --arg cidr "${cidr}" \
+    '.sddc.vcf_a.ip_space_template | del(.basename, .ips_per_org) + {"name": $n, "cidr": $cidr}' $jsonFile)
   vcf_a_ip_spaces=$(echo ${vcf_a_ip_spaces} | jq '. + ['${vcf_a_ip_space}'] ')
   ((ipspace_count++))
 done
@@ -403,3 +417,4 @@ vcf_a_organizations=$(jq -c '
     ) as $merged
   | $flat + $merged
 ' $jsonFile)
+vcf_a_content_libraries=$(jq -c -r '.sddc.vcf_a.content_libraries' $jsonFile)

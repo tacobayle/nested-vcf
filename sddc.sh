@@ -221,6 +221,14 @@ if [[ ${operation} == "apply" ]] ; then
           do
             scp -o StrictHostKeyChecking=no -r /nested-vcf/${folder} ubuntu@${ip_gw}:/home/ubuntu
           done
+          ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "mkdir -p /home/ubuntu/vcf-automation/blueprints" >> ${log_file}
+          if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" ]]; then
+            log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: external-gw ${gw_name} not copying yaml files in /home/ubuntu/vcf-automation/blueprints/" ${log_file} ${slack_webhook} ${google_webhook}
+          else
+            ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "mv /home/ubuntu/vcf-automation/blueprint-import-cert.yaml /home/ubuntu/vcf-automation/blueprints/" >> ${log_file}
+            ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "mv /home/ubuntu/vcf-automation/blueprint-create-vs.yaml /home/ubuntu/vcf-automation/blueprints/" >> ${log_file}
+            ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "mv /home/ubuntu/vcf-automation/blueprint-create-2-vms.yaml /home/ubuntu/vcf-automation/blueprints/" >> ${log_file}
+          fi
           ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo mv /home/ubuntu/html/* /var/www/html/" >> ${log_file}
           ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo chown root /var/www/html/*" >> ${log_file}
           ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "sudo chgrp root /var/www/html/*" >> ${log_file}

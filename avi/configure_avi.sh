@@ -257,6 +257,7 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
     {
       "name": "ipam-avi",
       "type": "IPAMDNS_TYPE_INTERNAL",
+      "allocate_ip_in_vrf": true,
       "internal_profile":
       {
         "usable_networks": [{"nw_ref": "/api/network/'${vip_uuid}'" }]
