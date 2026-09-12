@@ -513,7 +513,7 @@ write_files:
       # wait for dns readyness
       #
       count=1
-      until dig +short @127.0.0.1 raw.githubusercontent.com > /dev/null 2>&1
+      until [ -n "$(dig +short @127.0.0.1 raw.githubusercontent.com 2>/dev/null)" ]
       do
         sleep 2
         count=$((count+1))
