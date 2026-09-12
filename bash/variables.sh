@@ -255,7 +255,12 @@ nsx_config_vpcs=$(jq -c -r .nsx.config.vpcs $jsonFile)
 avi_ova_url=$(jq -c -r '.sddc.avi.ova_url' $jsonFile)
 avi_pkg_url=$(jq -c -r '.sddc.avi.pkg_url' $jsonFile)
 avi_jwt_token=$(jq -c -r '.sddc.avi.jwt_token' $jsonFile)
-avi_version=$(jq -c -r '.sddc.avi.version' $jsonFile)
+if [[ ${vcf_version_two_digit} == "9.1" ]]; then
+  avi_version=$(jq -c -r '.sddc.avi.version' $jsonFile)
+fi
+if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" ]]; then
+  avi_version=$(basename ${avi_ova_url} | cut -d"-" -f2)
+fi
 avi_account_id=$(jq -c -r '.sddc.avi.account_id' $jsonFile)
 avi_ova_url_sddc_manager=$(jq -c -r '.sddc.avi.ova_url_sddc_manager' $jsonFile)
 avi_product_version_sddc_manager=$(jq -c -r '.sddc.avi.product_version_sddc_manager' $jsonFile)
@@ -272,7 +277,6 @@ ip_gw_vm_management="$(echo ${networks} | jq -c -r --arg arg "VM_MANAGEMENT" '.[
 folder_avi=$(jq -c -r '.avi.folder' $jsonFile)
 avi_content_library_name=$(jq -c -r '.avi.content_library_name' $jsonFile)
 avi_old_password=$(jq -c -r '.sddc.avi.avi_old_password' $jsonFile)
-avi_version=$(basename ${avi_ova_url} | cut -d"-" -f2)
 import_sslkeyandcertificate_ca="[]"
 certificatemanagementprofile="[]"
 alertscriptconfig="[]"
