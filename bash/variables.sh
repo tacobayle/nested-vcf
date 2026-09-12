@@ -332,7 +332,7 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "8.0U3b" 
   service_engine_groups=$(jq -c -r '.avi.service_engine_groups' $jsonFile)
 fi
 if [[ ${vcf_version_two_digit} == "9.1" ]]; then
-  service_engine_groups=$(jq -c -r 'sddc.avi.service_engine_groups' $jsonFile)
+  service_engine_groups=$(jq -c -r '.sddc.avi.service_engine_groups' $jsonFile)
 fi
 network_services="[]"
 pools="[]"
