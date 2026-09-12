@@ -443,8 +443,18 @@ do
           continue
         fi
 
-        # descriptor upload
+        # descriptor upload - the server does NOT preserve the original
+        # uploaded filename for this entry, it always renames it to the
+        # literal "descriptor.ovf" regardless of what the local .ovf is
+        # actually called (confirmed live: a lab-web-test-base-2.8.ovf
+        # upload comes back re-listed as descriptor.ovf, not under its
+        # own name) - so excluding disk files by comparing against the
+        # LOCAL .ovf basename below is wrong and lets this renamed
+        # descriptor entry slip through the filter as if it were a
+        # missing disk file. Capture the server's own name for this
+        # entry here instead, before uploading it, and exclude by THAT.
         vcfa_api GET "cloudapi/v1/contentLibraryItems/${item_id}/files" ""
+        descriptor_name=$(echo ${response_body} | jq -c -r '.values[0].name')
         descriptor_transfer_url=$(echo ${response_body} | jq -c -r '.values[0].transferUrl')
         curl -sk -X PUT "${descriptor_transfer_url}" -H "Authorization: Bearer ${vcfa_token}" --data-binary @"${ovf_file}" > /dev/null
 
@@ -453,7 +463,7 @@ do
         # server-reported file name against the extracted directory.
         sleep 5
         vcfa_api GET "cloudapi/v1/contentLibraryItems/${item_id}/files" ""
-        disk_files=$(echo ${response_body} | jq -c -r '.values[] | select(.name != (("'"${ovf_file##*/}"'"))) | @base64')
+        disk_files=$(echo ${response_body} | jq -c -r --arg descname "${descriptor_name}" '.values[] | select(.name != $descname) | @base64')
         for encoded_file in ${disk_files}; do
           disk_name=$(echo "${encoded_file}" | base64 -d | jq -c -r '.name')
           disk_transfer_url=$(echo "${encoded_file}" | base64 -d | jq -c -r '.transferUrl')
