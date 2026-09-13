@@ -423,7 +423,7 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   else
     while read item
     do
-      json_data=$(echo ${item} | jq -c -r '.')
+      json_data=$(echo ${item} | jq -c -r '. += {"cloud_ref": "'${cloud_url}'"}')
       avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/serviceenginegroup"
     done < <(echo "${service_engine_groups}" | jq -c -r '.[]')
   fi
