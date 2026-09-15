@@ -951,16 +951,29 @@ else
       # objects VCFA doesn't manage), once this org's namespace is
       # confirmed present, regardless of whether it was just created
       # above or already existed (kubectl apply is idempotent, safe to
-      # re-run every time this script runs). metadata.namespace in both
-      # source YAMLs is rewritten via yq (kislyuk/yq, a jq wrapper with
-      # YAML support - installed at /home/ubuntu/.local/bin/yq via the
-      # project's internal PyPI mirror, no direct internet egress from
-      # the gw) rather than a hardcoded-string sed replace - the source
-      # files' current namespace value is whatever they happen to
-      # already contain (e.g. org-1's own ns-1-qrcw5 from earlier manual
-      # testing), and a literal-string sed match would silently do
-      # nothing if that value is ever different, unlike yq which sets
-      # the field unconditionally regardless of its current value.
+      # re-run every time this script runs).
+      #
+      # secret_vault.yaml/vault_issuer.yaml are raw placeholder templates
+      # from demoavi/dev-avi-vcf (gw's own userdata clones that repo and
+      # copies every yamls/*.yaml file into /home/ubuntu/${yaml_folder}/
+      # untouched, since neither Kind is in the demo-yaml by-Kind dispatch
+      # there) - ALL their real values are filled in here instead, per
+      # org/namespace, using yq (mikefarah/yq, installed at
+      # /usr/local/bin/yq by gw's own userdata). This has to happen here
+      # rather than in cloud-init because the actual namespace name isn't
+      # known until VCF-A creates it under this org (well after gw's own
+      # first boot) - cloud-init is simply too early for that value, even
+      # though the OTHER fields (vault token/server/path/caBundle) are
+      # already knowable at cloud-init time. Keeping every substitution in
+      # one place (here) rather than splitting them across cloud-init and
+      # this script is deliberate, since this script is the one meant to
+      # be ported to the local epc-vapp project later - having the whole
+      # mechanism self-contained here keeps that port simple.
+      #
+      # A source-file kind/name sanity check guards against silently
+      # patching the wrong file if the templates in dev-avi-vcf/yamls/
+      # ever get renamed/restructured.
+      #
       # auth_supervisor_custer.sh switches the local kubectl/vcf CLI
       # context to the Supervisor cluster itself (sup-admin-01) -
       # confirmed live this must run first, since a stale context left
@@ -976,15 +989,35 @@ else
       vault_integration_enabled=$(echo ${item} | jq -c -r '.namespace.vault_integration.enabled // false')
       if [ -n "${ns_name}" ] && [ "${vault_integration_enabled}" == "true" ]; then
         bash /home/ubuntu/supervisor/auth_supervisor_custer.sh >/dev/null 2>&1
-        /home/ubuntu/.local/bin/yq -y ".metadata.namespace = \"${ns_name}\"" /home/ubuntu/yaml-files/secret_vault.yaml > "/tmp/${org_name}-secret_vault.yaml"
-        /home/ubuntu/.local/bin/yq -y ".metadata.namespace = \"${ns_name}\"" /home/ubuntu/yaml-files/vault_issuer.yaml > "/tmp/${org_name}-vault_issuer.yaml"
-        kubectl_out=$( { kubectl apply -f "/tmp/${org_name}-secret_vault.yaml" && kubectl apply -f "/tmp/${org_name}-vault_issuer.yaml"; } 2>&1 )
-        if [ $? -eq 0 ]; then
-          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: vault secret + issuer applied for ${org_name} in namespace ${ns_name}" "${log_file}" "" ""
+
+        secret_kind="$(yq '.kind' /home/ubuntu/${yaml_folder}/secret_vault.yaml)"
+        secret_name="$(yq '.metadata.name' /home/ubuntu/${yaml_folder}/secret_vault.yaml)"
+        issuer_kind="$(yq '.kind' /home/ubuntu/${yaml_folder}/vault_issuer.yaml)"
+        if [ "${secret_kind}" != "Secret" ] || [ "${secret_name}" != "cert-manager-vault-token" ] || [ "${issuer_kind}" != "Issuer" ]; then
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: secret_vault.yaml/vault_issuer.yaml have unexpected kind/name (secret_kind=${secret_kind}, secret_name=${secret_name}, issuer_kind=${issuer_kind}), skipping vault bootstrap for ${org_name}" "${log_file}" "${slack_webhook}" "${google_webhook}"
         else
-          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: vault secret/issuer apply FAILED for ${org_name} in namespace ${ns_name}, output: ${kubectl_out}" "${log_file}" "${slack_webhook}" "${google_webhook}"
+          cp /home/ubuntu/${yaml_folder}/secret_vault.yaml "/tmp/${org_name}-secret_vault.yaml"
+          yq -i ".metadata.namespace = \"${ns_name}\"" "/tmp/${org_name}-secret_vault.yaml"
+          yq -i ".data.token = \"$(echo -n $(jq -c -r .root_token ${vault_secret_file_path}) | base64)\"" "/tmp/${org_name}-secret_vault.yaml"
+
+          cp /home/ubuntu/${yaml_folder}/vault_issuer.yaml "/tmp/${org_name}-vault_issuer.yaml"
+          yq -i ".metadata.namespace = \"${ns_name}\"" "/tmp/${org_name}-vault_issuer.yaml"
+          yq -i ".spec.vault.server = \"https://${ip_gw}:8200\"" "/tmp/${org_name}-vault_issuer.yaml"
+          yq -i ".spec.vault.path = \"${vault_pki_intermediate_name}/sign/${vault_pki_intermediate_role_name}\"" "/tmp/${org_name}-vault_issuer.yaml"
+          # /opt/vault/tls/tls.crt is vault:vault 0600 - unreadable by this
+          # script's own ubuntu user (unlike cloud-init, which built this
+          # same value while still running as root) - confirmed live this
+          # user has passwordless sudo, so read it that way instead.
+          yq -i ".spec.vault.caBundle = \"$(sudo cat /opt/vault/tls/tls.crt | base64 -w0)\"" "/tmp/${org_name}-vault_issuer.yaml"
+
+          kubectl_out=$( { kubectl apply -f "/tmp/${org_name}-secret_vault.yaml" && kubectl apply -f "/tmp/${org_name}-vault_issuer.yaml"; } 2>&1 )
+          if [ $? -eq 0 ]; then
+            log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: vault secret + issuer applied for ${org_name} in namespace ${ns_name}" "${log_file}" "" ""
+          else
+            log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: vault secret/issuer apply FAILED for ${org_name} in namespace ${ns_name}, output: ${kubectl_out}" "${log_file}" "${slack_webhook}" "${google_webhook}"
+          fi
+          rm -f "/tmp/${org_name}-secret_vault.yaml" "/tmp/${org_name}-vault_issuer.yaml"
         fi
-        rm -f "/tmp/${org_name}-secret_vault.yaml" "/tmp/${org_name}-vault_issuer.yaml"
       fi
 
       #

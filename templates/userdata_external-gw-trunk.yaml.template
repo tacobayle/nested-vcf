@@ -86,6 +86,10 @@ write_files:
       #
       curl -L -o - "https://github.com/vmware/govmomi/releases/latest/download/govc_$(uname -s)_$(uname -m).tar.gz" | tar -C /usr/local/bin -xvzf - govc
       #
+      # YQ install
+      #
+      curl -L -o /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" && chmod +x /usr/local/bin/yq || echo "WARNING: yq install failed, continuing" >&2
+      #
       # Network
       #
       mv /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.old
@@ -425,28 +429,6 @@ write_files:
       vault operator init -key-shares=1 -key-threshold=1 -tls-skip-verify -format json | tee ${vault_secret_file_path}
       vault operator unseal -tls-skip-verify $(jq -c -r .unseal_keys_hex[0] ${vault_secret_file_path})
       vault login -tls-skip-verify $(jq -c -r .root_token ${vault_secret_file_path})
-      echo "apiVersion: v1" | tee /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
-      echo "kind: Secret" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
-      echo "metadata:" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
-      echo "  name: cert-manager-vault-token" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
-      echo "  namespace: ----------TO_BE_REPLACED----------" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
-      echo "type: Opaque" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
-      echo "data:" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
-      echo "  token: $(echo -n $(jq -c -r .root_token ${vault_secret_file_path}) | base64)" | tee -a /home/ubuntu/yaml-files/secret_vault.yaml >/dev/null 2>&1
-      echo "apiVersion: cert-manager.io/v1" | tee /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "kind: Issuer" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "metadata:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "  name: vault-issuer" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "  namespace: ----------TO_BE_REPLACED----------" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "spec:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "  vault:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "    server: https://${ip_gw}:8200" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "    path: ${vault_pki_intermediate_name}/sign/${vault_pki_intermediate_role_name}" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "    caBundle: $(cat /opt/vault/tls/tls.crt | base64 -w0)" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "    auth:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "      tokenSecretRef:" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "        name: cert-manager-vault-token" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
-      echo "        key: token" | tee -a /home/ubuntu/yaml-files/vault_issuer.yaml >/dev/null 2>&1
       # root ca
       vault secrets enable -tls-skip-verify ${vault_pki_name}
       vault secrets tune -tls-skip-verify -max-lease-ttl=${vault_pki_max_lease_ttl} "${vault_pki_name}"
@@ -522,77 +504,42 @@ write_files:
       #
       # Getting Yaml files and update them
       #
-      cd /home/ubuntu/${yaml_folder}
-      yaml_links='${yaml_links}'
-      echo $yaml_links | jq -c -r .[] | while read yaml_link
-      do
-        sudo -u ubuntu wget $yaml_link
-      done
-      full_domain="${avi_subdomain}.${domain}"
-      # ingress - update host
-      ingress=$(sudo -u ubuntu /home/ubuntu/.local/bin/yq . /home/ubuntu/${yaml_folder}/demo-http-ingress.yml)
-      ingress=$(echo $ingress | jq '. | del (.spec.rules[0].host)')
-      ingress=$(echo $ingress | jq '.spec.rules[0] += {"host": "v1.'${full_domain}'"}')
-      ingress=$(echo $ingress | jq '. | del (.spec.rules[1].host)')
-      ingress=$(echo $ingress | jq '.spec.rules[1] += {"host": "v2.'${full_domain}'"}')
-      ingress=$(echo $ingress | jq '. | del (.spec.rules[2].host)')
-      ingress=$(echo $ingress | jq '.spec.rules[2] += {"host": "v3.'${full_domain}'"}')
-      echo $ingress | sudo -u ubuntu /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/${yaml_folder}/demo-http-ingress.yml > /dev/null
-      #
-      crd=$(sudo -u ubuntu /home/ubuntu/.local/bin/yq . /home/ubuntu/${yaml_folder}/demo-http-crd-1.yml)
-      crd=$(echo $crd | jq '. | del (.spec.virtualhost.fqdn)')
-      crd=$(echo $crd | jq '.spec.virtualhost += {"fqdn": "v1.'${full_domain}'"}')
-      echo $crd | sudo -u ubuntu /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/${yaml_folder}/demo-http-crd-1.yml > /dev/null
-      #
-      crd=$(sudo -u ubuntu /home/ubuntu/.local/bin/yq . /home/ubuntu/${yaml_folder}/demo-http-crd-2.yml)
-      crd=$(echo $crd | jq '. | del (.spec.virtualhost.fqdn)')
-      crd=$(echo $crd | jq '.spec.virtualhost += {"fqdn": "v2.'${full_domain}'"}')
-      echo $crd | sudo -u ubuntu /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/${yaml_folder}/demo-http-crd-2.yml > /dev/null
-      #
-      crd=$(sudo -u ubuntu /home/ubuntu/.local/bin/yq . /home/ubuntu/${yaml_folder}/demo-http-crd-3.yml)
-      crd=$(echo $crd | jq '. | del (.spec.virtualhost.fqdn)')
-      crd=$(echo $crd | jq '.spec.virtualhost += {"fqdn": "v3.'${full_domain}'"}')
-      echo $crd | sudo -u ubuntu /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/${yaml_folder}/demo-http-crd-3.yml > /dev/null
-      # gw - domain update and cert update
-      gw=$(sudo -u ubuntu /home/ubuntu/.local/bin/yq . /home/ubuntu/${yaml_folder}/demo-gw-multiple-listeners.yml)
-      gw=$(echo ${gw} | jq '. | del (.spec.listeners[0].hostname)')
-      gw=$(echo ${gw} | jq '. | del (.spec.listeners[1].hostname)')
-      gw=$(echo ${gw} | jq '.spec.listeners[0] += {"hostname": "*.'${full_domain}'"}')
-      gw=$(echo ${gw} | jq '.spec.listeners[1] += {"hostname": "*.'${full_domain}'"}')
-      echo ${gw} | sudo -u ubuntu /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/${yaml_folder}/demo-gw-multiple-listeners.yml > /dev/null
-      #
-      gw=$(sudo -u ubuntu /home/ubuntu/.local/bin/yq . /home/ubuntu/${yaml_folder}/demo-gw-multiple-listeners-static-ip.yml)
-      gw=$(echo ${gw} | jq '. | del (.spec.listeners[0].hostname)')
-      gw=$(echo ${gw} | jq '. | del (.spec.listeners[1].hostname)')
-      gw=$(echo ${gw} | jq '.spec.listeners[0] += {"hostname": "static-ip.'${full_domain}'"}')
-      gw=$(echo ${gw} | jq '.spec.listeners[1] += {"hostname": "static-ip.'${full_domain}'"}')
-      echo ${gw} | sudo -u ubuntu /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/${yaml_folder}/demo-gw-multiple-listeners-static-ip.yml > /dev/null
-      # gw http routes update
-      route=$(sudo -u ubuntu /home/ubuntu/.local/bin/yq . /home/ubuntu/${yaml_folder}/demo-gw-http-route-1.yml)
-      route=$(echo ${route} | jq '. | del (.spec.hostnames)')
-      route=$(echo ${route} | jq '.spec += {"hostnames": ["gw-v1.'"${full_domain}"'"]}')
-      echo ${route} | sudo -u ubuntu /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/${yaml_folder}/demo-gw-http-route-1.yml > /dev/null
-      route=$(sudo -u ubuntu /home/ubuntu/.local/bin/yq . /home/ubuntu/${yaml_folder}/demo-gw-http-route-1-crd.yaml)
-      route=$(echo ${route} | jq '. | del (.spec.hostnames)')
-      route=$(echo ${route} | jq '.spec += {"hostnames": ["gw-v1.'"${full_domain}"'"]}')
-      echo ${route} | sudo -u ubuntu /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/${yaml_folder}/demo-gw-http-route-1-crd.yaml > /dev/null
-      route=$(sudo -u ubuntu /home/ubuntu/.local/bin/yq . /home/ubuntu/${yaml_folder}/demo-gw-http-route-2.yml)
-      route=$(echo ${route} | jq '. | del (.spec.hostnames)')
-      route=$(echo ${route} | jq '.spec += {"hostnames": ["gw-v2.'"${full_domain}"'"]}')
-      echo ${route} | sudo -u ubuntu /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/${yaml_folder}/demo-gw-http-route-2.yml > /dev/null
-      route=$(sudo -u ubuntu /home/ubuntu/.local/bin/yq . /home/ubuntu/${yaml_folder}/demo-gw-http-route-3.yml)
-      route=$(echo ${route} | jq '. | del (.spec.hostnames)')
-      route=$(echo ${route} | jq '.spec += {"hostnames": ["gw-v3.'"${full_domain}"'"]}')
-      echo ${route} | sudo -u ubuntu /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/${yaml_folder}/demo-gw-http-route-3.yml > /dev/null
-      route=$(sudo -u ubuntu /home/ubuntu/.local/bin/yq . /home/ubuntu/${yaml_folder}/demo-gw-http-route-multiple-2-3.yaml)
-      route=$(echo ${route} | jq '. | del (.spec.hostnames)')
-      route=$(echo ${route} | jq '.spec += {"hostnames": ["gw-migration.'"${full_domain}"'"]}')
-      echo ${route} | sudo -u ubuntu /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/${yaml_folder}/demo-gw-http-route-multiple-2-3.yaml > /dev/null
-      # GatewayApi CRD
-      l7rule=$(sudo -u ubuntu /home/ubuntu/.local/bin/yq . /home/ubuntu/${yaml_folder}/demo-backendExtension.yaml)
-      l7rule=$(echo ${l7rule} | jq '. | del (.spec.backendTLS)')
-      l7rule=$(echo ${l7rule} | jq '.spec += {"backendTLS": {"hostCheckEnabled": true, "domainName": ["gw-v1.'"${full_domain}"'"]}}')
-      echo ${l7rule} | sudo -u ubuntu /home/ubuntu/.local/bin/yq -y . | tee /home/ubuntu/${yaml_folder}/demo-backendExtension.yaml > /dev/null
+      sudo -u ubuntu git clone "https://github.com/demoavi/dev-avi-vcf.git" /home/ubuntu/dev-avi-vcf || echo "WARNING: could not clone demoavi/dev-avi-vcf" >&2
+      if [ -d /home/ubuntu/dev-avi-vcf/yamls ]; then
+        sudo -u ubuntu mkdir -p /home/ubuntu/${yaml_folder}
+        full_domain="${avi_subdomain}.${domain}"
+        for yaml_src in /home/ubuntu/dev-avi-vcf/yamls/*.yaml; do
+          yaml_dst="/home/ubuntu/${yaml_folder}/$(basename "$yaml_src")"
+          cp "$yaml_src" "$yaml_dst"
+          yaml_kind="$(yq '.kind' "$yaml_dst")"
+          case "$yaml_kind" in
+            Ingress)
+              rule_count=$(yq '.spec.rules | length' "$yaml_dst")
+              for ((i = 0; i < rule_count; i++)); do
+                yq -i ".spec.rules[$i].host = \"v$((i + 1)).${full_domain}\"" "$yaml_dst"
+              done
+              ;;
+            HTTPRoute)
+              httproute_name="$(yq '.metadata.name' "$yaml_dst")"
+              yq -i "del(.spec.hostnames) | .spec.hostnames[0] = \"${httproute_name}.${full_domain}\"" "$yaml_dst"
+              ;;
+            Gateway)
+              yq -i ".spec.listeners[].hostname = \"*.${full_domain}\"" "$yaml_dst"
+              ;;
+            HostRule)
+              hostrule_name="$(yq '.metadata.name' "$yaml_dst")"
+              yq -i ".spec.virtualhost.fqdn = \"${hostrule_name}.${full_domain}\"" "$yaml_dst"
+              ;;
+            RouteBackendExtension)
+              rbe_name="$(yq '.metadata.name' "$yaml_dst")"
+              yq -i ".spec.backendTLS.domainName[0] = \"${rbe_name}.${full_domain}\"" "$yaml_dst"
+              ;;
+            *)
+              # HealthMonitor, L7Rule, Service, Deployment - no changes.
+              ;;
+          esac
+        done
+      fi
       #
       #
       echo "cloud init done" | tee /tmp/cloudInitDone.log
