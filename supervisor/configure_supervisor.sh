@@ -201,7 +201,7 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "9.1" ]];
         -e "s/\${fqdn_vcfa}/${fqdn_vcfa}/" /home/ubuntu/templates/vcfa_select_ns.sh.template | tee /home/ubuntu/supervisor/vcfa_select_ns.sh > /dev/null
     chmod u+x /home/ubuntu/supervisor/vcfa_select_ns.sh
     sed -e "s/\${generic_password}/${generic_password}/" \
-        -e "s/\${ssoDomain}}/${ssoDomain}/" \
+        -e "s/\${ssoDomain}/${ssoDomain}/" \
         -e "s/\${vsphere_nested_username}/${vsphere_nested_username}/" \
         -e "s/\${vcsa_fqdn}/${vcsa_fqdn}/" /home/ubuntu/templates/enable_supervisor_service.sh.template | tee /home/ubuntu/supervisor/enable_supervisor_service.sh > /dev/null
     chmod u+x /home/ubuntu/supervisor/enable_supervisor_service.sh

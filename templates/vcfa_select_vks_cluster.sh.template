@@ -200,7 +200,7 @@ else
 fi
 
 echo "Connecting to namespace '${ns}', cluster '${cluster_name}'..." >&2
-export VCF_CLI_VSPHERE_PASSWORD='sGN#FBiN@UKY1!67'
+export VCF_CLI_VSPHERE_PASSWORD='${generic_password}'
 
 # vcf context create derives a namespace context named "${ns}:${cluster_name}" and,
 # as a related child context, the actual guest/VKS cluster context named
