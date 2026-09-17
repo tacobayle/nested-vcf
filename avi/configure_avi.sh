@@ -224,22 +224,17 @@ if [[ ${vcf_version_two_digit} == "9.1" ]]; then
       }'
   avi_api 2 2 "PATCH" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/cloud/${cloud_uuid}"
   #
-  # DNS profile
+  # DNS profile - one dns_service_domain entry for the base avi_subdomain
+  # plus one entry per org (org-1.<domain>, org-2.<domain>, ...), since
+  # each org's blueprints resolve their own per-org FQDN rather than the
+  # shared avi_subdomain. vcf_a_organizations is the full expanded
+  # per-org list already derived above (empty array if sddc.vcf_a is
+  # unset). Confirmed live: added org-2..org-10 via GET+PUT to an
+  # existing dns-avi profile, all entries landed correctly.
   #
-  json_data='
-    {
-      "name": "dns-avi",
-      "type": "IPAMDNS_TYPE_INTERNAL_DNS",
-      "internal_profile":
-      {
-        "dns_service_domain":
-        [
-          {
-            "domain_name": "'${avi_subdomain}'.'${domain}'"
-          }
-        ]
-      }
-    }'
+  avi_dns_domains_json=$(jq -n --arg base "${avi_subdomain}.${domain}" --argjson orgs "${vcf_a_organizations}" --arg domain "${domain}" \
+    '[{domain_name: $base, pass_through: true}] + ($orgs | map({domain_name: (.name + "." + $domain), pass_through: true}))')
+  json_data=$(jq -n --argjson dsd "${avi_dns_domains_json}" '{name: "dns-avi", type: "IPAMDNS_TYPE_INTERNAL_DNS", internal_profile: {dns_service_domain: $dsd}}')
   avi_api 2 2 "POST" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "${json_data}" "${fqdn}" "api/ipamdnsproviderprofile"
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: configure Avi - waiting for 120 seconds" "${log_file}" "" ""
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 120 seconds" "${log_file}" "" ""
