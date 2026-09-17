@@ -1292,17 +1292,29 @@ fi
 
 #
 # Blueprints (org-portal phase) - idempotent, one independent copy
-# uploaded+released per org with blueprints.enabled, from every *.yaml
-# file in a fixed local directory (project convention, not a CR field).
-# Unrelated to namespace/vks_cluster gating - blueprints are a plain
-# Aria Automation Cloud Template concept, no Avi/segName dependency.
+# uploaded+released per org with blueprints.enabled, from every
+# *.yaml.template file in the epc-vapp/dev-avi-vcf repo's own
+# blueprints/ dir (git-cloned onto gw directly by sddc.sh, same repo
+# and same directory structure the vApp/VCD use case's vcf_bootstrap.sh
+# already consumes - a single shared source of truth for both projects
+# instead of maintaining separate copies here). Unrelated to
+# namespace/vks_cluster gating - blueprints are a plain Aria Automation
+# Cloud Template concept, no Avi/segName dependency.
 #
 # NOT cross-org shared (confirmed live: organizationSharings requires a
 # rights-bundle right that, even granted, still didn't clear the "does
 # not have required privileges to share catalog items" error - root
 # cause not found yet). Each enabled org gets its own separate upload.
 #
-blueprints_dir="/home/ubuntu/vcf-automation/blueprints"
+# ${avi_subdomain} in each template is deliberately substituted with
+# THIS ORG'S OWN NAME, not the deployment's actual avi_subdomain value -
+# substituting the real (single, deployment-wide) avi_subdomain would
+# give every org's copy of a blueprint the exact same FQDN, a real
+# routing conflict once more than one org has the same blueprint
+# deployed. Using the org name instead keeps every org's instance
+# unique. ${domain} stays global/shared - no per-org conflict there.
+#
+blueprints_dir="/home/ubuntu/dev-avi-vcf/blueprints"
 if [ ! -d "${blueprints_dir}" ]; then
   log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${blueprints_dir} does not exist, skipping all blueprint provisioning" "${log_file}" "" ""
 else
@@ -1336,9 +1348,9 @@ else
         continue
       fi
 
-      for bp_file in "${blueprints_dir}"/*.yaml; do
+      for bp_file in "${blueprints_dir}"/*.yaml.template; do
         [ -e "${bp_file}" ] || continue
-        bp_name=$(basename "${bp_file}" .yaml)
+        bp_name=$(basename "${bp_file}" .yaml.template)
 
         blueprint_api GET "blueprint/api/blueprints" "" "${org_token}"
         bp_id=$(echo ${response_body} | jq -c -r --arg arg "${bp_name}" '.content[] | select(.name == $arg) | .id')
@@ -1347,7 +1359,7 @@ else
           continue
         fi
 
-        bp_content=$(cat "${bp_file}")
+        bp_content=$(sed -e "s@\${avi_subdomain}@${org_name}@g" -e "s/\${domain}/${domain}/g" "${bp_file}")
         bp_json=$(jq -n --arg n "${bp_name}" --arg pid "${project_id}" --arg content "${bp_content}" \
           '{name: $n, description: null, valid: true, content: $content, projectId: $pid, requestScopeOrg: true, iconId: null}')
         blueprint_api POST "blueprint/api/blueprints?apiVersion=2020-08-25" "${bp_json}" "${org_token}"

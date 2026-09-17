@@ -207,14 +207,7 @@ if [[ ${operation} == "apply" ]] ; then
         if [[ $? -eq 0 ]]; then
           echo "Gw ${gw_name} is ready." >> ${log_file}
           log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: external-gw ${gw_name} VM reachable and configured" ${log_file} ${slack_webhook} ${google_webhook}
-          sed -e "s@\${avi_subdomain}@${avi_subdomain}@" \
-              -e "s/\${domain}/${domain}/" /nested-vcf/templates/blueprint.yaml.template | tee "/nested-vcf/vcf-automation/blueprint.yaml" > /dev/null
-          sed -e "s@\${avi_subdomain}@${avi_subdomain}@" \
-              -e "s/\${domain}/${domain}/" /nested-vcf/templates/blueprint-ingress-cert-manager.yaml.template | tee "blueprint-ingress-cert-manager.yaml" > /dev/null
-          sed -e "s@\${avi_subdomain}@${avi_subdomain}@" \
-              -e "s/\${domain}/${domain}/" /nested-vcf/templates/blueprint-gw-cert-manager.yaml.template | tee "/nested-vcf/vcf-automation/blueprint-gw-cert-manager.yaml" > /dev/null
-          sed -e "s@\${avi_subdomain}@${avi_subdomain}@" \
-              -e "s/\${domain}/${domain}/" /nested-vcf/templates/blueprint-create-vs.yaml.template | tee "/nested-vcf/vcf-automation/blueprints/blueprint-create-vs.yaml" > /dev/null
+          ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "git clone https://github.com/demoavi/dev-avi-vcf.git /home/ubuntu/dev-avi-vcf" >> ${log_file} 2>&1
           echo $folders_to_copy | jq -c -r .[] | while read folder
           do
             scp -o StrictHostKeyChecking=no -r /nested-vcf/${folder} ubuntu@${ip_gw}:/home/ubuntu
