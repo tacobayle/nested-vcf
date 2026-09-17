@@ -194,6 +194,7 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "9.1" ]];
   fi
   if [[ ${vcf_version_two_digit} == "9.1" ]]; then
     sed -e "s/\${generic_password}/${generic_password}/" \
+        -e "s/\${api_server_cluster_endpoint}/${api_server_cluster_endpoint}/" \
         -e "s/\${fqdn_vcfa}/${fqdn_vcfa}/" /home/ubuntu/templates/vcfa_select_vks_cluster.sh.template | tee /home/ubuntu/supervisor/vcfa_select_vks_cluster.sh > /dev/null
     chmod u+x /home/ubuntu/supervisor/vcfa_select_vks_cluster.sh
     sed -e "s/\${generic_password}/${generic_password}/" \
