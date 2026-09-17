@@ -208,7 +208,7 @@ export VCF_CLI_VSPHERE_PASSWORD='sGN#FBiN@UKY1!67'
 guest_context="${ns}:${cluster_name}:${cluster_name}"
 
 if [[ $(vcf context list -o json | jq -c -r --arg arg "${guest_context}" '[.[] | select( .name == $arg)] | if length > 0 then .[0] else null end') == "null" ]] ; then
-  vcf context create "${ns}:${cluster_name}" --type k8s --auth-type basic --endpoint=https://192.168.240.3 --username administrator@vsphere.local --workload-cluster-name "${cluster_name}" --workload-cluster-namespace "${ns}" --insecure-skip-tls-verify
+  vcf context create "${ns}:${cluster_name}" --type k8s --auth-type basic --endpoint=https://${api_server_cluster_endpoint} --username administrator@vsphere.local --workload-cluster-name "${cluster_name}" --workload-cluster-namespace "${ns}" --insecure-skip-tls-verify
   # vcf context use can exit non-zero on a benign Harbor plugin-discovery
   # warning even after successfully activating the context - don't abort on it.
   vcf context use "${guest_context}" --insecure-skip-tls-verify || true
