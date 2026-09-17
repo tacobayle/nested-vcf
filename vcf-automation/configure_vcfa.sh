@@ -188,6 +188,53 @@ vcfa_api() {
   done
 }
 
+# vCenter API session/call helper pair - needed below (VM Service content
+# library binding step) since that's a vCenter-native API
+# (api/vcenter/namespaces/instances/{ns}), not a VCFA one. vcsa_fqdn/
+# basename_sddc/generic_password/jsonFile are all already available from
+# bash/variables.sh sourced above. Mirrors vcf_bootstrap.sh's own
+# create_vcenter_api_session/vcenter_api pair exactly (that project's own
+# port of this script), so both stay aligned.
+create_vcenter_api_session() {
+  local retry=10 pause=20 attempt=0
+  while true; do
+    response=$(curl -k -s --write-out "\n%{http_code}" -X POST \
+      -u "administrator@$(jq -c -r .sddc.vcenter.ssoDomain "${jsonFile}"):${generic_password}" \
+      "https://${vcsa_fqdn}/api/session" -H "Content-Type: application/json")
+    http_code=$(tail -n1 <<< "$response")
+    vcenter_token=$(sed '$ d' <<< "$response" | tr -d '"')
+    if [[ ${http_code} == 20[0-9] ]] && [ ${#vcenter_token} -eq 32 ]; then
+      return
+    fi
+    if [ ${attempt} -eq ${retry} ]; then
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: FAILED to create vCenter API session, http_response_code: ${http_code}" "${log_file}" "${slack_webhook}" "${google_webhook}"
+      exit 100
+    fi
+    sleep ${pause}
+    ((attempt++))
+  done
+}
+
+vcenter_api() {
+  # $1 retries, $2 pause, $3 HTTP method, $4 API endpoint, $5 http data
+  local retry="$1" pause="$2" method="$3" endpoint="$4" data="$5" attempt=0
+  while true; do
+    response=$(curl -k -s -X "${method}" --write-out "\n%{http_code}" -H "vmware-api-session-id: ${vcenter_token}" \
+      -H "Content-Type: application/json" -d "${data}" "https://${vcsa_fqdn}/${endpoint}")
+    response_body=$(sed '$ d' <<< "$response")
+    response_code=$(tail -n1 <<< "$response")
+    if [[ ${response_code} == 2[0-9][0-9] ]]; then
+      return 0
+    fi
+    if [ ${attempt} -eq ${retry} ]; then
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: FAILED HTTP ${method} vCenter API call to ${endpoint}, response code was: ${response_code}: ${response_body}" "${log_file}" "${slack_webhook}" "${google_webhook}"
+      exit 100
+    fi
+    sleep "${pause}"
+    ((attempt++))
+  done
+}
+
 vcfa_login
 
 #
@@ -943,6 +990,60 @@ else
             break
           fi
         done
+      fi
+
+      #
+      # VM Service content library binding - a separate, lower layer than
+      # VCFA's own "content library visible from every org's portal"
+      # sharing above (cloudapi/v1/contentLibraries, done once for all
+      # orgs) - confirmed live (blueprint admission webhook error:
+      # VirtualMachineImage "vmi-..." not found, traced down to vCenter's
+      # own API) that VM Service only projects a content library's items
+      # into a namespace as VirtualMachineImage objects if that library's
+      # vCenter-NATIVE uuid is explicitly listed in the namespace's own
+      # vm_service_spec.content_libraries (vCenter's
+      # api/vcenter/namespaces/instances/{ns} API) - a completely
+      # different id space than VCFA's own urn:vcloud:contentLibrary:...
+      # id, so the two can't just be string-matched. VCFA-level "shared"
+      # visibility alone does NOT populate this. Every
+      # vcf_a_content_libraries entry is provider-wide/shared by design
+      # (see the "one library serves every org" comment above), so all of
+      # them are bound to every eligible org's namespace here
+      # automatically - no new CR field needed. Existing entries (e.g. a
+      # tenant's own org-created library, confirmed live to exist
+      # side-by-side) are preserved by merging rather than overwriting.
+      # Runs regardless of whether ns_name was just created above or
+      # already existed, same as the Vault step below, since an
+      # already-existing namespace from before this step existed would
+      # otherwise never get the binding retrofitted.
+      #
+      if [ -n "${ns_name}" ]; then
+        create_vcenter_api_session
+        vcenter_api 3 3 GET "api/content/library" ""
+        all_lib_ids=$(echo "${response_body}" | jq -r '.[]')
+        vc_lib_uuids=""
+        while read -r shared_cl_name
+        do
+          [ -z "${shared_cl_name}" ] && continue
+          for lib_id in ${all_lib_ids}; do
+            vcenter_api 3 3 GET "api/content/library/${lib_id}" ""
+            lib_name=$(echo "${response_body}" | jq -r '.name')
+            if [ "${lib_name}" == "${shared_cl_name}" ]; then
+              vc_lib_uuids="${vc_lib_uuids} ${lib_id}"
+              break
+            fi
+          done
+        done < <(echo "${vcf_a_content_libraries}" | jq -c -r '.[].name')
+
+        if [ -n "$(echo ${vc_lib_uuids})" ]; then
+          vcenter_api 3 3 GET "api/vcenter/namespaces/instances/${ns_name}" ""
+          existing_libs=$(echo "${response_body}" | jq -c '.vm_service_spec.content_libraries // []')
+          merged_libs=$(jq -n --argjson existing "${existing_libs}" --arg new "${vc_lib_uuids}" \
+            '$existing + ($new | split(" ") | map(select(length > 0))) | unique')
+          patch_json=$(jq -n --argjson libs "${merged_libs}" '{vm_service_spec: {content_libraries: $libs}}')
+          vcenter_api 3 3 PATCH "api/vcenter/namespaces/instances/${ns_name}" "${patch_json}"
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: bound shared content libraries to namespace ${ns_name}'s vm_service_spec.content_libraries (${merged_libs})" "${log_file}" "" ""
+        fi
       fi
 
       #
