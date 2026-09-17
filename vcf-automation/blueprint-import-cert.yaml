@@ -1,0 +1,32 @@
+formatVersion: 1
+inputs:
+  namespace:
+    title: Namespace
+    type: string
+    description: Namespace you wish to deploy to
+    $data: /data/namespaces?projectId={{project}}
+  tls_cert:
+    type: string
+    title: TLS Certificate (PEM format)
+  tls_key:
+    type: string
+    title: TLS Private Key (PEM format)
+resources:
+  CCI_Supervisor_Namespace_1:
+    type: CCI.Supervisor.Namespace
+    properties:
+      name: ${input.namespace}
+      existing: true
+  supervisorTLSSecret:
+    type: CCI.Supervisor.Resource
+    properties:
+      context: ${resource.CCI_Supervisor_Namespace_1.id}
+      manifest:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: ${env.deploymentName}
+        type: kubernetes.io/tls
+        stringData:
+          tls.crt: ${input.tls_cert}
+          tls.key: ${input.tls_key}

@@ -92,6 +92,20 @@ resources:
             name: ${input.vm_image_id} #ID of the VM image to build from
           storageClass: sddc01-cluster-vsan-storage-policy
           powerState: PoweredOn
+          bootstrap:
+            cloudInit:
+              cloudConfig:
+                defaultUserEnabled: true
+                runcmd:
+                  - /usr/bin/apt update
+                  - /usr/bin/apt-get install -y apache2 php php-mysql libapache2-mod-php php-cli php-common php-intl php-gd php-mbstring php-xml php-zip php-curl php-xmlrpc unzip open-vm-tools
+                users:
+                  - name: aviuser
+                    passwd:
+                      name: ${env.deploymentName}-bootstrap-secret
+                      key: aviuser-passwd
+                    lock_passwd: false
+                    sudo: ALL=(ALL) NOPASSWD:ALL
       wait:
         conditions:
           - type: VirtualMachineCreated

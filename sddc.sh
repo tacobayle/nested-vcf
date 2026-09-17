@@ -215,8 +215,6 @@ if [[ ${operation} == "apply" ]] ; then
               -e "s/\${domain}/${domain}/" /nested-vcf/templates/blueprint-gw-cert-manager.yaml.template | tee "/nested-vcf/vcf-automation/blueprint-gw-cert-manager.yaml" > /dev/null
           sed -e "s@\${avi_subdomain}@${avi_subdomain}@" \
               -e "s/\${domain}/${domain}/" /nested-vcf/templates/blueprint-create-vs.yaml.template | tee "/nested-vcf/vcf-automation/blueprint-create-vs.yaml" > /dev/null
-          cp /nested-vcf/templates/blueprint-create-2-vms.yaml.template /nested-vcf/vcf-automation/blueprint-create-2-vms.yaml
-          cp /nested-vcf/templates/blueprint-import-cert.yaml.template /nested-vcf/vcf-automation/blueprint-import-cert.yaml
           echo $folders_to_copy | jq -c -r .[] | while read folder
           do
             scp -o StrictHostKeyChecking=no -r /nested-vcf/${folder} ubuntu@${ip_gw}:/home/ubuntu
