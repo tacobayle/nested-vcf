@@ -208,11 +208,178 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "9.1" ]];
     #
     # download yaml supervisor services
     #
+    source /home/ubuntu/avi/avi_api.sh
     while read item
     do
+      svc_type="$(echo ${item} | jq -c -r '.type // "carvel-yaml"')"
       url="$(echo ${item} | jq -c -r '.url')"
-      download_file_from_url_to_location "${url}" "/home/ubuntu/supervisor/$(basename ${url})" "$(basename ${url})"
-      /home/ubuntu/supervisor/enable_supervisor_service.sh "/home/ubuntu/supervisor/$(basename ${url})"
+      service_file="/home/ubuntu/supervisor/$(basename ${url})"
+      download_file_from_url_to_location "${url}" "${service_file}" "$(basename ${url})"
+
+      if [ "${svc_type}" == "harbor" ]; then
+        #
+        # Harbor is already globally registered/ACTIVATED in a stock VCF
+        # 9.1 environment, so no real Package/PackageMetadata registration
+        # is needed - but url still names the real upstream registration
+        # manifest (downloaded like everything else here) so
+        # enable_supervisor_service.sh's own "already registered, skip"
+        # check runs against real content, keeping this portable to a VCF
+        # environment where Harbor isn't pre-registered. Ported from the
+        # epc-vapp project's own equivalent logic (ISO-delivered there
+        # instead of downloaded, everything else identical) - see that
+        # project's vcf_bootstrap.sh for the full live-tested rationale
+        # (carvel_spec vs custom_spec, enableNginxLoadBalancer,
+        # tlsSecretLabels, the DNS/image-preload steps below).
+        #
+        values_template_url="$(echo ${item} | jq -c -r '.values_template_url // empty')"
+        if [ -z "${values_template_url}" ]; then
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: harbor supervisor_services entry needs values_template_url, skipping: ${item}" "${log_file}" "${slack_webhook}" "${google_webhook}"
+          continue
+        fi
+        values_template_file="/home/ubuntu/supervisor/$(basename ${values_template_url})"
+        download_file_from_url_to_location "${values_template_url}" "${values_template_file}" "$(basename ${values_template_url})"
+
+        # Not user-configurable - always the same well-known FQDN pattern
+        # every other Avi-fronted hostname in this deployment already uses
+        # (see configure_avi.sh's own avi_dns_domains_json), under the
+        # Avi-delegated app.vcf9.lab-style zone so dns-vs can serve it
+        # once registered below.
+        harbor_hostname="harbor.${avi_subdomain}.${domain}"
+        # Kubernetes StorageClass names for native (non-VCFA) Supervisor
+        # storage policies match the policy's own name 1:1 - confirmed
+        # against epc-vapp's own equivalent value, itself the exact
+        # storage policy name it derives independently.
+        harbor_storage_class="${supervisor_cluster_storage_policy_ref}"
+        harbor_admin_password="${generic_password}"
+        harbor_secret_key=$(echo -n "${generic_password}harbor-secretkey" | md5sum | cut -c1-16)
+        harbor_database_password=$(echo -n "${generic_password}harbor-database" | md5sum | cut -c1-16)
+        harbor_core_secret=$(echo -n "${generic_password}harbor-core" | md5sum | cut -c1-16)
+        harbor_core_xsrf_key_raw=$(echo -n "${generic_password}harbor-xsrf" | md5sum)
+        harbor_core_xsrf_key="${harbor_core_xsrf_key_raw}${harbor_core_xsrf_key_raw}"
+        harbor_core_xsrf_key="${harbor_core_xsrf_key:0:32}"
+        harbor_jobservice_secret=$(echo -n "${generic_password}harbor-jobservice" | md5sum | cut -c1-16)
+        harbor_registry_secret=$(echo -n "${generic_password}harbor-registry" | md5sum | cut -c1-16)
+
+        # Python literal string replacement, not sed - harbor_admin_password
+        # is this deployment's own generic_password verbatim, which may
+        # contain almost any character (confirmed live in epc-vapp: this
+        # environment's own password contains "@", which broke a sed
+        # s@...@...@ delimiter outright). Values passed via environment
+        # variables, not embedded in the Python source itself, so no
+        # shell-quoting/escaping concern regardless of content.
+        rendered_values_file="/tmp/harbor-values-rendered.yml"
+        HARBOR_HOSTNAME="${harbor_hostname}" \
+        HARBOR_ADMIN_PASSWORD="${harbor_admin_password}" \
+        HARBOR_SECRET_KEY="${harbor_secret_key}" \
+        HARBOR_DATABASE_PASSWORD="${harbor_database_password}" \
+        HARBOR_CORE_SECRET="${harbor_core_secret}" \
+        HARBOR_CORE_XSRF_KEY="${harbor_core_xsrf_key}" \
+        HARBOR_JOBSERVICE_SECRET="${harbor_jobservice_secret}" \
+        HARBOR_REGISTRY_SECRET="${harbor_registry_secret}" \
+        HARBOR_STORAGE_CLASS="${harbor_storage_class}" \
+        python3 -c "
+import os
+text = open('${values_template_file}').read()
+for placeholder, env_var in [
+    ('\${harbor_hostname}', 'HARBOR_HOSTNAME'),
+    ('\${harbor_admin_password}', 'HARBOR_ADMIN_PASSWORD'),
+    ('\${harbor_secret_key}', 'HARBOR_SECRET_KEY'),
+    ('\${harbor_database_password}', 'HARBOR_DATABASE_PASSWORD'),
+    ('\${harbor_core_secret}', 'HARBOR_CORE_SECRET'),
+    ('\${harbor_core_xsrf_key}', 'HARBOR_CORE_XSRF_KEY'),
+    ('\${harbor_jobservice_secret}', 'HARBOR_JOBSERVICE_SECRET'),
+    ('\${harbor_registry_secret}', 'HARBOR_REGISTRY_SECRET'),
+    ('\${harbor_storage_class}', 'HARBOR_STORAGE_CLASS'),
+]:
+    text = text.replace(placeholder, os.environ[env_var])
+open('${rendered_values_file}', 'w').write(text)
+"
+
+        /home/ubuntu/supervisor/enable_supervisor_service.sh "${service_file}" "${rendered_values_file}"
+        rm -f "${rendered_values_file}"
+
+        # Register harbor_hostname with Avi now that harbor-nginx's own
+        # LoadBalancer Service has a real VIP - app.vcf9.lab (or whatever
+        # zone harbor_hostname falls under) is delegated to Avi's own
+        # dns-vs Virtual Service (the dns-avi IPAMDNSProviderProfile's
+        # dns_service_domain lists it - see configure_avi.sh), and
+        # arbitrary FQDN->IP static mappings not tied to an Avi-managed
+        # Ingress/Service belong on dns-vs's own static_dns_records field
+        # directly - not per-VS dns_info, which only applies to VSes Avi
+        # itself created from an Ingress/Service hostname. Ported from
+        # epc-vapp's vcf_bootstrap.sh, confirmed live there.
+        kubectl config use-context "${supervisor_cluster_name}"
+        harbor_namespace="$(kubectl get namespaces -o name | grep -o 'svc-harbor-[a-z0-9]*' | head -1)"
+        if [ -z "${harbor_namespace}" ]; then
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: harbor namespace (svc-harbor-*) not found - skipping DNS registration for ${harbor_hostname}" "${log_file}" "${slack_webhook}" "${google_webhook}"
+        else
+          harbor_ip=""
+          for attempt_harbor_ip in $(seq 1 12); do
+            harbor_ip="$(kubectl get svc -n "${harbor_namespace}" harbor-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)"
+            [ -n "${harbor_ip}" ] && break
+            sleep 10
+          done
+          if [ -z "${harbor_ip}" ]; then
+            log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: harbor-nginx Service in ${harbor_namespace} has no LoadBalancer IP after waiting - skipping DNS registration for ${harbor_hostname}" "${log_file}" "${slack_webhook}" "${google_webhook}"
+          else
+            date_index=$(date '+%Y%m%d%H%M%S')
+            avi_cookie_file="/tmp/harbor_dns_${date_index}_cookie.txt"
+            curl_login=$(curl -s -k -X POST -H "Content-Type: application/json" \
+                                            -d "{\"username\": \"admin\", \"password\": \"${generic_password}\"}" \
+                                            -c ${avi_cookie_file} https://${ip_avi}/login)
+            csrftoken=$(cat ${avi_cookie_file} | grep csrftoken | awk '{print $7}')
+            avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${ip_avi}" "api/virtualservice?name=dns-vs"
+            dns_vs_uuid=$(echo ${response_body} | jq -c -r '.results[0].uuid')
+            avi_api 2 2 "GET" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "" "${ip_avi}" "api/virtualservice/${dns_vs_uuid}"
+            static_dns_records=$(echo ${response_body} | jq -c --arg fqdn "${harbor_hostname}" --arg ip "${harbor_ip}" \
+              '[.static_dns_records[]? | select(.fqdn != [$fqdn])] + [{type: "DNS_RECORD_A", algorithm: "DNS_RECORD_RESPONSE_ROUND_ROBIN", fqdn: [$fqdn], ip_address: [{ip_address: {addr: $ip, type: "V4"}}]}]')
+            avi_api 2 2 "PATCH" "${avi_cookie_file}" "${csrftoken}" "admin" "${avi_version}" "$(jq -n --argjson records "${static_dns_records}" '{replace: {static_dns_records: $records}}')" "${ip_avi}" "api/virtualservice/${dns_vs_uuid}"
+            log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: registered DNS record ${harbor_hostname} -> ${harbor_ip} on Avi's dns-vs" "${log_file}" "" ""
+            rm -f "${avi_cookie_file}"
+
+            # Optional image preload (this entry's own 'images', each a
+            # bare filename downloaded from the SAME base URL as this
+            # entry's own 'url' - unlike epc-vapp's ISO-delivered
+            # tarballs, sddc has no ISO mechanism, so every file here is
+            # fetched directly, same as the registration manifest/values
+            # template above).
+            harbor_images_json="$(echo ${item} | jq -c '.images // []')"
+            if [ "${harbor_images_json}" != "[]" ]; then
+              if ! command -v skopeo >/dev/null 2>&1; then
+                sudo apt-get install -y skopeo || log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: apt-get install skopeo failed, skipping harbor image preload" "${log_file}" "${slack_webhook}" "${google_webhook}"
+              fi
+              if command -v skopeo >/dev/null 2>&1; then
+                harbor_registry_project="registry"
+                base_url="$(dirname "${url}")"
+                project_check_code=$(curl -sk -o /dev/null -w "%{http_code}" -u "admin:${harbor_admin_password}" \
+                  "https://${harbor_ip}/api/v2.0/projects/${harbor_registry_project}")
+                if [ "${project_check_code}" == "404" ]; then
+                  curl -sk -u "admin:${harbor_admin_password}" -X POST "https://${harbor_ip}/api/v2.0/projects" \
+                    -H "Content-Type: application/json" \
+                    -d "$(jq -n --arg name "${harbor_registry_project}" '{project_name: $name, public: true}')" >/dev/null
+                fi
+                echo "${harbor_images_json}" | jq -c -r .[] | while read -r image_file
+                do
+                  image_path="/home/ubuntu/supervisor/${image_file}"
+                  download_file_from_url_to_location "${base_url}/${image_file}" "${image_path}" "${image_file}"
+                  image_name="$(basename "${image_file}" .tar.gz)"
+                  image_name="$(basename "${image_name}" .tar)"
+                  if skopeo copy --dest-tls-verify=false --dest-creds "admin:${harbor_admin_password}" \
+                      "oci-archive:${image_path}" "docker://${harbor_ip}/${harbor_registry_project}/${image_name}:latest"; then
+                    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: pushed ${image_file} to Harbor as ${harbor_registry_project}/${image_name}:latest (pull via ${harbor_hostname}/${harbor_registry_project}/${image_name}:latest)" "${log_file}" "" ""
+                  else
+                    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: failed to push ${image_file} to Harbor" "${log_file}" "${slack_webhook}" "${google_webhook}"
+                  fi
+                done
+              fi
+            fi
+          fi
+        fi
+        continue
+      fi
+
+      # carvel-yaml (default) - existing behavior, unchanged.
+      /home/ubuntu/supervisor/enable_supervisor_service.sh "${service_file}"
     done < <(echo "${supervisor_services}" | jq -c -r .[])
   fi
 fi

@@ -1,0 +1,4 @@
+ssh root@sddc01-vc01.vcf9.lab
+shell
+/usr/lib/vmware-wcp/decryptK8Pwd.py
+ssh root@192.168.2.130

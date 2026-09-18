@@ -11,11 +11,19 @@ set -euo pipefail
 
 show_help() {
     cat << EOF
-Usage: $0 [-H host] [-u username] <path-to-supervisor-service-yaml>
+Usage: $0 [-H host] [-u username] <path-to-supervisor-service-yaml> [path-to-values-yaml]
 
 Registers and activates a vCenter Supervisor Service from the given YAML
 manifest. The service identifier, version, display name and description are
 derived from the manifest's own Package/PackageMetadata content.
+
+The optional second argument is a fully-rendered values YAML (already
+substituted, no \${...} placeholders left) to use as this service's
+yaml_service_config on enable - for services needing more than just a
+namespace (e.g. Harbor's secrets/storageClass/etc.). When omitted, behavior
+is unchanged: just "namespace: <the manifest's own valuesSchema default>".
+A "namespace: <default>" line is always prepended, so the values file itself
+doesn't need to (and normally shouldn't) set its own namespace key.
 
 Options:
   -H, --host HOST        vCenter FQDN/URL (default: \$VC_HOST or https://sddc01-vc01.vcf9.lab)
@@ -24,8 +32,9 @@ Options:
 
 Password is read from \$VC_PASSWORD if set, otherwise prompted for.
 
-Example:
+Examples:
   $0 /home/ubuntu/supervisor/supervisor-service-argocd-1.2.0-25642124.yml
+  $0 /home/ubuntu/supervisor/supervisor-service-harbor-v2.15.2+vmware.1-vks.1-25639075.yml /tmp/harbor-values-rendered.yml
 EOF
 }
 
@@ -44,15 +53,20 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-if [ "${#POSITIONAL[@]}" -ne 1 ]; then
-    echo "Error: expected exactly one argument, the path to the Supervisor Service YAML." >&2
+if [ "${#POSITIONAL[@]}" -lt 1 ] || [ "${#POSITIONAL[@]}" -gt 2 ]; then
+    echo "Error: expected one or two arguments - the path to the Supervisor Service YAML, and optionally a rendered values YAML." >&2
     show_help
     exit 1
 fi
 YAML_FILE="${POSITIONAL[0]}"
+VALUES_FILE="${POSITIONAL[1]:-}"
 
 if [ ! -f "$YAML_FILE" ]; then
     echo "Error: ${YAML_FILE} not found." >&2
+    exit 1
+fi
+if [ -n "${VALUES_FILE}" ] && [ ! -f "${VALUES_FILE}" ]; then
+    echo "Error: ${VALUES_FILE} not found." >&2
     exit 1
 fi
 
@@ -92,9 +106,12 @@ prompt_choice() {
     done
 }
 
-# Derive the service identity from the manifest itself rather than hardcoding it,
-# so this script works for any supervisor-service-*.yml file.
-IFS=$'\t' read -r SUPERVISOR_SERVICE VERSION DISPLAY_NAME DESCRIPTION DEFAULT_NAMESPACE < <(python3 - "$YAML_FILE" <<'PYEOF'
+# Derive a FALLBACK service identity from the manifest's own refName -
+# only actually used below if this turns out to be a genuinely new
+# registration (nothing in vCenter's own list matches this manifest's
+# displayName yet), since in that case this script's own caller is free
+# to pick the id being registered under.
+IFS=$'\t' read -r REF_DERIVED_SERVICE_ID VERSION DISPLAY_NAME DESCRIPTION DEFAULT_NAMESPACE < <(python3 - "$YAML_FILE" <<'PYEOF'
 import sys, yaml
 
 docs = list(yaml.safe_load_all(open(sys.argv[1])))
@@ -121,15 +138,36 @@ if [ -z "$SESSION_ID" ]; then
     exit 1
 fi
 
-echo "Checking whether '${SUPERVISOR_SERVICE}' is already registered..." >&2
-EXISTING_STATE=$(curl -sk "${VC_HOST}/api/vcenter/namespace-management/supervisor-services" \
+# Match by displayName against vCenter's own already-registered list
+# first, rather than trusting the refName-derived guess above - a
+# built-in service's real supervisor_service identifier can bear no
+# resemblance to its own refName (e.g. Harbor: refName
+# "harbor.tanzu.vmware.com" but the refName-derived guess above yields
+# just "harbor", while the REAL registered id is the full
+# "harbor.tanzu.vmware.com" - confirmed live this mismatch made the
+# script think Harbor wasn't registered yet, attempt a spurious
+# duplicate registration under the wrong id "harbor", which then failed
+# on its own downstream k8s object-naming validation since Harbor's
+# version string contains a literal "+", invalid in a k8s object name).
+# Only falls back to the refName-derived guess for a genuinely new
+# registration, where this script's own caller picks the id freely.
+echo "Checking whether a service matching '${DISPLAY_NAME}' is already registered..." >&2
+LOOKUP=$(curl -sk "${VC_HOST}/api/vcenter/namespace-management/supervisor-services" \
     -H "vmware-api-session-id: ${SESSION_ID}" \
     | python3 -c "
 import sys, json
 services = json.load(sys.stdin)
-match = next((s for s in services if s['supervisor_service'] == '${SUPERVISOR_SERVICE}'), None)
-print(match['state'] if match else '')
+match = next((s for s in services if s.get('display_name') == '''${DISPLAY_NAME}'''), None)
+if match:
+    print(f\"{match['supervisor_service']}\t{match['state']}\")
 ")
+if [ -n "${LOOKUP}" ]; then
+    SUPERVISOR_SERVICE="${LOOKUP%%$'\t'*}"
+    EXISTING_STATE="${LOOKUP##*$'\t'}"
+else
+    SUPERVISOR_SERVICE="${REF_DERIVED_SERVICE_ID}"
+    EXISTING_STATE=""
+fi
 
 if [ -n "$EXISTING_STATE" ]; then
     echo "Supervisor Service '${SUPERVISOR_SERVICE}' is already registered (state: ${EXISTING_STATE})." >&2
@@ -137,20 +175,29 @@ else
     echo "Registering and activating '${SUPERVISOR_SERVICE}' (version ${VERSION}) from ${YAML_FILE}..." >&2
     CONTENT_B64=$(base64 -w0 "$YAML_FILE")
 
+    # carvel_spec, not custom_spec - confirmed live by capturing the exact
+    # request vSphere Client's own UI sends for this operation (browser
+    # devtools). custom_spec (this project's own original design, also
+    # what the upstream reference project's own captured guess used) is a
+    # generic/simplified wrapper that does NOT retain the manifest's own
+    # valuesSchema - it appeared to register successfully, but the later
+    # enable-on-cluster step then rejected any nested yaml_service_config
+    # with "Nested maps are not allowed for given content type", even
+    # though the exact same nested config works fine against a natively
+    # (carvel_spec-equivalent) pre-registered service. carvel_spec just
+    # takes the raw Package+PackageMetadata YAML content - the server
+    # derives supervisor_service/display_name/description/version and,
+    # critically, the full valuesSchema itself from the real manifest, so
+    # this correctly matches the identifier the "already registered"
+    # check ends up looking for too (this project's own DISPLAY_NAME/
+    # VERSION variables above are still used for that check and for
+    # logging, just not sent back to the server here anymore).
     python3 -c "
 import json
 body = {
-    'custom_spec': {
-        'supervisor_service': '${SUPERVISOR_SERVICE}',
-        'display_name': '''${DISPLAY_NAME}''',
-        'description': '''${DESCRIPTION}''',
+    'carvel_spec': {
         'version_spec': {
-            'version': '${VERSION}',
-            'display_name': '''${DISPLAY_NAME}''',
-            'description': '''${DESCRIPTION}''',
-            'content': '${CONTENT_B64}',
-            'content_type': 'CARVEL_APPS_YAML',
-            'registered_by_default': True
+            'content': '${CONTENT_B64}'
         }
     }
 }
@@ -171,8 +218,31 @@ print(json.dumps(body))
     fi
     rm -f /tmp/supervisor_service_create_response.json
 
-    STATE=$(curl -sk "${VC_HOST}/api/vcenter/namespace-management/supervisor-services/${SUPERVISOR_SERVICE}" \
-        -H "vmware-api-session-id: ${SESSION_ID}" | python3 -c "import sys,json; print(json.load(sys.stdin)['state'])")
+    # carvel_spec doesn't let the caller pick the id - the server derives
+    # it from the manifest's own refName, which does NOT always match the
+    # REF_DERIVED_SERVICE_ID guess above (that's the whole reason this
+    # falls back to it only when nothing was found - see comment above).
+    # Re-run the same displayName lookup now to discover the REAL id the
+    # server just assigned, instead of trusting the stale guess: confirmed
+    # live this guess is wrong for Harbor (registers as
+    # "harbor.tanzu.vmware.com", guess was "harbor"), which made the next
+    # status GET 404 and crash on a missing 'state' key before ever
+    # reaching the enable-on-cluster step below.
+    REGISTERED=$(curl -sk "${VC_HOST}/api/vcenter/namespace-management/supervisor-services" \
+        -H "vmware-api-session-id: ${SESSION_ID}" \
+        | python3 -c "
+import sys, json
+services = json.load(sys.stdin)
+match = next((s for s in services if s.get('display_name') == '''${DISPLAY_NAME}'''), None)
+if match:
+    print(f\"{match['supervisor_service']}\t{match['state']}\")
+")
+    if [ -z "${REGISTERED}" ]; then
+        echo "Error: registration reported success but '${DISPLAY_NAME}' can't be found afterwards." >&2
+        exit 1
+    fi
+    SUPERVISOR_SERVICE="${REGISTERED%%$'\t'*}"
+    STATE="${REGISTERED##*$'\t'}"
     echo "Supervisor Service '${SUPERVISOR_SERVICE}' registered. Current state: ${STATE}"
 fi
 
@@ -214,7 +284,11 @@ fi
 rm -f /tmp/cluster_svc_status.json
 
 echo "Enabling '${SUPERVISOR_SERVICE}' (version ${VERSION}) on cluster '${SELECTED_CLUSTER_NAME}'..." >&2
-CONFIG_B64=$(printf 'namespace: %s\n' "$DEFAULT_NAMESPACE" | base64 -w0)
+if [ -n "${VALUES_FILE}" ]; then
+    CONFIG_B64=$( { printf 'namespace: %s\n' "$DEFAULT_NAMESPACE"; cat "${VALUES_FILE}"; } | base64 -w0)
+else
+    CONFIG_B64=$(printf 'namespace: %s\n' "$DEFAULT_NAMESPACE" | base64 -w0)
+fi
 
 python3 -c "
 import json
@@ -238,7 +312,13 @@ rm -f /tmp/cluster_svc_enable_response.json
 
 echo "Waiting for '${SUPERVISOR_SERVICE}' to reconcile on '${SELECTED_CLUSTER_NAME}'..." >&2
 CONFIG_STATUS="CONFIGURING"
-for i in $(seq 1 30); do
+# 60x10s=10min, not 30x10s=5min - confirmed live a multi-component service
+# like Harbor (7-8 pods: core/database/jobservice/nginx/portal/redis/
+# registry/trivy, each pulling its own image and provisioning its own PVC)
+# comfortably needs more than 5 minutes; a fast single-component service
+# like ArgoCD still exits this loop on its first non-CONFIGURING check
+# either way, so raising the ceiling doesn't slow that case down.
+for i in $(seq 1 60); do
     POLL_HTTP_CODE=$(curl -sk -o /tmp/cluster_svc_poll.json -w "%{http_code}" \
         "${VC_HOST}/api/vcenter/namespace-management/clusters/${CLUSTER_ID}/supervisor-services/${SUPERVISOR_SERVICE}" \
         -H "vmware-api-session-id: ${SESSION_ID}")
