@@ -128,6 +128,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${nsx_tier0_tier0_vip_starting_ip}@${nsx_tier0_tier0_vip_starting_ip}@" \
         -e "s@\${nsx_config_ip_blocks}@${nsx_config_ip_blocks}@" \
         -e "s@\${vcf_a_ip_spaces}@$(echo ${vcf_a_ip_spaces} | jq -c -r .)@" \
+        -e "s@\${vcf_a_org_names}@$(echo ${vcf_a_organizations} | jq -c -r '[.[].name]')@" \
         -e "s@\${K8s_version_short}@${K8s_version_short}@" \
         -e "s@\${gw_vcf_cli_url}@${gw_vcf_cli_url}@g" \
         -e "s/\${basename_sddc}/${basename_sddc}/" \
@@ -158,7 +159,6 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${ip_gw_last_octet}@${ip_gw_last_octet}@" \
         -e "s/\${forwarders_bind}/${forwarders_bind}/" \
         -e "s/\${yaml_folder}/${yaml_folder}/" \
-        -e "s@\${yaml_links}@${yaml_links}@" \
         -e "s@\${vault_secret_file_path}@${vault_secret_file_path}@" \
         -e "s@\${vault_pki_name}@${vault_pki_name}@" \
         -e "s@\${vault_pki_max_lease_ttl}@${vault_pki_max_lease_ttl}@" \

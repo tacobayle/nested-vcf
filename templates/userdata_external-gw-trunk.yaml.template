@@ -273,12 +273,18 @@ write_files:
         ((count_avi++))
       done
       #
-      # zone delegation
+      # zone delegation - avi_subdomain plus one per org (org-1.<domain>,
+      # org-2.<domain>, ...) - Avi's own internal DNS/IPAM profile is
+      # authoritative for each org's own subdomain too now, so every one
+      # needs the exact same NS delegation to the same Avi DNS VS.
       #
       echo "avi-dns-vs   IN            A       ${ip_avi_dns}" | tee -a /var/lib/bind/db.${domain}
-      echo "\$ORIGIN ${avi_subdomain}.${domain}." | tee -a /var/lib/bind/db.${domain}
-      echo "\$TTL 1D" | tee -a /var/lib/bind/db.${domain}
-      echo "@         IN            NS      avi-dns-vs.${domain}." | tee -a /var/lib/bind/db.${domain}
+      { echo "${avi_subdomain}"; echo '${vcf_a_org_names}' | jq -r '.[]'; } | while read zone_subdomain
+      do
+        echo "\$ORIGIN ${zone_subdomain}.${domain}." | tee -a /var/lib/bind/db.${domain}
+        echo "\$TTL 1D" | tee -a /var/lib/bind/db.${domain}
+        echo "@         IN            NS      avi-dns-vs.${domain}." | tee -a /var/lib/bind/db.${domain}
+      done
       #
       #
       #

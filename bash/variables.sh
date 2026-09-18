@@ -19,7 +19,6 @@ basename_avi_ctrl="-avi-ctrl-"
 ip_gw_last_octet="1"
 ubuntu_ova_url=$(jq -c -r .gw.ova_url $jsonFile)
 yaml_folder=$(jq -c -r '.yaml_folder' $jsonFile)
-yaml_links=$(jq -c -r '.yaml_links' $jsonFile)
 #
 # Vault variables
 #
