@@ -512,6 +512,10 @@ if [[ ${operation} == "apply" ]] ; then
       ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${jsonFile_remote}" < /dev/null 2>/dev/null &
       test_remote_script ${log_file} ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
       #
+      if [[ ${script_file} == "/home/ubuntu/vcenter/silent_alarm.sh" ]]; then
+        log_message "deployment stopped after ${script_file} ${jsonFile_remote}" ${log_file} ${slack_webhook} ${google_webhook}
+        exit
+      fi
       #
       #
       if [ $? -eq 100 ]; then
