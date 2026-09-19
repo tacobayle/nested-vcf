@@ -153,7 +153,7 @@ VCFI_EXPECT_EOF
   #
   # check that the depot bundle has been populated
   #
-  retry_bundle=60 ; pause_bundle=10 ; attempt_bundle=1
+  retry_bundle=90 ; pause_bundle=10 ; attempt_bundle=1
   while true
   do
     sddc_manager_api 3 2 GET '' ${ip_vcf_installer} v1/bundles $(jq -c -r .accessToken /tmp/token_vcfi.json)
