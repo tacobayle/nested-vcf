@@ -113,10 +113,28 @@ elif [[ ${vcf_version_two_digit} == "9.1" ]]; then
     exit 255
   fi
   #
-  # find avi bundle id
+  # find avi bundle id - spec's avi.version pins which NSX_ALB bundle to
+  # use when set (matched by version prefix), since more than one can
+  # exist in the catalog at once (e.g. an older + newer NSX_ALB release
+  # both present) and the naive "match by description alone" query then
+  # returns multiple ids, silently breaking every use of avi_bundle_id
+  # below (a multi-line/ambiguous id embedded in a URL path, and a
+  # multi-line downloadStatus that can never equal the scalar
+  # "SUCCESSFUL") - confirmed live this is exactly why the bundle never
+  # reported as downloaded. Ported from vcf_bootstrap.sh's own equivalent
+  # fix (same root cause, same API). Falls back to the first NSX_ALB
+  # entry found when avi.version is unset, matching the historical
+  # behavior for CRs that don't pin a version.
   #
-  avi_bundle_id=$(curl -s -k -H "Authorization: Bearer $sddcm_token" -H "Content-Type: application/json" -X GET "https://$sddcm/v1/bundles" | jq -c -r --arg arg "NSX_ALB" '.elements[] | select(.components[0].description == $arg) | .id')
-  if [[ $(curl -s -k -H "Authorization: Bearer $sddcm_token" -H "Content-Type: application/json" -X GET "https://$sddcm/v1/bundles" | jq -c -r --arg arg "NSX_ALB" '.elements[] | select(.components[0].description == $arg) | .downloadStatus') != "SUCCESSFUL" ]]; then
+  bundles_response=$(curl -s -k -H "Authorization: Bearer $sddcm_token" -H "Content-Type: application/json" -X GET "https://$sddcm/v1/bundles")
+  if [ -n "${avi_version}" ]; then
+    avi_bundle_id=$(echo "${bundles_response}" | jq -c -r --arg arg "NSX_ALB" --arg ver "${avi_version}" '.elements[] | select(.components[0].description == $arg and (.version | startswith($ver))) | .id')
+    avi_download_status=$(echo "${bundles_response}" | jq -c -r --arg arg "NSX_ALB" --arg ver "${avi_version}" '.elements[] | select(.components[0].description == $arg and (.version | startswith($ver))) | .downloadStatus')
+  else
+    avi_bundle_id=$(echo "${bundles_response}" | jq -c -r --arg arg "NSX_ALB" '.elements[] | select(.components[0].description == $arg) | .id' | head -1)
+    avi_download_status=$(echo "${bundles_response}" | jq -c -r --arg arg "NSX_ALB" '.elements[] | select(.components[0].description == $arg) | .downloadStatus' | head -1)
+  fi
+  if [[ "${avi_download_status}" != "SUCCESSFUL" ]]; then
     curl -s -k -H "Authorization: Bearer $sddcm_token" -H "Content-Type: application/json" -X PATCH "https://$sddcm/v1/bundles/${avi_bundle_id}" -d '{"bundleDownloadSpec": {"downloadNow": true}}'
     sleep 120
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, sddcm: waiting 120 seconds" "${log_file}" "" ""
@@ -127,7 +145,13 @@ elif [[ ${vcf_version_two_digit} == "9.1" ]]; then
   retry_download=30 ; pause_download=10 ; attempt_download=1
   while true
   do
-    if [[ $(curl -s -k -H "Authorization: Bearer $sddcm_token" -H "Content-Type: application/json" -X GET "https://$sddcm/v1/bundles" | jq -c -r --arg arg "NSX_ALB" '.elements[] | select(.components[0].description == $arg) | .downloadStatus') == "SUCCESSFUL" ]]; then
+    bundles_response=$(curl -s -k -H "Authorization: Bearer $sddcm_token" -H "Content-Type: application/json" -X GET "https://$sddcm/v1/bundles")
+    if [ -n "${avi_version}" ]; then
+      avi_download_status=$(echo "${bundles_response}" | jq -c -r --arg arg "NSX_ALB" --arg ver "${avi_version}" '.elements[] | select(.components[0].description == $arg and (.version | startswith($ver))) | .downloadStatus')
+    else
+      avi_download_status=$(echo "${bundles_response}" | jq -c -r --arg arg "NSX_ALB" '.elements[] | select(.components[0].description == $arg) | .downloadStatus' | head -1)
+    fi
+    if [[ "${avi_download_status}" == "SUCCESSFUL" ]]; then
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, sddcm: Avi bundle downloaded" "${log_file}" "${slack_webhook}" "${google_webhook}"
       break
     fi
