@@ -245,12 +245,18 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "9.1" ]];
         # Avi-delegated app.vcf9.lab-style zone so dns-vs can serve it
         # once registered below.
         harbor_hostname="harbor.${avi_subdomain}.${domain}"
-        # Kubernetes StorageClass names for native (non-VCFA) Supervisor
-        # storage policies match the policy's own name 1:1 - confirmed
-        # against epc-vapp's own equivalent value, itself the exact
-        # storage policy name it derives independently.
-        harbor_storage_class="${supervisor_cluster_storage_policy_ref}"
-        harbor_admin_password="${generic_password}"
+        # NOT supervisor_cluster_storage_policy_ref directly - that's the
+        # vCenter storage POLICY's own display name (e.g. "vSAN Default
+        # Storage Policy", spaces and all - confirmed live), not a valid
+        # Kubernetes object name. The actual StorageClass vSphere CSI
+        # creates for this cluster follows this project's own existing
+        # "${basename_sddc}-cluster"-based cluster_name convention
+        # (bash/variables.sh's own cluster_name, already used elsewhere in
+        # this script) - confirmed live against a real Supervisor cluster
+        # ("sddc01-cluster-vsan-storage-policy" exists, "vSAN Default
+        # Storage Policy" does not - PVCs referencing the latter would
+        # never bind).
+        harbor_storage_class="${cluster_name}-vsan-storage-policy"        harbor_admin_password="${generic_password}"
         harbor_secret_key=$(echo -n "${generic_password}harbor-secretkey" | md5sum | cut -c1-16)
         harbor_database_password=$(echo -n "${generic_password}harbor-database" | md5sum | cut -c1-16)
         harbor_core_secret=$(echo -n "${generic_password}harbor-core" | md5sum | cut -c1-16)
