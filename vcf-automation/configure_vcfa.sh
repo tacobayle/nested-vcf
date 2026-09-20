@@ -344,8 +344,20 @@ do
     # (POST cloudapi/v1/ipSpaceAssociations) happens separately below,
     # after every ip_space and provider gateway exist.
     #
+    # allowAdvertisingPrivateIpBlocks: false - required as of this VCFA
+    # build, confirmed live: omitting it entirely (this payload's own
+    # original form, previously confirmed working on an older VCFA
+    # build) now makes the server throw a raw NullPointerException on
+    # getAllowAdvertisingPrivateIpBlocks() instead of defaulting it,
+    # failing this POST with HTTP 500 - which then cascades into every
+    # later step needing this provider gateway's id (regionalNetworking
+    # Settings creation fails with "providerGatewayRef.id field value
+    # missing" since the gateway was never actually created). false
+    # matches this project's own existing "opt-in" pattern elsewhere
+    # (e.g. ipSpaceRefs above) - nothing here relies on this provider
+    # gateway advertising RFC1918 private-IP CIDR blocks externally.
     pgw_json=$(jq -n --arg n "${pgw_name}" --arg t0 "$(echo ${item} | jq -c -r '.tier0_ref')" --arg regionid "${region_id}" \
-      '{name: $n, description: "", backingRef: {id: $t0, name: $t0}, backingType: "NSX_TIER0", regionRef: {id: $regionid}}')
+      '{name: $n, description: "", backingRef: {id: $t0, name: $t0}, backingType: "NSX_TIER0", regionRef: {id: $regionid}, allowAdvertisingPrivateIpBlocks: false}')
     vcfa_api POST "cloudapi/v1/providerGateways" "${pgw_json}"
     #
     # This exact POST (no natConfig, no explicit gatewayConnectionBackingId)
