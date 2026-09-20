@@ -256,7 +256,8 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "9.1" ]];
         # ("sddc01-cluster-vsan-storage-policy" exists, "vSAN Default
         # Storage Policy" does not - PVCs referencing the latter would
         # never bind).
-        harbor_storage_class="${cluster_name}-vsan-storage-policy"        harbor_admin_password="${generic_password}"
+        harbor_storage_class="${cluster_name}-vsan-storage-policy"
+        harbor_admin_password="${generic_password}"
         harbor_secret_key=$(echo -n "${generic_password}harbor-secretkey" | md5sum | cut -c1-16)
         harbor_database_password=$(echo -n "${generic_password}harbor-database" | md5sum | cut -c1-16)
         harbor_core_secret=$(echo -n "${generic_password}harbor-core" | md5sum | cut -c1-16)
