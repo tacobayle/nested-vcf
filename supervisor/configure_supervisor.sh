@@ -167,6 +167,7 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "9.1" ]];
     fi
     sleep ${pause_tanzu_supervisor}
   done
+  sleep 300
   #
   # Retrieve API server cluster endpoint
   #
