@@ -189,31 +189,39 @@ vcfa_api() {
 }
 
 vcfa_put_file() {
-  # $1 transfer URL, $2 local file path, $3 description for logging, $4
-  # retries, $5 pause - confirmed live these contentLibraryItem file PUTs
-  # can silently transfer 0 bytes with curl itself reporting no error
+  # $1 item_id, $2 file_name (as listed by .../files), $3 transfer URL,
+  # $4 local file path, $5 description for logging, $6 retries, $7 pause
+  # - confirmed live these contentLibraryItem file PUTs can silently
+  # transfer 0 bytes with curl itself reporting HTTP 200/no error
   # (previously not checked here at all, --data-binary piped to
   # /dev/null), leaving the item stuck NOT_READY/FAILED with no
   # indication which file (or that a file at all, versus some other
-  # server-side issue) was actually the cause. Checks the HTTP status
-  # explicitly and retries like vcfa_api above.
+  # server-side issue) was actually the cause.
   #
-  # Content-Type: application/octet-stream is required, not optional -
-  # confirmed live this is the ACTUAL root cause of the "stuck upload"
-  # symptom (not a network/timing issue): curl's --data-binary defaults
-  # to Content-Type: application/x-www-form-urlencoded when none is set,
-  # and VCFA's transfer endpoint silently accepts that PUT with a genuine
-  # HTTP 200 while discarding the body entirely (bytesTransferred stays 0
-  # forever) - i.e. the original HTTP-status-only check above is
-  # necessary but not sufficient; this header is what actually fixes the
-  # stuck upload itself.
-  local transfer_url="$1" local_path="$2" description="$3" retry="${4:-3}" pause="${5:-10}" attempt=1
+  # Content-Type: application/octet-stream turned out to be one real
+  # cause (curl's --data-binary defaults to
+  # application/x-www-form-urlencoded when no Content-Type is set, which
+  # the transfer endpoint accepts with a genuine 200 while discarding the
+  # body) - but NOT the only one: confirmed live a second time, even with
+  # this header set, the very same PUT (identical body/headers) can still
+  # silently transfer 0 bytes with an unqualified HTTP 200, while an
+  # immediate manual retry of the exact same transfer URL succeeds fully.
+  # A likely per-transfer-session readiness race on VCFA's own transfer
+  # endpoint, not something fixable by tweaking the request. So: an HTTP
+  # 2xx here is necessary but still not sufficient - re-fetch this item's
+  # own /files listing after every PUT and check bytesTransferred ==
+  # expectedSizeBytes for THIS file by name before considering it done,
+  # retrying the whole PUT (not just re-checking) otherwise.
+  local item_id="$1" file_name="$2" transfer_url="$3" local_path="$4" description="$5" retry="${6:-3}" pause="${7:-10}" attempt=1
   while true; do
-    http_code=$(curl -sk -o /dev/null -w "%{http_code}" -X PUT "${transfer_url}" -H "Authorization: Bearer ${vcfa_token}" -H "Content-Type: application/octet-stream" --data-binary @"${local_path}")
-    if [[ ${http_code} == 2[0-9][0-9] ]]; then
+    curl -sk -o /dev/null -X PUT "${transfer_url}" -H "Authorization: Bearer ${vcfa_token}" -H "Content-Type: application/octet-stream" --data-binary @"${local_path}"
+    vcfa_api GET "cloudapi/v1/contentLibraryItems/${item_id}/files" ""
+    transferred=$(echo ${response_body} | jq -c -r --arg n "${file_name}" '.values[] | select(.name == $n) | .bytesTransferred')
+    expected=$(echo ${response_body} | jq -c -r --arg n "${file_name}" '.values[] | select(.name == $n) | .expectedSizeBytes')
+    if [ -n "${transferred}" ] && [ "${transferred}" == "${expected}" ]; then
       return 0
     fi
-    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: upload of ${description} failed (HTTP ${http_code}), attempt ${attempt}/${retry}" "${log_file}" "" ""
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: upload of ${description} incomplete (${transferred:-0}/${expected} bytes transferred), attempt ${attempt}/${retry}" "${log_file}" "" ""
     if [ ${attempt} -eq ${retry} ]; then
       log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: giving up uploading ${description} after ${retry} attempts" "${log_file}" "${slack_webhook}" "${google_webhook}"
       return 1
@@ -550,7 +558,7 @@ do
         vcfa_api GET "cloudapi/v1/contentLibraryItems/${item_id}/files" ""
         descriptor_name=$(echo ${response_body} | jq -c -r '.values[0].name')
         descriptor_transfer_url=$(echo ${response_body} | jq -c -r '.values[0].transferUrl')
-        vcfa_put_file "${descriptor_transfer_url}" "${ovf_file}" "descriptor for item ${item_name}"
+        vcfa_put_file "${item_id}" "${descriptor_name}" "${descriptor_transfer_url}" "${ovf_file}" "descriptor for item ${item_name}"
 
         # disk file(s) - discovered from the server AFTER the descriptor
         # upload (see the caveat above); uploaded by matching each
@@ -563,7 +571,7 @@ do
           disk_transfer_url=$(echo "${encoded_file}" | base64 -d | jq -c -r '.transferUrl')
           local_disk_path="${extract_dir}/${disk_name}"
           if [ -f "${local_disk_path}" ]; then
-            vcfa_put_file "${disk_transfer_url}" "${local_disk_path}" "disk file ${disk_name} for item ${item_name}"
+            vcfa_put_file "${item_id}" "${disk_name}" "${disk_transfer_url}" "${local_disk_path}" "disk file ${disk_name} for item ${item_name}"
           else
             log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: server-requested disk file ${disk_name} not found locally under ${extract_dir} for item ${item_name}" "${log_file}" "${slack_webhook}" "${google_webhook}"
           fi
