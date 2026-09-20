@@ -849,6 +849,32 @@ do
         if [ -z "${avi_synced:-}" ]; then
           vcfa_api GET "cloudapi/v1/loadBalancer/aviControllers?filter=regionRef.id==${region_id}" ""
           avi_controller_id=$(echo ${response_body} | jq -c -r --arg arg "${region_id}" '.values[] | select(.regionRef.id == $arg) | .id' | head -1)
+          if [ -z "${avi_controller_id}" ]; then
+            #
+            # SDDC Manager registers Avi directly with NSX-T (enforcement
+            # point), but VCFA keeps its OWN, separate aviControllers
+            # catalog that is not populated automatically from that NSX
+            # registration - confirmed live: catalog stayed empty long
+            # after Avi/NSX were both healthy. It requires this explicit
+            # provider-side registration call (schema confirmed live via
+            # the API's own "Unrecognized field" error message).
+            #
+            log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: no avi controller registered in VCFA for region ${region_ref_name}, registering ${ip_avi}" "${log_file}" "" ""
+            avi_controller_json=$(jq -n --arg url "https://${ip_avi}" --arg pass "${generic_password}" --arg regionid "${region_id}" \
+              '{name: "provider-avi", url: $url, username: "admin", password: $pass, license: "ENTERPRISE", regionRef: {id: $regionid}, isDedicatedForClassicTenants: false}')
+            vcfa_api POST "cloudapi/v1/loadBalancer/aviControllers" "${avi_controller_json}"
+            for attempt_avi_reg in $(seq 1 12); do
+              sleep 10
+              vcfa_api GET "cloudapi/v1/loadBalancer/aviControllers?filter=regionRef.id==${region_id}" ""
+              avi_controller_id=$(echo ${response_body} | jq -c -r --arg arg "${region_id}" '.values[] | select(.regionRef.id == $arg) | .id' | head -1)
+              if [ -n "${avi_controller_id}" ]; then
+                break
+              fi
+            done
+            if [ -z "${avi_controller_id}" ]; then
+              log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: FAILED to register avi controller ${ip_avi} in VCFA after waiting" "${log_file}" "${slack_webhook}" "${google_webhook}"
+            fi
+          fi
           if [ -n "${avi_controller_id}" ]; then
             vcfa_api POST "cloudapi/v1/loadBalancer/aviControllers/${avi_controller_id}/sync" ""
             sleep 30
