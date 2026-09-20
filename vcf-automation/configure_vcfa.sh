@@ -188,6 +188,31 @@ vcfa_api() {
   done
 }
 
+vcfa_put_file() {
+  # $1 transfer URL, $2 local file path, $3 description for logging, $4
+  # retries, $5 pause - confirmed live these contentLibraryItem file PUTs
+  # can silently transfer 0 bytes with curl itself reporting no error
+  # (previously not checked here at all, --data-binary piped to
+  # /dev/null), leaving the item stuck NOT_READY/FAILED with no
+  # indication which file (or that a file at all, versus some other
+  # server-side issue) was actually the cause. Checks the HTTP status
+  # explicitly and retries like vcfa_api above.
+  local transfer_url="$1" local_path="$2" description="$3" retry="${4:-3}" pause="${5:-10}" attempt=1
+  while true; do
+    http_code=$(curl -sk -o /dev/null -w "%{http_code}" -X PUT "${transfer_url}" -H "Authorization: Bearer ${vcfa_token}" --data-binary @"${local_path}")
+    if [[ ${http_code} == 2[0-9][0-9] ]]; then
+      return 0
+    fi
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: upload of ${description} failed (HTTP ${http_code}), attempt ${attempt}/${retry}" "${log_file}" "" ""
+    if [ ${attempt} -eq ${retry} ]; then
+      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: giving up uploading ${description} after ${retry} attempts" "${log_file}" "${slack_webhook}" "${google_webhook}"
+      return 1
+    fi
+    sleep "${pause}"
+    ((attempt++))
+  done
+}
+
 # vCenter API session/call helper pair - needed below (VM Service content
 # library binding step) since that's a vCenter-native API
 # (api/vcenter/namespaces/instances/{ns}), not a VCFA one. vcsa_fqdn/
@@ -503,7 +528,7 @@ do
         vcfa_api GET "cloudapi/v1/contentLibraryItems/${item_id}/files" ""
         descriptor_name=$(echo ${response_body} | jq -c -r '.values[0].name')
         descriptor_transfer_url=$(echo ${response_body} | jq -c -r '.values[0].transferUrl')
-        curl -sk -X PUT "${descriptor_transfer_url}" -H "Authorization: Bearer ${vcfa_token}" --data-binary @"${ovf_file}" > /dev/null
+        vcfa_put_file "${descriptor_transfer_url}" "${ovf_file}" "descriptor for item ${item_name}"
 
         # disk file(s) - discovered from the server AFTER the descriptor
         # upload (see the caveat above); uploaded by matching each
@@ -516,7 +541,7 @@ do
           disk_transfer_url=$(echo "${encoded_file}" | base64 -d | jq -c -r '.transferUrl')
           local_disk_path="${extract_dir}/${disk_name}"
           if [ -f "${local_disk_path}" ]; then
-            curl -sk -X PUT "${disk_transfer_url}" -H "Authorization: Bearer ${vcfa_token}" --data-binary @"${local_disk_path}" > /dev/null
+            vcfa_put_file "${disk_transfer_url}" "${local_disk_path}" "disk file ${disk_name} for item ${item_name}"
           else
             log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: server-requested disk file ${disk_name} not found locally under ${extract_dir} for item ${item_name}" "${log_file}" "${slack_webhook}" "${google_webhook}"
           fi
