@@ -1230,7 +1230,21 @@ else
       # cluster.x-k8s.io/v1beta2 that the UI actually uses (v1beta1 is
       # accepted but deprecated AND rejects the request unless
       # clusterNetwork.services is also set - v1beta2 doesn't need that
-      # worked around). storageClass reuses ${storage_class_k8s_name}
+      # worked around). clusterNetwork.pods.cidrBlocks, however, IS
+      # required in both versions and has NO server-side default -
+      # confirmed live: omitting it (as an earlier version of this script
+      # did) leaves every node's Spec.PodCIDR permanently empty, crashing
+      # antrea-agent cluster-wide (CrashLoopBackOff on "Spec.PodCIDR is
+      # empty for Node") and cascading into virtually every other pod
+      # staying stuck ContainerCreating. This range is NOT related to the
+      # namespace's own NSX VPC private-IP block (privateIPs on that
+      # VPC's NetworkInfo, e.g. 172.26.0.0/16 / 172.30.0.0/16 in this
+      # environment) - it's a purely internal Antrea overlay CIDR, safe
+      # to reuse identically across every org's cluster since each one is
+      # isolated within its own VPC/namespace and never routes to
+      # another's pod network directly. Value matches the one seen live
+      # on a UI-created reference cluster (kubernetes-cluster-z8lk).
+      # storageClass reuses ${storage_class_k8s_name}
       # already derived above for the namespace step, rather than
       # re-deriving it. The cluster starts with spec.paused: true
       # (set automatically by an admission webhook) and clears itself
@@ -1280,7 +1294,7 @@ else
               '{apiVersion: "cluster.x-k8s.io/v1beta2", kind: "Cluster",
                 metadata: {generateName: "vks-cluster-", namespace: $ns},
                 spec: {
-                  clusterNetwork: {serviceDomain: "cluster.local", services: {cidrBlocks: ["10.96.0.0/12"]}},
+                  clusterNetwork: {serviceDomain: "cluster.local", pods: {cidrBlocks: ["192.168.156.0/20"]}, services: {cidrBlocks: ["10.96.0.0/12"]}},
                   topology: {
                     classRef: {name: "builtin-generic-v3.6.0", namespace: "vmware-system-vks-public"},
                     version: "v1.35.5+vmware.1",
