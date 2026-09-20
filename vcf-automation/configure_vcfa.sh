@@ -362,20 +362,21 @@ do
     # (POST cloudapi/v1/ipSpaceAssociations) happens separately below,
     # after every ip_space and provider gateway exist.
     #
-    # allowAdvertisingPrivateIpBlocks: false - required as of this VCFA
-    # build, confirmed live: omitting it entirely (this payload's own
-    # original form, previously confirmed working on an older VCFA
-    # build) now makes the server throw a raw NullPointerException on
+    # allowAdvertisingPrivateIpBlocks is required as of this VCFA build
+    # (confirmed live: omitting it entirely, this payload's own original
+    # form, makes the server throw a raw NullPointerException on
     # getAllowAdvertisingPrivateIpBlocks() instead of defaulting it,
     # failing this POST with HTTP 500 - which then cascades into every
-    # later step needing this provider gateway's id (regionalNetworking
-    # Settings creation fails with "providerGatewayRef.id field value
-    # missing" since the gateway was never actually created). false
-    # matches this project's own existing "opt-in" pattern elsewhere
-    # (e.g. ipSpaceRefs above) - nothing here relies on this provider
-    # gateway advertising RFC1918 private-IP CIDR blocks externally.
+    # later step needing this provider gateway's id). Must be true, not
+    # false - confirmed live false instead trades that 500 for a
+    # different, equally fatal 400: "Provider Gateway ... requires either
+    # at least one associated IP Space or private IP Blocks advertisement
+    # to be enabled", since no ip_space is associated with this gateway
+    # yet at this point (that's a separate, later step - see
+    # ipSpaceAssociations below). true satisfies that check without
+    # depending on this script's own step ordering.
     pgw_json=$(jq -n --arg n "${pgw_name}" --arg t0 "$(echo ${item} | jq -c -r '.tier0_ref')" --arg regionid "${region_id}" \
-      '{name: $n, description: "", backingRef: {id: $t0, name: $t0}, backingType: "NSX_TIER0", regionRef: {id: $regionid}, allowAdvertisingPrivateIpBlocks: false}')
+      '{name: $n, description: "", backingRef: {id: $t0, name: $t0}, backingType: "NSX_TIER0", regionRef: {id: $regionid}, allowAdvertisingPrivateIpBlocks: true}')
     vcfa_api POST "cloudapi/v1/providerGateways" "${pgw_json}"
     #
     # This exact POST (no natConfig, no explicit gatewayConnectionBackingId)
@@ -563,9 +564,25 @@ do
         # disk file(s) - discovered from the server AFTER the descriptor
         # upload (see the caveat above); uploaded by matching each
         # server-reported file name against the extracted directory.
-        sleep 5
-        vcfa_api GET "cloudapi/v1/contentLibraryItems/${item_id}/files" ""
-        disk_files=$(echo ${response_body} | jq -c -r --arg descname "${descriptor_name}" '.values[] | select(.name != $descname) | @base64')
+        # Retries the discovery GET itself, not just each file's later
+        # upload - confirmed live that under real load (concurrent org
+        # provisioning elsewhere in this same run) the /files listing can
+        # still only report the descriptor entry well past a fixed 5s
+        # sleep, silently leaving disk_files empty and skipping the
+        # upload loop entirely with no error at all (looked, at the
+        # symptom level, identical to the upload itself being stuck).
+        disk_files=""
+        for attempt_discover in $(seq 1 12); do
+          sleep 5
+          vcfa_api GET "cloudapi/v1/contentLibraryItems/${item_id}/files" ""
+          disk_files=$(echo ${response_body} | jq -c -r --arg descname "${descriptor_name}" '.values[] | select(.name != $descname) | @base64')
+          if [ -n "${disk_files}" ]; then
+            break
+          fi
+        done
+        if [ -z "${disk_files}" ]; then
+          log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: no disk files discovered for item ${item_name} after waiting, giving up on this item" "${log_file}" "${slack_webhook}" "${google_webhook}"
+        fi
         for encoded_file in ${disk_files}; do
           disk_name=$(echo "${encoded_file}" | base64 -d | jq -c -r '.name')
           disk_transfer_url=$(echo "${encoded_file}" | base64 -d | jq -c -r '.transferUrl')
