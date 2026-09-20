@@ -197,9 +197,19 @@ vcfa_put_file() {
   # indication which file (or that a file at all, versus some other
   # server-side issue) was actually the cause. Checks the HTTP status
   # explicitly and retries like vcfa_api above.
+  #
+  # Content-Type: application/octet-stream is required, not optional -
+  # confirmed live this is the ACTUAL root cause of the "stuck upload"
+  # symptom (not a network/timing issue): curl's --data-binary defaults
+  # to Content-Type: application/x-www-form-urlencoded when none is set,
+  # and VCFA's transfer endpoint silently accepts that PUT with a genuine
+  # HTTP 200 while discarding the body entirely (bytesTransferred stays 0
+  # forever) - i.e. the original HTTP-status-only check above is
+  # necessary but not sufficient; this header is what actually fixes the
+  # stuck upload itself.
   local transfer_url="$1" local_path="$2" description="$3" retry="${4:-3}" pause="${5:-10}" attempt=1
   while true; do
-    http_code=$(curl -sk -o /dev/null -w "%{http_code}" -X PUT "${transfer_url}" -H "Authorization: Bearer ${vcfa_token}" --data-binary @"${local_path}")
+    http_code=$(curl -sk -o /dev/null -w "%{http_code}" -X PUT "${transfer_url}" -H "Authorization: Bearer ${vcfa_token}" -H "Content-Type: application/octet-stream" --data-binary @"${local_path}")
     if [[ ${http_code} == 2[0-9][0-9] ]]; then
       return 0
     fi
