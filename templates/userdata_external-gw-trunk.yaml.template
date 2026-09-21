@@ -540,6 +540,21 @@ write_files:
               rbe_name="$(yq '.metadata.name' "$yaml_dst")"
               yq -i ".spec.backendTLS.domainName[0] = \"${rbe_name}.${full_domain}\"" "$yaml_dst"
               ;;
+            Deployment)
+              # every container's (and initContainer's) image, in every
+              # Deployment document in this file (not just the first - the sub()
+              # below runs per-document across the whole multi-doc stream, e.g.
+              # demo-http-apps.yaml's other two Deployments and its interleaved
+              # Service docs, where it's a safe no-op since Services have no
+              # .spec.template.spec.containers path at all) - registry host
+              # swapped for this environment's own Harbor, image name/tag kept
+              # as-is (untagged stays untagged, i.e. still implicitly ":latest"
+              # by Docker convention, matching how the harbor image-preload step
+              # above always pushes as ":latest"). Confirmed live this correctly
+              # leaves the 3 Service docs in demo-http-apps.yaml untouched while
+              # rewriting all 3 Deployments' images.
+              yq -i '(.. | select(has("containers")) | .containers[], .. | select(has("initContainers")) | .initContainers[] | select(.image != null)).image |= sub("^.*/", "'"${harbor_registry_fqdn}"'/registry/")' "$yaml_dst"
+              ;;
             *)
               # HealthMonitor, L7Rule, Service, Deployment - no changes.
               ;;
