@@ -1389,6 +1389,92 @@ else
         vks_available=$(echo ${response_body} | jq -c -r '.status.conditions[]? | select(.type=="Available") | .status')
         if [[ "${vks_available}" == "True" ]]; then
           log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VKS cluster ${vks_name} for ${org_name} is Available after ${attempt_vks} attempts of ${pause_vks} seconds" "${log_file}" "" ""
+          #
+          # status.conditions[type=Available] only reflects CAPI's own
+          # control-plane/machine-level readiness (confirmed live earlier
+          # this session via the clusterNetwork.pods.cidrBlocks bug:
+          # Available flipped True well before antrea actually had a
+          # working pod network) - it says nothing about whether the
+          # cluster's own core add-on pods have actually finished
+          # starting. The org-scoped token used everywhere else in this
+          # script has no RBAC inside the workload cluster itself
+          # (confirmed live: "forbidden" on pods/secrets/namespaces even
+          # via its own namespaceEndpointURL proxy) - CAPI's own
+          # <cluster-name>-kubeconfig Secret (created automatically by
+          # the Supervisor, alongside the Cluster object, in the SAME
+          # namespace) is the one credential with genuine cluster-admin
+          # access, reachable only via the Supervisor's own kubectl
+          # context (sup-admin-01), same auth_supervisor_custer.sh helper
+          # the vault-integration step above already uses.
+          #
+          bash /home/ubuntu/supervisor/auth_supervisor_custer.sh >/dev/null 2>&1
+          vks_kubeconfig="/tmp/${org_name}-vks-admin-kubeconfig.yaml"
+          kubectl --context sup-admin-01 get secret "${vks_name}-kubeconfig" -n "${ns_name}" -o jsonpath='{.data.value}' 2>/dev/null | base64 -d > "${vks_kubeconfig}"
+          if [ ! -s "${vks_kubeconfig}" ]; then
+            log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: could not retrieve admin kubeconfig for VKS cluster ${vks_name} (${org_name}), skipping pod-security/cert01 setup" "${log_file}" "${slack_webhook}" "${google_webhook}"
+          else
+            #
+            # Wait for every pod in the cluster to be Running/Succeeded
+            # before doing anything below that assumes a genuinely
+            # working cluster (matches this session's own hard-won lesson
+            # that "Available" alone isn't sufficient).
+            #
+            retry_pods=20 ; pause_pods=15 ; attempt_pods=1
+            while true; do
+              not_ready_count=$(kubectl --kubeconfig="${vks_kubeconfig}" get pods -A -o json 2>/dev/null | jq -c -r '[.items[] | select(.status.phase != "Running" and .status.phase != "Succeeded")] | length')
+              if [ "${not_ready_count}" == "0" ]; then
+                log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: all pods Running/Succeeded in VKS cluster ${vks_name} for ${org_name} after ${attempt_pods} attempts of ${pause_pods} seconds" "${log_file}" "" ""
+                break
+              fi
+              if [ ${attempt_pods} -eq ${retry_pods} ]; then
+                log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VKS cluster ${vks_name} for ${org_name} still has ${not_ready_count:-unknown} non-Running pods after ${attempt_pods} attempts of ${pause_pods} seconds, proceeding anyway" "${log_file}" "${slack_webhook}" "${google_webhook}"
+                break
+              fi
+              sleep ${pause_pods}
+              ((attempt_pods++))
+            done
+
+            #
+            # Pod Security Admission defaults to "restricted" on this
+            # ClusterClass, which blocks workloads with no securityContext
+            # (e.g. the plain busybox demo containers) from starting in
+            # the default namespace - relax it to "privileged" there.
+            #
+            kubectl --kubeconfig="${vks_kubeconfig}" label --overwrite ns default pod-security.kubernetes.io/enforce=privileged
+            if [ $? -eq 0 ]; then
+              log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: default namespace pod-security.kubernetes.io/enforce=privileged applied for ${org_name}'s VKS cluster ${vks_name}" "${log_file}" "" ""
+            else
+              log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: failed to label default namespace pod-security.kubernetes.io/enforce=privileged for ${org_name}'s VKS cluster ${vks_name}" "${log_file}" "${slack_webhook}" "${google_webhook}"
+            fi
+
+            #
+            # cert01 - a wildcard self-signed TLS cert for
+            # *.<avi_subdomain>.<domain>, matching the same wildcard
+            # hostname convention the demo Gateway yaml rendering already
+            # uses (Gateway listener hostname = "*.<full_domain>") - so
+            # this cert actually covers whatever hostname a demo
+            # Ingress/Gateway/HTTPRoute ends up using. Idempotent by
+            # presence (skip if cert01 already exists), not re-issued
+            # every run.
+            #
+            if kubectl --kubeconfig="${vks_kubeconfig}" get secret cert01 -n default >/dev/null 2>&1; then
+              log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: TLS secret cert01 already exists in default namespace for ${org_name}'s VKS cluster ${vks_name}, skipping" "${log_file}" "" ""
+            else
+              ssl_key="/tmp/${org_name}-ssl.key"
+              ssl_crt="/tmp/${org_name}-ssl.crt"
+              openssl req -newkey rsa:4096 -x509 -sha256 -days 3650 -nodes \
+                -out "${ssl_crt}" -keyout "${ssl_key}" \
+                -subj "/C=US/ST=CA/L=Palo Alto/O=VMWARE/OU=IT/CN=*.${avi_subdomain}.${domain}" 2>/dev/null
+              kubectl --kubeconfig="${vks_kubeconfig}" create secret tls cert01 -n default --key="${ssl_key}" --cert="${ssl_crt}"
+              if [ $? -eq 0 ]; then
+                log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: TLS secret cert01 (CN=*.${avi_subdomain}.${domain}) created in default namespace for ${org_name}'s VKS cluster ${vks_name}" "${log_file}" "" ""
+              else
+                log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: failed to create TLS secret cert01 for ${org_name}'s VKS cluster ${vks_name}" "${log_file}" "${slack_webhook}" "${google_webhook}"
+              fi
+              rm -f "${ssl_key}" "${ssl_crt}"
+            fi
+          fi
+          rm -f "${vks_kubeconfig}"
           break
         fi
         ((attempt_vks++))
