@@ -514,10 +514,11 @@ write_files:
       if [ -d /home/ubuntu/dev-avi-vcf/yamls ]; then
         sudo -u ubuntu mkdir -p /home/ubuntu/${yaml_folder}
         full_domain="${avi_subdomain}.${domain}"
+        harbor_registry_fqdn="harbor.${full_domain}"
         for yaml_src in /home/ubuntu/dev-avi-vcf/yamls/*.yaml; do
           yaml_dst="/home/ubuntu/${yaml_folder}/$(basename "$yaml_src")"
           cp "$yaml_src" "$yaml_dst"
-          yaml_kind="$(yq '.kind' "$yaml_dst")"
+          yaml_kind="$(yq 'select(di == 0) | .kind' "$yaml_dst")"
           case "$yaml_kind" in
             Ingress)
               rule_count=$(yq '.spec.rules | length' "$yaml_dst")
