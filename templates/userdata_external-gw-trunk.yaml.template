@@ -518,48 +518,68 @@ write_files:
         for yaml_src in /home/ubuntu/dev-avi-vcf/yamls/*.yaml; do
           yaml_dst="/home/ubuntu/${yaml_folder}/$(basename "$yaml_src")"
           cp "$yaml_src" "$yaml_dst"
-          yaml_kind="$(yq 'select(di == 0) | .kind' "$yaml_dst")"
-          case "$yaml_kind" in
-            Ingress)
-              rule_count=$(yq '.spec.rules | length' "$yaml_dst")
-              for ((i = 0; i < rule_count; i++)); do
-                yq -i ".spec.rules[$i].host = \"v$((i + 1)).${full_domain}\"" "$yaml_dst"
-              done
-              ;;
-            HTTPRoute)
-              httproute_name="$(yq '.metadata.name' "$yaml_dst")"
-              yq -i "del(.spec.hostnames) | .spec.hostnames[0] = \"${httproute_name}.${full_domain}\"" "$yaml_dst"
-              ;;
-            Gateway)
-              yq -i ".spec.listeners[].hostname = \"*.${full_domain}\"" "$yaml_dst"
-              ;;
-            HostRule)
-              hostrule_name="$(yq '.metadata.name' "$yaml_dst")"
-              yq -i ".spec.virtualhost.fqdn = \"${hostrule_name}.${full_domain}\"" "$yaml_dst"
-              ;;
-            RouteBackendExtension)
-              rbe_name="$(yq '.metadata.name' "$yaml_dst")"
-              yq -i ".spec.backendTLS.domainName[0] = \"${rbe_name}.${full_domain}\"" "$yaml_dst"
-              ;;
-            Deployment)
-              # every container's (and initContainer's) image, in every
-              # Deployment document in this file (not just the first - the sub()
-              # below runs per-document across the whole multi-doc stream, e.g.
-              # demo-http-apps.yaml's other two Deployments and its interleaved
-              # Service docs, where it's a safe no-op since Services have no
-              # .spec.template.spec.containers path at all) - registry host
-              # swapped for this environment's own Harbor, image name/tag kept
-              # as-is (untagged stays untagged, i.e. still implicitly ":latest"
-              # by Docker convention, matching how the harbor image-preload step
-              # above always pushes as ":latest"). Confirmed live this correctly
-              # leaves the 3 Service docs in demo-http-apps.yaml untouched while
-              # rewriting all 3 Deployments' images.
-              yq -i '(.. | select(has("containers")) | .containers[], .. | select(has("initContainers")) | .initContainers[] | select(.image != null)).image |= sub("^.*/", "'"${harbor_registry_fqdn}"'/registry/")' "$yaml_dst"
-              ;;
-            *)
-              # HealthMonitor, L7Rule, Service, Deployment - no changes.
-              ;;
-          esac
+          # Per-document dispatch, not per-file. An earlier version keyed
+          # the whole file's rewrite off select(di == 0) | .kind alone (to
+          # dodge a DIFFERENT bug: a bare '.kind' on a multi-doc file
+          # yields every document's kind concatenated, matching no case
+          # label at all) - but that still means only document 0's own
+          # kind ever reached a case label below; any other document's
+          # kind further down the same file was silently skipped
+          # regardless of what it was. Confirmed live with a
+          # Service-then-Gateway test file: the Gateway's listener
+          # hostname stayed at its unrendered placeholder value. Looping
+          # per document index and dispatching each one on ITS OWN kind
+          # fixes this for any Kind/ordering combination while keeping
+          # every per-Kind expression below unchanged (each is now just
+          # scoped to "select(di == $di) | ..." instead of running bare
+          # against the whole file).
+          last_di=$(yq 'document_index' "$yaml_dst" | tail -1)
+          doc_count=$((last_di + 1))
+          for ((di = 0; di < doc_count; di++)); do
+            this_kind="$(yq "select(di == $di) | .kind" "$yaml_dst")"
+            case "$this_kind" in
+              Ingress)
+                rule_count=$(yq "select(di == $di) | .spec.rules | length" "$yaml_dst")
+                for ((i = 0; i < rule_count; i++)); do
+                  yq -i "(select(di == $di) | .spec.rules[$i].host) = \"v$((i + 1)).${full_domain}\"" "$yaml_dst"
+                done
+                ;;
+              HTTPRoute)
+                httproute_name="$(yq "select(di == $di) | .metadata.name" "$yaml_dst")"
+                yq -i "(select(di == $di)) |= (del(.spec.hostnames) | .spec.hostnames[0] = \"${httproute_name}.${full_domain}\")" "$yaml_dst"
+                ;;
+              Gateway)
+                yq -i "(select(di == $di) | .spec.listeners[].hostname) = \"*.${full_domain}\"" "$yaml_dst"
+                ;;
+              HostRule)
+                hostrule_name="$(yq "select(di == $di) | .metadata.name" "$yaml_dst")"
+                yq -i "(select(di == $di) | .spec.virtualhost.fqdn) = \"${hostrule_name}.${full_domain}\"" "$yaml_dst"
+                ;;
+              RouteBackendExtension)
+                rbe_name="$(yq "select(di == $di) | .metadata.name" "$yaml_dst")"
+                yq -i "(select(di == $di) | .spec.backendTLS.domainName[0]) = \"${rbe_name}.${full_domain}\"" "$yaml_dst"
+                ;;
+              *)
+                # HealthMonitor, L7Rule, Service, Deployment - no per-Kind
+                # hostname/URL rewrite for this document. The Harbor image
+                # rewrite below runs unconditionally instead of as a case
+                # here - see that comment for why.
+                ;;
+            esac
+          done
+          # Runs on the whole file at once (not per-document like the loop
+          # above), unconditionally - the select(has("containers")) filter
+          # already makes it a safe no-op on every document that isn't a
+          # Deployment (or anything else without a
+          # .containers/.initContainers path), regardless of position in
+          # the file or of any document's own kind. Rewrites every
+          # container's (and initContainer's) image in every matching
+          # document across the whole multi-doc stream - registry host
+          # swapped for this environment's own Harbor, image name/tag kept
+          # as-is (untagged stays untagged, i.e. still implicitly ":latest"
+          # by Docker convention, matching how the harbor image-preload
+          # step always pushes as ":latest").
+          yq -i '(.. | select(has("containers")) | .containers[], .. | select(has("initContainers")) | .initContainers[] | select(.image != null)).image |= sub("^.*/", "'"${harbor_registry_fqdn}"'/registry/")' "$yaml_dst"
         done
       fi
       #
