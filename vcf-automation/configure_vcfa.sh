@@ -281,6 +281,30 @@ vcenter_api() {
 vcfa_login
 
 #
+# Refresh VCFA's view of the registered VCF instance (SDDC Manager)
+# before doing anything else - confirmed live (2026-09-22, on the
+# demoavi/dev-avi-vcf vApp use case port of this same script) this is
+# what actually populates VCFA's own inventory of newly-available
+# components (Avi controller, Supervisor network stack) discovered
+# through SDDC Manager, not something that happens automatically on
+# its own. This is very likely the real fix for a region-creation 400
+# ("zones of the specified supervisors do not have a network stack
+# configured ... ensure the supervisor inventory has been refreshed" -
+# the error message is telling us exactly this) rather than merely
+# waiting it out via retries. Also means the Avi controller is expected
+# to already be discoverable here (Avi is deployed and configured well
+# before this script runs) - see the aviController check further down,
+# which only polls for this instead of ever creating one manually.
+#
+vcfa_api GET "cloudapi/1.0.0/vcfInfraEndpoints" ""
+vcf_infra_endpoint_id=$(echo ${response_body} | jq -c -r '.values[0].id')
+if [ -n "${vcf_infra_endpoint_id}" ] && [ "${vcf_infra_endpoint_id}" != "null" ]; then
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: refreshing VCFA's view of VCF instance ${vcf_infra_endpoint_id}" "${log_file}" "" ""
+  vcfa_api POST "cloudapi/1.0.0/vcfInfraEndpoints/${vcf_infra_endpoint_id}/refresh" ""
+  sleep 60
+fi
+
+#
 # Retrieve NSX Manager id and name
 #
 vcfa_api GET "cloudapi/v1/nsxManagers" ""
@@ -851,18 +875,27 @@ do
           avi_controller_id=$(echo ${response_body} | jq -c -r --arg arg "${region_id}" '.values[] | select(.regionRef.id == $arg) | .id' | head -1)
           if [ -z "${avi_controller_id}" ]; then
             #
-            # SDDC Manager registers Avi directly with NSX-T (enforcement
-            # point), but VCFA keeps its OWN, separate aviControllers
-            # catalog that is not populated automatically from that NSX
-            # registration - confirmed live: catalog stayed empty long
-            # after Avi/NSX were both healthy. It requires this explicit
-            # provider-side registration call (schema confirmed live via
-            # the API's own "Unrecognized field" error message).
+            # Do NOT manually POST a new aviController here - confirmed
+            # live (2026-09-22, demoavi/dev-avi-vcf vApp use case port of
+            # this script) that VCFA auto-discovers and registers Avi
+            # itself (via the vcfInfraEndpoints refresh at the top of
+            # this script) under its OWN internally-generated service
+            # account (username like "svc-vcfa_<uuid>"), not "admin"/
+            # generic_password. POSTing a second, manually-created entry
+            # with the wrong credentials creates a conflicting duplicate
+            # rather than fixing anything - confirmed live this exact
+            # duplicate (two aviControllers registered against the same
+            # NSX Manager) breaks VCFA's own internal
+            # findControllerIdByNsxManager lookup platform-wide (500
+            # "Query did not return a unique result: 2 results were
+            # returned" on ANY aviSetting GET, the Load Balancing
+            # Settings UI page, and even deleting the duplicate itself -
+            # a genuine backend limitation once created, seemingly not
+            # cleanly reversible via this API). If it's still not here
+            # after the refresh already done above, wait a bit longer
+            # and fail loudly rather than creating a wrong one.
             #
-            log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: no avi controller registered in VCFA for region ${region_ref_name}, registering ${ip_avi}" "${log_file}" "" ""
-            avi_controller_json=$(jq -n --arg url "https://${ip_avi}" --arg pass "${generic_password}" --arg regionid "${region_id}" \
-              '{name: "provider-avi", url: $url, username: "admin", password: $pass, license: "ENTERPRISE", regionRef: {id: $regionid}, isDedicatedForClassicTenants: false}')
-            vcfa_api POST "cloudapi/v1/loadBalancer/aviControllers" "${avi_controller_json}"
+            log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: no avi controller registered in VCFA for region ${region_ref_name} yet, waiting for VCFA's own auto-discovery" "${log_file}" "" ""
             for attempt_avi_reg in $(seq 1 12); do
               sleep 10
               vcfa_api GET "cloudapi/v1/loadBalancer/aviControllers?filter=regionRef.id==${region_id}" ""
@@ -872,7 +905,8 @@ do
               fi
             done
             if [ -z "${avi_controller_id}" ]; then
-              log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: FAILED to register avi controller ${ip_avi} in VCFA after waiting" "${log_file}" "${slack_webhook}" "${google_webhook}"
+              log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: avi controller for region ${region_ref_name} never appeared in VCFA after waiting, aborting" "${log_file}" "${slack_webhook}" "${google_webhook}"
+              exit 100
             fi
           fi
           if [ -n "${avi_controller_id}" ]; then
