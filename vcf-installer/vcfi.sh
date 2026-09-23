@@ -178,8 +178,8 @@ VCFI_EXPECT_EOF
     sddc_manager_api 3 2 PATCH '{"bundleDownloadSpec":{"downloadNow":true}}' ${ip_vcf_installer} v1/bundles/${depot_id} $(jq -c -r .accessToken /tmp/token_vcfi.json)
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: patching bundle ${depot_id} to download it" "${log_file}" "" ""
   done
-  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: waiting 600 seconds" "${log_file}" "" ""
-  sleep 600
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, VCF-I: waiting 900 seconds" "${log_file}" "" ""
+  sleep 900
   #
   # download bundles
   #
