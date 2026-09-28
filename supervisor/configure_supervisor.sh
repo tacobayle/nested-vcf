@@ -167,6 +167,7 @@ if [[ ${vcf_version_two_digit} == "9.0" || ${vcf_version_two_digit} == "9.1" ]];
     fi
     sleep ${pause_tanzu_supervisor}
   done
+  log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}, waiting 300 seconds" "${log_file}" "" ""
   sleep 300
   #
   # Retrieve API server cluster endpoint
