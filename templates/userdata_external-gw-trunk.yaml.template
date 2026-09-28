@@ -584,6 +584,19 @@ write_files:
       fi
       #
       #
+      #
+      if [ -n "${gw_bootstrap_repo_url}" ]; then
+        sudo -u ubuntu git clone "${gw_bootstrap_repo_url}" /home/ubuntu/dev-avi-vcf || echo "WARNING: could not clone ${gw_bootstrap_repo_url}" >&2
+        chmod +x /home/ubuntu/dev-avi-vcf/scripts/*.sh 2>/dev/null
+        if [ -f /home/ubuntu/dev-avi-vcf/scripts/vcf_bootstrap.sh ]; then
+          touch /home/ubuntu/vcf_bootstrap.log
+          chown ubuntu:ubuntu /home/ubuntu/vcf_bootstrap.log
+          sudo -u ubuntu nohup bash /home/ubuntu/dev-avi-vcf/scripts/vcf_bootstrap.sh /home/ubuntu/json/deployment.json > /home/ubuntu/vcf_bootstrap.log 2>&1 &
+          disown
+        fi
+      fi
+      #
+      #
       echo "cloud init done" | tee /tmp/cloudInitDone.log
     path: /opt/bootstrap.sh
     permissions: 0755

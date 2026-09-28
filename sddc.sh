@@ -176,6 +176,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${vault_pki_intermediate_role_name}@${vault_pki_intermediate_role_name}@g" \
         -e "s@\${vault_pki_intermediate_role_allow_subdomains}@${vault_pki_intermediate_role_allow_subdomains}@" \
         -e "s@\${vault_pki_intermediate_role_max_ttl}@${vault_pki_intermediate_role_max_ttl}@" \
+        -e "s@\${gw_bootstrap_repo_url}@${gw_bootstrap_repo_url }@" \
         -e "s/\${hostname}/${gw_name}/" /nested-vcf/templates/userdata_external-gw-trunk.yaml.template | tee /root/${gw_name}_userdata.yaml > /dev/null
     #
     sed -e "s#\${public_key}#$(awk '{printf "%s\\n", $0}' /root/.ssh/id_rsa.pub | awk '{length=$0; print substr($0, 1, length-2)}')#" \
