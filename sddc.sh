@@ -452,40 +452,40 @@ if [[ ${operation} == "apply" ]] ; then
 #      log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM: please patch it: ssh vcf@${ip_vcf_installer}" ${log_file} ${slack_webhook} ${google_webhook}
     fi
   fi
-  #
-  # ESX customization
-  #
-  echo '------------------------------------------------------------' | tee -a ${log_file}
-  echo "ESXI customization  - This should take 2 minutes per nested ESXi" | tee -a ${log_file}
-  for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
-  do
-    if [[ $(((${esxi}-1)/4+1)) -eq 1 ]] ; then
-      name_esxi="${basename_sddc}-mgmt-esxi0${esxi}"
-    fi
-    if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
-      name_esxi="${basename_sddc}-wld0$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
-    fi
-    govc vm.power -s ${name_esxi}
-    sleep 30
-    govc vm.power -on ${name_esxi}
-    script_file="/home/ubuntu/esxi/esxi_customization-$esxi.sh"
-    test_remote_script_retry=15
-    test_remote_script_pause=20
-    log_message "running the following command from the gw: ${script_file}" ${log_file} ${slack_webhook} ${google_webhook}
-    ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file}" >> ${log_file} 2>&1 &
-    test_remote_script ${log_file} ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
-    if [ $? -eq 100 ]; then
-      log_message "ERROR while running the following command from the gw: ${script_file} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
-    fi
-#    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "/bin/bash /home/ubuntu/esxi/esxi_customization-$esxi.sh"
-    cdrom_name=$(govc device.ls -vm "${folder}/${name_esxi}" -json | jq -r --arg arg "VirtualCdrom" '.devices[] | select( .type == $arg).name')
-    govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device "${cdrom_name}" nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
-    sleep 10
-    govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device "${cdrom_name}" nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
-    govc datastore.rm nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
-    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${name_esxi} ready" ${log_file} ${slack_webhook} ${google_webhook}
-  done
-  govc datastore.rm nested-vcf
+#  #
+#  # ESX customization
+#  #
+#  echo '------------------------------------------------------------' | tee -a ${log_file}
+#  echo "ESXI customization  - This should take 2 minutes per nested ESXi" | tee -a ${log_file}
+#  for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
+#  do
+#    if [[ $(((${esxi}-1)/4+1)) -eq 1 ]] ; then
+#      name_esxi="${basename_sddc}-mgmt-esxi0${esxi}"
+#    fi
+#    if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
+#      name_esxi="${basename_sddc}-wld0$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
+#    fi
+#    govc vm.power -s ${name_esxi}
+#    sleep 30
+#    govc vm.power -on ${name_esxi}
+#    script_file="/home/ubuntu/esxi/esxi_customization-$esxi.sh"
+#    test_remote_script_retry=15
+#    test_remote_script_pause=20
+#    log_message "running the following command from the gw: ${script_file}" ${log_file} ${slack_webhook} ${google_webhook}
+#    ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file}" >> ${log_file} 2>&1 &
+#    test_remote_script ${log_file} ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+#    if [ $? -eq 100 ]; then
+#      log_message "ERROR while running the following command from the gw: ${script_file} ${script_file%.*}.done after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+#    fi
+##    ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "/bin/bash /home/ubuntu/esxi/esxi_customization-$esxi.sh"
+#    cdrom_name=$(govc device.ls -vm "${folder}/${name_esxi}" -json | jq -r --arg arg "VirtualCdrom" '.devices[] | select( .type == $arg).name')
+#    govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device "${cdrom_name}" nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
+#    sleep 10
+#    govc device.cdrom.eject -vm "${folder}/${name_esxi}" -device "${cdrom_name}" nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
+#    govc datastore.rm nested-vcf/$(basename ${iso_location}-${esxi}.iso) > /dev/null
+#    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: nested ESXi ${name_esxi} ready" ${log_file} ${slack_webhook} ${google_webhook}
+#  done
+#  govc datastore.rm nested-vcf
   #
   # VCF 9 - vcf_installer use case
   #
