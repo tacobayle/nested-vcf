@@ -11,6 +11,7 @@ vsphere_underlay_cluster=$(jq -c -r .vsphere_underlay.cluster $jsonFile)
 vsphere_underlay_datastore=$(jq -c -r .vsphere_underlay.datastore $jsonFile)
 vsphere_underlay_username=$(jq -c -r .vsphere_underlay.username $jsonFile)
 vsphere_underlay_password=$(jq -c -r .vsphere_underlay.password $jsonFile)
+iso_location="/tmp/esxi"
 basename=$(jq -c -r '.esxi.basename' $jsonFile)
 basename_sddc=$(jq -c -r '.sddc.basename' $jsonFile)
 gw_name="${basename_sddc}-external-gw"

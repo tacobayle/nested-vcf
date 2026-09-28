@@ -272,7 +272,6 @@ if [[ ${operation} == "apply" ]] ; then
   iso_mount_location="/tmp/esxi_cdrom_mount"
   iso_build_location="/tmp/esxi_cdrom"
   boot_cfg_location="efi/boot/boot.cfg"
-  iso_location="/tmp/esxi"
   xorriso -ecma119_map lowercase -osirrox on -indev "/root/$(basename ${iso_url})" -extract / ${iso_mount_location}
   echo "Copying source ESXi ISO to Build directory" >> ${log_file}
   rm -fr ${iso_build_location}
