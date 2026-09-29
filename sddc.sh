@@ -159,23 +159,23 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${ip_gw_last_octet}@${ip_gw_last_octet}@" \
         -e "s/\${forwarders_bind}/${forwarders_bind}/" \
         -e "s/\${yaml_folder}/${yaml_folder}/" \
-        -e "s@\${vault_secret_file_path}@${vault_secret_file_path}@" \
-        -e "s@\${vault_pki_name}@${vault_pki_name}@" \
-        -e "s@\${vault_pki_max_lease_ttl}@${vault_pki_max_lease_ttl}@" \
-        -e "s@\${vault_pki_cert_common_name}@${vault_pki_cert_common_name}@" \
-        -e "s@\${vault_pki_cert_issuer_name}@${vault_pki_cert_issuer_name}@" \
-        -e "s@\${vault_pki_cert_ttl}@${vault_pki_cert_ttl}@" \
-        -e "s@\${vault_pki_cert_path}@${vault_pki_cert_path}@" \
-        -e "s@\${vault_pki_role_name}@${vault_pki_role_name}@g" \
-        -e "s@\${vault_pki_intermediate_name}@${vault_pki_intermediate_name}@" \
-        -e "s@\${vault_pki_intermediate_max_lease_ttl}@${vault_pki_intermediate_max_lease_ttl}@" \
-        -e "s@\${vault_pki_intermediate_cert_common_name}@${vault_pki_intermediate_cert_common_name}@" \
-        -e "s@\${vault_pki_intermediate_cert_issuer_name}@${vault_pki_intermediate_cert_issuer_name}@" \
-        -e "s@\${vault_pki_intermediate_cert_path}@${vault_pki_intermediate_cert_path}@" \
-        -e "s@\${vault_pki_intermediate_cert_path_signed}@${vault_pki_intermediate_cert_path_signed}@" \
-        -e "s@\${vault_pki_intermediate_role_name}@${vault_pki_intermediate_role_name}@g" \
-        -e "s@\${vault_pki_intermediate_role_allow_subdomains}@${vault_pki_intermediate_role_allow_subdomains}@" \
-        -e "s@\${vault_pki_intermediate_role_max_ttl}@${vault_pki_intermediate_role_max_ttl}@" \
+#        -e "s@\${vault_secret_file_path}@${vault_secret_file_path}@" \
+#        -e "s@\${vault_pki_name}@${vault_pki_name}@" \
+#        -e "s@\${vault_pki_max_lease_ttl}@${vault_pki_max_lease_ttl}@" \
+#        -e "s@\${vault_pki_cert_common_name}@${vault_pki_cert_common_name}@" \
+#        -e "s@\${vault_pki_cert_issuer_name}@${vault_pki_cert_issuer_name}@" \
+#        -e "s@\${vault_pki_cert_ttl}@${vault_pki_cert_ttl}@" \
+#        -e "s@\${vault_pki_cert_path}@${vault_pki_cert_path}@" \
+#        -e "s@\${vault_pki_role_name}@${vault_pki_role_name}@g" \
+#        -e "s@\${vault_pki_intermediate_name}@${vault_pki_intermediate_name}@" \
+#        -e "s@\${vault_pki_intermediate_max_lease_ttl}@${vault_pki_intermediate_max_lease_ttl}@" \
+#        -e "s@\${vault_pki_intermediate_cert_common_name}@${vault_pki_intermediate_cert_common_name}@" \
+#        -e "s@\${vault_pki_intermediate_cert_issuer_name}@${vault_pki_intermediate_cert_issuer_name}@" \
+#        -e "s@\${vault_pki_intermediate_cert_path}@${vault_pki_intermediate_cert_path}@" \
+#        -e "s@\${vault_pki_intermediate_cert_path_signed}@${vault_pki_intermediate_cert_path_signed}@" \
+#        -e "s@\${vault_pki_intermediate_role_name}@${vault_pki_intermediate_role_name}@g" \
+#        -e "s@\${vault_pki_intermediate_role_allow_subdomains}@${vault_pki_intermediate_role_allow_subdomains}@" \
+#        -e "s@\${vault_pki_intermediate_role_max_ttl}@${vault_pki_intermediate_role_max_ttl}@" \
         -e "s@\${gw_bootstrap_repo_url}@${gw_bootstrap_repo_url }@" \
         -e "s/\${hostname}/${gw_name}/" /nested-vcf/templates/userdata_external-gw-trunk.yaml.template | tee /root/${gw_name}_userdata.yaml > /dev/null
     #

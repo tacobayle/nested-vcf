@@ -383,71 +383,71 @@ write_files:
       done
       #
       systemctl restart bind9.service
-      #
-      # Vault config.
-      #
-      key_file="/opt/vault/tls/tls.key"
-      cert_conf_file="/opt/vault/tls/crt.conf"
-      cert_file="/opt/vault/tls/tls.crt"
-      openssl genrsa -out ${key_file} 4096
-      echo "[req]" | tee ${cert_conf_file} >/dev/null 2>&1
-      echo "default_bits = 4096" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "prompt = no" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "default_md = sha256" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "distinguished_name = dn" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "req_extensions = v3_req" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "[dn]" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "CN = ${domain}" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "O = Organization" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "L = City" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "ST = State" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "C = US" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "[v3_req]" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "basicConstraints = CA:FALSE" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "keyUsage = nonRepudiation, digitalSignature, keyEncipherment" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "subjectAltName = @alt_names" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "[alt_names]" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "DNS.1 = vault.${domain}" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      echo "IP.1 = ${ip_gw}" | tee -a ${cert_conf_file} >/dev/null 2>&1
-      openssl req -new -x509 -key ${key_file} -out ${cert_file} -days 365 -config ${cert_conf_file} -extensions v3_req
-      mkdir -p /etc/vault.d
-      mv /etc/vault.d/vault.hcl /etc/vault.d/vault.hcl.ori
-      export VAULT_ADDR="https://127.0.0.1:8200"
-      vault_config='
-      storage "file" {
-        path    = "/opt/vault/data"
-      }
-        listener "tcp" {
-          address     = "0.0.0.0:8200"
-          tls_disable = "false"
-          tls_cert_file = "/opt/vault/tls/tls.crt"
-          tls_key_file = "/opt/vault/tls/tls.key"
-        }
-        ui = true
-        api_addr = "https://${ip_gw}:8200"'
-      echo "${vault_config}" | tee /etc/vault.d/vault.hcl
-      systemctl start vault
-      systemctl enable vault
-      # vault server -config /etc/vault.d/vault.hcl
-      vault operator init -key-shares=1 -key-threshold=1 -tls-skip-verify -format json | tee ${vault_secret_file_path}
-      vault operator unseal -tls-skip-verify $(jq -c -r .unseal_keys_hex[0] ${vault_secret_file_path})
-      vault login -tls-skip-verify $(jq -c -r .root_token ${vault_secret_file_path})
-      # root ca
-      vault secrets enable -tls-skip-verify ${vault_pki_name}
-      vault secrets tune -tls-skip-verify -max-lease-ttl=${vault_pki_max_lease_ttl} "${vault_pki_name}"
-      vault write -tls-skip-verify -field=certificate ${vault_pki_name}/root/generate/internal common_name="${vault_pki_cert_common_name}" issuer_name="${vault_pki_cert_issuer_name}" ttl=${vault_pki_cert_ttl} > ${vault_pki_cert_path}
-      vault write -tls-skip-verify ${vault_pki_name}/roles/${vault_pki_role_name} allow_any_name=true
-      vault write -tls-skip-verify ${vault_pki_name}/config/urls issuing_certificates="https://${ip_gw}:8200/v1/${vault_pki_role_name}/ca" crl_distribution_points="https://${ip_gw}:8200/v1/${vault_pki_role_name}/crl"
-      # intermediate ca
-      vault secrets enable -tls-skip-verify -path=${vault_pki_intermediate_name} ${vault_pki_name}
-      vault secrets tune -tls-skip-verify -max-lease-ttl=${vault_pki_intermediate_max_lease_ttl} ${vault_pki_intermediate_name}
-      vault write -tls-skip-verify -format=json ${vault_pki_intermediate_name}/intermediate/generate/internal common_name="${vault_pki_intermediate_cert_common_name}" issuer_name="${vault_pki_intermediate_cert_issuer_name}" | jq -r '.data.csr' | tee ${vault_pki_intermediate_cert_path}
-      vault write -tls-skip-verify -format=json ${vault_pki_name}/root/sign-intermediate issuer_ref="${vault_pki_cert_issuer_name}" csr=@${vault_pki_intermediate_cert_path} format=pem_bundle ttl="${vault_pki_intermediate_max_lease_ttl}" | jq -r '.data.certificate' | tee ${vault_pki_intermediate_cert_path_signed}
-      vault write -tls-skip-verify ${vault_pki_intermediate_name}/intermediate/set-signed certificate=@${vault_pki_intermediate_cert_path_signed}
-      vault write -tls-skip-verify ${vault_pki_intermediate_name}/roles/${vault_pki_intermediate_role_name} issuer_ref="$(vault read -tls-skip-verify -field=default ${vault_pki_intermediate_role_name}/config/issuers)" allowed_domains="${domain}" allow_subdomains=${vault_pki_intermediate_role_allow_subdomains} max_ttl="${vault_pki_intermediate_role_max_ttl}"
+      ##
+      ## Vault config.
+      ##
+      #key_file="/opt/vault/tls/tls.key"
+      #cert_conf_file="/opt/vault/tls/crt.conf"
+      #cert_file="/opt/vault/tls/tls.crt"
+      #openssl genrsa -out ${key_file} 4096
+      #echo "[req]" | tee ${cert_conf_file} >/dev/null 2>&1
+      #echo "default_bits = 4096" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "prompt = no" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "default_md = sha256" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "distinguished_name = dn" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "req_extensions = v3_req" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "[dn]" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "CN = ${domain}" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "O = Organization" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "L = City" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "ST = State" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "C = US" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "[v3_req]" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "basicConstraints = CA:FALSE" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "keyUsage = nonRepudiation, digitalSignature, keyEncipherment" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "subjectAltName = @alt_names" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "[alt_names]" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "DNS.1 = vault.${domain}" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #echo "IP.1 = ${ip_gw}" | tee -a ${cert_conf_file} >/dev/null 2>&1
+      #openssl req -new -x509 -key ${key_file} -out ${cert_file} -days 365 -config ${cert_conf_file} -extensions v3_req
+      #mkdir -p /etc/vault.d
+      #mv /etc/vault.d/vault.hcl /etc/vault.d/vault.hcl.ori
+      #export VAULT_ADDR="https://127.0.0.1:8200"
+      #vault_config='
+      #storage "file" {
+      #  path    = "/opt/vault/data"
+      #}
+      #  listener "tcp" {
+      #    address     = "0.0.0.0:8200"
+      #    tls_disable = "false"
+      #    tls_cert_file = "/opt/vault/tls/tls.crt"
+      #    tls_key_file = "/opt/vault/tls/tls.key"
+      #  }
+      #  ui = true
+      #  api_addr = "https://${ip_gw}:8200"'
+      #echo "${vault_config}" | tee /etc/vault.d/vault.hcl
+      #systemctl start vault
+      #systemctl enable vault
+      ## vault server -config /etc/vault.d/vault.hcl
+      #vault operator init -key-shares=1 -key-threshold=1 -tls-skip-verify -format json | tee ${vault_secret_file_path}
+      #vault operator unseal -tls-skip-verify $(jq -c -r .unseal_keys_hex[0] ${vault_secret_file_path})
+      #vault login -tls-skip-verify $(jq -c -r .root_token ${vault_secret_file_path})
+      ## root ca
+      #vault secrets enable -tls-skip-verify ${vault_pki_name}
+      #vault secrets tune -tls-skip-verify -max-lease-ttl=${vault_pki_max_lease_ttl} "${vault_pki_name}"
+      #vault write -tls-skip-verify -field=certificate ${vault_pki_name}/root/generate/internal common_name="${vault_pki_cert_common_name}" issuer_name="${vault_pki_cert_issuer_name}" ttl=${vault_pki_cert_ttl} > ${vault_pki_cert_path}
+      #vault write -tls-skip-verify ${vault_pki_name}/roles/${vault_pki_role_name} allow_any_name=true
+      #vault write -tls-skip-verify ${vault_pki_name}/config/urls issuing_certificates="https://${ip_gw}:8200/v1/${vault_pki_role_name}/ca" crl_distribution_points="https://${ip_gw}:8200/v1/${vault_pki_role_name}/crl"
+      ## intermediate ca
+      #vault secrets enable -tls-skip-verify -path=${vault_pki_intermediate_name} ${vault_pki_name}
+      #vault secrets tune -tls-skip-verify -max-lease-ttl=${vault_pki_intermediate_max_lease_ttl} ${vault_pki_intermediate_name}
+      #vault write -tls-skip-verify -format=json ${vault_pki_intermediate_name}/intermediate/generate/internal common_name="${vault_pki_intermediate_cert_common_name}" issuer_name="${vault_pki_intermediate_cert_issuer_name}" | jq -r '.data.csr' | tee ${vault_pki_intermediate_cert_path}
+      #vault write -tls-skip-verify -format=json ${vault_pki_name}/root/sign-intermediate issuer_ref="${vault_pki_cert_issuer_name}" csr=@${vault_pki_intermediate_cert_path} format=pem_bundle ttl="${vault_pki_intermediate_max_lease_ttl}" | jq -r '.data.certificate' | tee ${vault_pki_intermediate_cert_path_signed}
+      #vault write -tls-skip-verify ${vault_pki_intermediate_name}/intermediate/set-signed certificate=@${vault_pki_intermediate_cert_path_signed}
+      #vault write -tls-skip-verify ${vault_pki_intermediate_name}/roles/${vault_pki_intermediate_role_name} issuer_ref="$(vault read -tls-skip-verify -field=default ${vault_pki_intermediate_role_name}/config/issuers)" allowed_domains="${domain}" allow_subdomains=${vault_pki_intermediate_role_allow_subdomains} max_ttl="${vault_pki_intermediate_role_max_ttl}"
       #
       # NTP config
       #
@@ -583,6 +583,7 @@ write_files:
         done
       fi
       #
+      echo "cloud init done" | tee /tmp/cloudInitDone.log
       #
       #
       if [ -n "${gw_bootstrap_repo_url}" ]; then
