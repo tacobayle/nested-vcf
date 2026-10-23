@@ -273,14 +273,13 @@ write_files:
         ((count_avi++))
       done
       #
-      # zone delegation - avi_subdomain plus one per org (org-1.<domain>,
-      # org-2.<domain>, ...) - Avi's own internal DNS/IPAM profile is
+      # zone delegation - avi_subdomain plus, per org, <org>.<domain>,
+      # <org>-vks.<domain> and <org>-gitops.<domain> - Avi's own internal DNS/IPAM profile is
       # authoritative for each org's own subdomain too now, so every one
       # needs the exact same NS delegation to the same Avi DNS VS.
       #
       echo "avi-dns-vs   IN            A       ${ip_avi_dns}" | tee -a /var/lib/bind/db.${domain}
-      { echo "${avi_subdomain}"; echo '${vcf_a_org_names}' | jq -r '.[]'; } | while read zone_subdomain
-      do
+      for zone_subdomain in "${avi_subdomain}" $(echo '${vcf_a_org_names}' | jq -r '.[] as $n | $n, ($n + "-vks"), ($n + "-gitops")'); do
         echo "\$ORIGIN ${zone_subdomain}.${domain}." | tee -a /var/lib/bind/db.${domain}
         echo "\$TTL 1D" | tee -a /var/lib/bind/db.${domain}
         echo "@         IN            NS      avi-dns-vs.${domain}." | tee -a /var/lib/bind/db.${domain}
@@ -478,10 +477,10 @@ write_files:
       #
       # VCF CLI Install
       #
-      wget -O /tmp/$(basename ${gw_vcf_cli_url}) ${gw_vcf_cli_url}
-      tar -xvzf /tmp/$(basename ${gw_vcf_cli_url})
-      mv ./vcf-cli-linux_amd64 /usr/local/bin/vcf
-      chmod a+x /usr/local/bin/vcf
+      #wget -O /tmp/$(basename ${gw_vcf_cli_url}) ${gw_vcf_cli_url}
+      #tar -xvzf /tmp/$(basename ${gw_vcf_cli_url})
+      #mv ./vcf-cli-linux_amd64 /usr/local/bin/vcf
+      #chmod a+x /usr/local/bin/vcf
       #
       # HTTP config (copy DNS zones)
       #
@@ -584,6 +583,11 @@ write_files:
       #fi
       #
       #
+      # mount the gw tools ISO (CD-ROM) read-only, if attached
+      mkdir -p /mnt/gw-tools
+      if [ -b /dev/sr0 ]; then
+        mount -o ro /dev/sr0 /mnt/gw-tools || echo "WARNING: could not mount /dev/sr0 on /mnt/gw-tools" >&2
+      fi
       #
       if [ -n "${gw_bootstrap_repo_url}" ]; then
         sudo -u ubuntu git clone "${gw_bootstrap_repo_url}" /home/ubuntu/dev-avi-vcf || echo "WARNING: could not clone ${gw_bootstrap_repo_url}" >&2

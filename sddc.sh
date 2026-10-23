@@ -58,6 +58,21 @@ if [[ ${operation} == "apply" ]] ; then
   echo "Creation of an external gw on the underlay infrastructure - This should take 10 minutes" >> ${log_file}
   # ova download
   download_file_from_url_to_location "${ubuntu_ova_url}" "/root/$(basename ${ubuntu_ova_url})" "Ubuntu OVA"
+  for iso_item_url in $(echo "${gw_iso}" | jq -c -r '.[]?.url'); do
+    download_file_from_url_to_location "${iso_item_url}" "/root/$(basename ${iso_item_url})" "$(basename ${iso_item_url})"
+  done
+  # iso build with all the gw_iso files
+  gw_iso_file=""
+  if [[ $(echo "${gw_iso}" | jq -c -r 'length') -gt 0 ]]; then
+    gw_iso_file="/root/${gw_name}-files.iso"
+    gw_iso_files=()
+    for iso_item_url in $(echo "${gw_iso}" | jq -c -r '.[]?.url'); do
+      gw_iso_files+=("/root/$(basename ${iso_item_url})")
+    done
+    rm -f "${gw_iso_file}"
+    echo "Building ISO ${gw_iso_file} for the gw" >> ${log_file}
+    xorrisofs -relaxed-filenames -iso-level 3 -J -R -V "GW_FILES" -o "${gw_iso_file}" "${gw_iso_files[@]}" >> ${log_file} 2>&1
+  fi
   if [[ ${vcf_version_two_digit} == "9.0" ]]; then
     download_file_from_url_to_location "${avi_ova_url}" "/root/$(basename ${avi_ova_url})" "Avi OVA"
     download_file_from_url_to_location "${avi_ova_url_sddc_manager}" "/root/$(basename ${avi_ova_url_sddc_manager})" "Avi OVA"
@@ -159,23 +174,6 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${ip_gw_last_octet}@${ip_gw_last_octet}@" \
         -e "s/\${forwarders_bind}/${forwarders_bind}/" \
         -e "s/\${yaml_folder}/${yaml_folder}/" \
-#        -e "s@\${vault_secret_file_path}@${vault_secret_file_path}@" \
-#        -e "s@\${vault_pki_name}@${vault_pki_name}@" \
-#        -e "s@\${vault_pki_max_lease_ttl}@${vault_pki_max_lease_ttl}@" \
-#        -e "s@\${vault_pki_cert_common_name}@${vault_pki_cert_common_name}@" \
-#        -e "s@\${vault_pki_cert_issuer_name}@${vault_pki_cert_issuer_name}@" \
-#        -e "s@\${vault_pki_cert_ttl}@${vault_pki_cert_ttl}@" \
-#        -e "s@\${vault_pki_cert_path}@${vault_pki_cert_path}@" \
-#        -e "s@\${vault_pki_role_name}@${vault_pki_role_name}@g" \
-#        -e "s@\${vault_pki_intermediate_name}@${vault_pki_intermediate_name}@" \
-#        -e "s@\${vault_pki_intermediate_max_lease_ttl}@${vault_pki_intermediate_max_lease_ttl}@" \
-#        -e "s@\${vault_pki_intermediate_cert_common_name}@${vault_pki_intermediate_cert_common_name}@" \
-#        -e "s@\${vault_pki_intermediate_cert_issuer_name}@${vault_pki_intermediate_cert_issuer_name}@" \
-#        -e "s@\${vault_pki_intermediate_cert_path}@${vault_pki_intermediate_cert_path}@" \
-#        -e "s@\${vault_pki_intermediate_cert_path_signed}@${vault_pki_intermediate_cert_path_signed}@" \
-#        -e "s@\${vault_pki_intermediate_role_name}@${vault_pki_intermediate_role_name}@g" \
-#        -e "s@\${vault_pki_intermediate_role_allow_subdomains}@${vault_pki_intermediate_role_allow_subdomains}@" \
-#        -e "s@\${vault_pki_intermediate_role_max_ttl}@${vault_pki_intermediate_role_max_ttl}@" \
         -e "s@\${gw_bootstrap_repo_url}@${gw_bootstrap_repo_url }@" \
         -e "s/\${hostname}/${gw_name}/" /nested-vcf/templates/userdata_external-gw-trunk.yaml.template | tee /root/${gw_name}_userdata.yaml > /dev/null
     #
@@ -190,6 +188,15 @@ if [[ ${operation} == "apply" ]] ; then
     govc vm.disk.change -vm "${folder}/${gw_name}" -size $(jq -c -r .gw.disk $jsonFile) > /dev/null 2>&1
     nic_to_esxi=$(jq -c -r .esxi.nics[0] $jsonFile)
     govc vm.network.add -vm "${folder}/${gw_name}" -net "${nic_to_esxi}" -net.adapter vmxnet3
+    if [[ -n ${gw_iso_file} ]]; then
+      ds=$(jq -c -r .vsphere_underlay.datastore $jsonFile)
+      dc=$(jq -c -r .vsphere_underlay.datacenter $jsonFile)
+      echo "Uploading ISO ${gw_iso_file} for the gw" >> ${log_file}
+      govc datastore.upload --ds=${ds} --dc=${dc} "${gw_iso_file}" nested-vcf/$(basename ${gw_iso_file}) > /dev/null 2>&1
+      # adding a cdrom to the gw and attaching the ISO
+      gw_cdrom=$(govc device.cdrom.add -vm "${folder}/${gw_name}")
+      govc device.cdrom.insert -vm "${folder}/${gw_name}" -device "${gw_cdrom}" -ds ${ds} nested-vcf/$(basename ${gw_iso_file}) > /dev/null 2>&1
+    fi
     govc vm.power -on=true "${gw_name}" > /dev/null 2>&1
     echo "   +++ Updating /etc/hosts..." >> ${log_file}
     contents=$(cat /etc/hosts | grep -v ${ip_gw})
@@ -208,7 +215,7 @@ if [[ ${operation} == "apply" ]] ; then
         if [[ $? -eq 0 ]]; then
           echo "Gw ${gw_name} is ready." >> ${log_file}
           log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: external-gw ${gw_name} VM reachable and configured" ${log_file} ${slack_webhook} ${google_webhook}
-          ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "git clone https://github.com/demoavi/dev-avi-vcf.git /home/ubuntu/dev-avi-vcf" >> ${log_file} 2>&1
+#          ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "git clone https://github.com/demoavi/dev-avi-vcf.git /home/ubuntu/dev-avi-vcf" >> ${log_file} 2>&1
           echo $folders_to_copy | jq -c -r .[] | while read folder
           do
             scp -o StrictHostKeyChecking=no -r /nested-vcf/${folder} ubuntu@${ip_gw}:/home/ubuntu
@@ -221,28 +228,28 @@ if [[ ${operation} == "apply" ]] ; then
           scp -o StrictHostKeyChecking=no "/root/$(basename ${avi_ova_url_sddc_manager})" ubuntu@${ip_gw}:/home/ubuntu/sddc-manager/$(basename ${avi_ova_url_sddc_manager})
           scp -o StrictHostKeyChecking=no "/root/$(basename ${avi_pkg_url})" ubuntu@${ip_gw}:/home/ubuntu/avi/$(basename ${avi_pkg_url})
           scp -o StrictHostKeyChecking=no -r /root/${basename_sddc}_${operation}.json ubuntu@${ip_gw}:/home/ubuntu/json/${basename_sddc}_${operation}.json
-          for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
-          do
-            ip_esxi="$(echo ${ips_esxi} | jq -r .[$(expr ${esxi} - 1)])"
-            if [[ $(((${esxi}-1)/4+1)) -eq 1 ]] ; then
-              name_esxi="${basename_sddc}-mgmt-esxi0${esxi}"
-            fi
-            if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
-              name_esxi="${basename_sddc}-wld$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
-            fi
+#          for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
+#          do
+#            ip_esxi="$(echo ${ips_esxi} | jq -r .[$(expr ${esxi} - 1)])"
+#            if [[ $(((${esxi}-1)/4+1)) -eq 1 ]] ; then
+#              name_esxi="${basename_sddc}-mgmt-esxi0${esxi}"
+#            fi
+#            if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
+#              name_esxi="${basename_sddc}-wld$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"
+#            fi
+##            sed -e "s/\${ip_esxi}/${ip_esxi}/" \
+##                -e "s/\${nested_esxi_root_password}/$(jq -c -r .generic_password $jsonFile)/" /nested-vcf/templates/esxi_cert.expect.template | tee /root/cert-esxi-$esxi.expect > /dev/null
+##            scp -o StrictHostKeyChecking=no /root/cert-esxi-$esxi.expect ubuntu@${ip_gw}:/home/ubuntu/cert-esxi-$esxi.expect
+#            #
 #            sed -e "s/\${ip_esxi}/${ip_esxi}/" \
-#                -e "s/\${nested_esxi_root_password}/$(jq -c -r .generic_password $jsonFile)/" /nested-vcf/templates/esxi_cert.expect.template | tee /root/cert-esxi-$esxi.expect > /dev/null
-#            scp -o StrictHostKeyChecking=no /root/cert-esxi-$esxi.expect ubuntu@${ip_gw}:/home/ubuntu/cert-esxi-$esxi.expect
-            #
-            sed -e "s/\${ip_esxi}/${ip_esxi}/" \
-                -e "s@\${slack_webhook}@${slack_webhook}@" \
-                -e "s/\${esxi}/${esxi}/" \
-                -e "s/\${name_esxi}/${name_esxi}/" \
-                -e "s/\${basename_sddc}/${basename_sddc}/" \
-                -e "s/\${ESXI_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" /nested-vcf/templates/esxi_customization.sh.template | tee /root/esxi_customization-$esxi.sh > /dev/null
-            chmod u+x /root/esxi_customization-$esxi.sh
-            scp -o StrictHostKeyChecking=no /root/esxi_customization-$esxi.sh ubuntu@${ip_gw}:/home/ubuntu/esxi/esxi_customization-$esxi.sh
-          done
+#                -e "s@\${slack_webhook}@${slack_webhook}@" \
+#                -e "s/\${esxi}/${esxi}/" \
+#                -e "s/\${name_esxi}/${name_esxi}/" \
+#                -e "s/\${basename_sddc}/${basename_sddc}/" \
+#                -e "s/\${ESXI_PASSWORD}/$(jq -c -r .generic_password $jsonFile)/" /nested-vcf/templates/esxi_customization.sh.template | tee /root/esxi_customization-$esxi.sh > /dev/null
+#            chmod u+x /root/esxi_customization-$esxi.sh
+#            scp -o StrictHostKeyChecking=no /root/esxi_customization-$esxi.sh ubuntu@${ip_gw}:/home/ubuntu/esxi/esxi_customization-$esxi.sh
+#          done
           break
         else
           echo "Gw ${gw_name}: cloud init is not finished." >> ${log_file}
@@ -360,12 +367,12 @@ if [[ ${operation} == "apply" ]] ; then
     govc cluster.rule.create -name "${folder}-affinity-rule" -enable -affinity ${affinity_members}
     echo "Affinity rules should have been configured: ${folder}-affinity-rule" >> ${log_file}
   fi
-  #
-  # json file creation
-  #
-  script_file="/home/ubuntu/bash/json_builder.sh"
-  echo "running the following command from the gw: ${script_file} /home/ubuntu/json/${basename_sddc}_${operation}.json" >> ${log_file} 2>&1
-  ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} /home/ubuntu/json/${basename_sddc}_${operation}.json" >> ${log_file}
+#  #
+#  # json file creation
+#  #
+#  script_file="/home/ubuntu/bash/json_builder.sh"
+#  echo "running the following command from the gw: ${script_file} /home/ubuntu/json/${basename_sddc}_${operation}.json" >> ${log_file} 2>&1
+#  ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} /home/ubuntu/json/${basename_sddc}_${operation}.json" >> ${log_file}
   #
   # VCF Installer or Cloud Builder Deployment
   #
@@ -490,39 +497,39 @@ if [[ ${operation} == "apply" ]] ; then
   #
   # VCF 9 - vcf_installer use case
   #
-  if [[ ${name_vcf_installer} != "null" ]]; then
-#    echo '------------------------------------------------------------' | tee -a ${log_file}
-#    echo "VCF Installer configuration" | tee -a ${log_file}
-#    while [ ! -f "/root/vcfi-${ip_vcf_installer}-patched.json" ]; do
-#        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: please patch vcf installer" ${log_file} ${slack_webhook} ${google_webhook}
-#        sleep 30
-#    done
-#    sleep 60
-#    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM patched" ${log_file} ${slack_webhook} ${google_webhook}
-    #
-    # Configuring VCF 9 deployment
-    #
-    while read item
-    do
-      script_file="$(echo ${item} | jq -c -r '.script_file')"
-      test_remote_script_retry=$(echo ${item} | jq -c -r '.test_remote_script_retry')
-      test_remote_script_pause=$(echo ${item} | jq -c -r '.test_remote_script_pause')
-      #
-      log_message "running the following command from the gw: ${script_file} ${jsonFile_remote}" ${log_file} ${slack_webhook} ${google_webhook}
-      ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${jsonFile_remote}" < /dev/null 2>/dev/null &
-      test_remote_script ${log_file} ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
-      #
-      if [[ ${script_file} == "/home/ubuntu/vcenter/silent_alarm.sh" ]]; then
-        log_message "deployment stopped after ${script_file} ${jsonFile_remote}" ${log_file} ${slack_webhook} ${google_webhook}
-        exit
-      fi
-      #
-      #
-      if [ $? -eq 100 ]; then
-        log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
-      fi
-    done < <(echo "${vcfi_scripts}" | jq -c -r .[])
-  fi
+#  if [[ ${name_vcf_installer} != "null" ]]; then
+##    echo '------------------------------------------------------------' | tee -a ${log_file}
+##    echo "VCF Installer configuration" | tee -a ${log_file}
+##    while [ ! -f "/root/vcfi-${ip_vcf_installer}-patched.json" ]; do
+##        log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: please patch vcf installer" ${log_file} ${slack_webhook} ${google_webhook}
+##        sleep 30
+##    done
+##    sleep 60
+##    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: VCF installer VM patched" ${log_file} ${slack_webhook} ${google_webhook}
+#    #
+#    # Configuring VCF 9 deployment
+#    #
+#    while read item
+#    do
+#      script_file="$(echo ${item} | jq -c -r '.script_file')"
+#      test_remote_script_retry=$(echo ${item} | jq -c -r '.test_remote_script_retry')
+#      test_remote_script_pause=$(echo ${item} | jq -c -r '.test_remote_script_pause')
+#      #
+#      log_message "running the following command from the gw: ${script_file} ${jsonFile_remote}" ${log_file} ${slack_webhook} ${google_webhook}
+#      ssh -o StrictHostKeyChecking=no ubuntu@${ip_gw} "${script_file} ${jsonFile_remote}" < /dev/null 2>/dev/null &
+#      test_remote_script ${log_file} ${test_remote_script_retry} ${test_remote_script_pause} "${ip_gw}" "${script_file}"
+#      #
+#      if [[ ${script_file} == "/home/ubuntu/vcenter/silent_alarm.sh" ]]; then
+#        log_message "deployment stopped after ${script_file} ${jsonFile_remote}" ${log_file} ${slack_webhook} ${google_webhook}
+#        exit
+#      fi
+#      #
+#      #
+#      if [ $? -eq 100 ]; then
+#        log_message "ERROR while running the following command from the gw: ${script_file} ${jsonFile_remote} after ${test_remote_script_retry} retries of ${test_remote_script_pause} seconds" ${log_file} ${slack_webhook} ${google_webhook}
+#      fi
+#    done < <(echo "${vcfi_scripts}" | jq -c -r .[])
+#  fi
   #
   # VCF - cloud builder use case
   #

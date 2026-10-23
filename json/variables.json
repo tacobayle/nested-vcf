@@ -4,9 +4,9 @@
     "memory": 4096,
     "disk": "40G"
   },
-  "K8s_version_short": "v1.31",
-  "folders_to_copy": ["bash", "json", "templates", "vcenter", "nsx", "vcf-installer", "avi", "supervisor", "vcf-automation", "html", "sddc-manager"],
-  "directories": ["bin", "esxi", "vault", "yaml-files"],
+  "K8s_version_short": "v1.35",
+  "folders_to_copy": ["bash", "json", "templates", "html"],
+  "directories": ["bin", "esxi", "vault", "yaml-files", "html"],
   "yaml_folder": "yaml-files",
   "vault": {
     "secret_file_path": "/home/ubuntu/vault/secret.json",
@@ -379,7 +379,7 @@
     "content_library_name": "avi",
     "nsx_cloud_name": "mgmt-domain",
     "cloud_obj_name_prefix": "avi-auto-config",
-    "avi_subdomain": "app",
+    "avi_subdomain": "avi",
     "ansible_config_repo": "https://github.com/tacobayle/ansibleAviConfig",
     "ansible_config_tag": "v2.84",
     "ansible_playbook": "nsx.yml",
