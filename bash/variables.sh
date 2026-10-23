@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 slack_webhook=$(jq -c -r .slack_webhook $jsonFile)
+gw_accounts_secret=$(jq -c -r '.gw_accounts_secret' $jsonFile)
 google_webhook=$(jq -c -r .google_webhook $jsonFile)
 DEPOT_USERNAME=$(jq -c -r .depot.username $jsonFile)
 DEPOT_PASSWORD=$(jq -c -r .depot.password $jsonFile)
