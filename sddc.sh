@@ -174,7 +174,7 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${ip_gw_last_octet}@${ip_gw_last_octet}@" \
         -e "s/\${forwarders_bind}/${forwarders_bind}/" \
         -e "s/\${yaml_folder}/${yaml_folder}/" \
-        -e "s@\${gw_bootstrap_repo_url}@${gw_bootstrap_repo_url }@" \
+        -e "s@\${gw_bootstrap_repo_url}@${gw_bootstrap_repo_url}@" \
         -e "s/\${hostname}/${gw_name}/" /nested-vcf/templates/userdata_external-gw-trunk.yaml.template | tee /root/${gw_name}_userdata.yaml > /dev/null
     #
     sed -e "s#\${public_key}#$(awk '{printf "%s\\n", $0}' /root/.ssh/id_rsa.pub | awk '{length=$0; print substr($0, 1, length-2)}')#" \
