@@ -486,3 +486,38 @@ git_image_file=$(jq -c -r '.git.image_file' $jsonFile)
 git_harbor_project=$(jq -c -r '.git.harbor_project' $jsonFile)
 git_sample_path=$(jq -c -r '.git.sample_path' $jsonFile)
 git_sample_configmap=$(jq -c -r '.git.sample_configmap' $jsonFile)
+#
+# argocd_*
+#
+argocd_enabled=$(echo "${vcf_a_organizations}" | jq -c -r 'any(.[]; .vks_cluster.enabled == true and .vks_cluster.argocd.enabled == true)')
+argocd_chart_version=$(jq -c -r '.argocd.chart_version' $jsonFile)
+argocd_helm_repo_url=$(jq -c -r '.argocd.helm_repo_url' $jsonFile)
+argocd_namespace=$(jq -c -r '.argocd.namespace' $jsonFile)
+argocd_fqdn_prefix=$(jq -c -r '.argocd.fqdn_prefix' $jsonFile)
+argocd_repo_secret=$(jq -c -r '.argocd.repo_secret_name' $jsonFile)
+argocd_tls_secret=$(jq -c -r '.argocd.tls_secret_name' $jsonFile)
+argocd_gateway_name=$(jq -c -r '.argocd.gateway_name' $jsonFile)
+argocd_chart_file=$(jq -c -r '.argocd.chart_file' $jsonFile)
+argocd_image_file=$(jq -c -r '.argocd.image_file' $jsonFile)
+argocd_redis_image_file=$(jq -c -r '.argocd.redis_image_file' $jsonFile)
+argocd_harbor_project=$(jq -c -r '.argocd.harbor_project' $jsonFile)
+argocd_app_name=$(jq -c -r '.argocd.app_name' $jsonFile)
+#
+# blueprint_apps_*
+#
+blueprint_apps_enabled=$(echo "${vcf_a_organizations}" | jq -c -r 'any(.[]; .blueprints.auto_update.enabled == true)')
+blueprint_apps_orgs=$(echo "${vcf_a_organizations}" | jq -c '[.[] | select(.blueprints.auto_update.enabled == true) | .name]')
+blueprint_apps_blueprint_name=$(echo "${vcf_a_organizations}" | jq -c -r '[.[] | select(.blueprints.auto_update.enabled == true) | (.blueprints.auto_update.blueprint_name // "create-virtual-service")] | (.[0] // "create-virtual-service")')
+blueprint_apps_input_name=$(echo "${vcf_a_organizations}" | jq -c -r '[.[] | select(.blueprints.auto_update.enabled == true) | (.blueprints.auto_update.input_name // "app")] | (.[0] // "app")')
+blueprint_apps_port=$(jq -c -r '.blueprint_apps.port' $jsonFile)
+blueprint_apps_watcher_namespace=$(jq -c -r '.blueprint_apps.watcher_namespace' $jsonFile)
+blueprint_apps_image=$(jq -c -r '.blueprint_apps.image' $jsonFile)
+blueprint_apps_debounce=$(jq -c -r '.blueprint_apps.debounce_seconds' $jsonFile)
+blueprint_apps_resync=$(jq -c -r '.blueprint_apps.resync_seconds' $jsonFile)
+#
+# gw-org-api (vApp only, the phase exits early for sddc)
+#
+org_api_username=""
+org_api_password=""
+org_api_port="8443"
+k8s_version_short=""

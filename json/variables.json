@@ -487,5 +487,26 @@
     "harbor_project": "registry",
     "sample_path": "hello",
     "sample_configmap": "gitops-hello"
+  },
+  "argocd": {
+    "chart_version": "10.10.5",
+    "helm_repo_url": "https://argoproj.github.io/argo-helm",
+    "namespace": "argocd",
+    "fqdn_prefix": "argocd",
+    "repo_secret_name": "repo-gitea",
+    "tls_secret_name": "argocd-tls",
+    "gateway_name": "gw-argocd",
+    "chart_file": "argo-cd-10.10.5.tgz",
+    "image_file": "argocd_v3.5.5.tar",
+    "redis_image_file": "redis_8.6.4-alpine.tar",
+    "harbor_project": "registry",
+    "app_name": "gitops"
+  },
+  "blueprint_apps": {
+    "port": 8444,
+    "watcher_namespace": "vm-watcher",
+    "image": "python:3.12-alpine",
+    "debounce_seconds": 2,
+    "resync_seconds": 300
   }
 }
