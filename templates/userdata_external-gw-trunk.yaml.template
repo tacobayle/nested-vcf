@@ -588,6 +588,15 @@ write_files:
       if [ -b /dev/sr0 ]; then
         mount -o ro /dev/sr0 /mnt/gw-tools || echo "WARNING: could not mount /dev/sr0 on /mnt/gw-tools" >&2
       fi
+      # copy every file of the gw tools ISO to /home/ubuntu (the bootstrap scripts read their charts, images and OVAs there)
+      if mountpoint -q /mnt/gw-tools; then
+        for f in /mnt/gw-tools/*; do
+          n="$(basename "$f")"
+          cp "$f" "/home/ubuntu/$n"
+          chown ubuntu:ubuntu "/home/ubuntu/$n"
+          chmod 600 "/home/ubuntu/$n"
+        done
+      fi
       #
       if [ -n "${gw_bootstrap_repo_url}" ]; then
         sudo -u ubuntu git clone "${gw_bootstrap_repo_url}" /home/ubuntu/dev-avi-vcf || echo "WARNING: could not clone ${gw_bootstrap_repo_url}" >&2
