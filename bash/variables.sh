@@ -1,5 +1,6 @@
 #!/bin/bash
 #
+highest_patch_version=$(jq -c -r '.sddc.highest_patch_version' $jsonFile)
 gw_accounts_secret=$(jq -c -r '.gw_accounts_secret' $jsonFile)
 deployment_kind="sddc"
 k8s_enabled=$(jq -c -r '.sddc.k8s.enabled' $jsonFile)
