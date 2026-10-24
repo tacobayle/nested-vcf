@@ -251,7 +251,7 @@ write_files:
       echo '${ips_esxi}' | jq -c -r .[] | while read ip_esxi
       do
         if [[ $(((${count_esxi}-1)/4+1)) -eq 1 ]] ; then
-          echo "${basename_sddc}-mgmt-esxi0$count_esxi      IN            A       ${ip_esxi}" | tee -a /var/lib/bind/db.${domain}
+          echo "${basename_sddc}-mgmt-esx0$count_esxi      IN            A       ${ip_esxi}" | tee -a /var/lib/bind/db.${domain}
         fi
         if [[ $(((${count_esxi}-1)/4+1)) -gt 1 ]] ; then
           echo "${basename_sddc}-wld0$(((${count_esxi}-1)/4))-esxi0$((${count_esxi}-(((${count_esxi}-1)/4))*4))      IN            A       ${ip_esxi}" | tee -a /var/lib/bind/db.${domain}
@@ -305,7 +305,7 @@ write_files:
       echo '${ips_esxi}' | jq -c -r .[] | while read ip_esxi
       do
         if [[ $(((${count_esxi}-1)/4+1)) -eq 1 ]] ; then
-          echo "`echo $ip_esxi | cut -f4 -d'.'`            PTR     ${basename_sddc}-mgmt-esxi0$count_esxi.${domain}." | tee -a /var/lib/bind/db.${reverse_mgmt}
+          echo "`echo $ip_esxi | cut -f4 -d'.'`            PTR     ${basename_sddc}-mgmt-esx0$count_esxi.${domain}." | tee -a /var/lib/bind/db.${reverse_mgmt}
         fi
         if [[ $(((${count_esxi}-1)/4+1)) -gt 1 ]] ; then
           echo "`echo $ip_esxi | cut -f4 -d'.'`            PTR     ${basename_sddc}-wld0$(((${count_esxi}-1)/4))-esxi0$((${count_esxi}-(((${count_esxi}-1)/4))*4)).${domain}." | tee -a /var/lib/bind/db.${reverse_mgmt}

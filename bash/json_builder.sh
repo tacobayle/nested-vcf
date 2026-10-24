@@ -11,7 +11,7 @@ hosts_validation_json="[]"
 for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
 do
   if [[ $(((${esxi}-1)/4+1)) -eq 1 ]] ; then
-    name_esxi="${basename_sddc}-mgmt-esxi0${esxi}"
+    name_esxi="${basename_sddc}-mgmt-esx0${esxi}"
   fi
   if [[ $(((${esxi}-1)/4+1)) -gt 1 ]] ; then
     name_esxi="${basename_sddc}-wld$(((${esxi}-1)/4))-esxi0$((${esxi}-(((${esxi}-1)/4))*4))"

@@ -6,10 +6,10 @@
 <body>
 <h1>VCF Deployment Details</h1>
 <ul>
-    <li><a href="https://${basename_sddc}-mgmt-esxi01.${domain}" target="_blank">ESXi 01</a></li>
-    <li><a href="https://${basename_sddc}-mgmt-esxi02.${domain}" target="_blank">ESXi 02</a></li>
-    <li><a href="https://${basename_sddc}-mgmt-esxi03.${domain}" target="_blank">ESXi 03</a></li>
-    <li><a href="https://${basename_sddc}-mgmt-esxi04.${domain}" target="_blank">ESXi 04</a></li>
+    <li><a href="https://${basename_sddc}-mgmt-esx01.${domain}" target="_blank">ESXi 01</a></li>
+    <li><a href="https://${basename_sddc}-mgmt-esx02.${domain}" target="_blank">ESXi 02</a></li>
+    <li><a href="https://${basename_sddc}-mgmt-esx03.${domain}" target="_blank">ESXi 03</a></li>
+    <li><a href="https://${basename_sddc}-mgmt-esx04.${domain}" target="_blank">ESXi 04</a></li>
     <li><a href="https://${basename_sddc}-sddcm.${domain}" target="_blank">SDDC Manager</a></li>
     <li><a href="https://${basename_sddc}-vc01.${domain}" target="_blank">Mgmt VCSA</a></li>
     <li><a href="https://${basename_sddc}-nsx01.${domain}" target="_blank">Mgmt NSX Manager</a></li>
