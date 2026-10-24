@@ -269,7 +269,7 @@ avi_loopback_ips=$(jq -c -r '.avi.loopback_ips' $jsonFile)
 avi_user_agents=$(jq -c -r '.avi.user_agents' $jsonFile)
 avi_ova_url=$(jq -c -r '.sddc.avi.ova_url' $jsonFile)
 avi_pkg_url=$(jq -c -r '.sddc.avi.pkg_url' $jsonFile)
-avi_pkg_filename=$(jq -c -r '.sddc.avi.pkg_url' $jsonFile)
+avi_pkg_filename=$(basename "$(jq -c -r '.sddc.avi.pkg_url // ""' $jsonFile)")
 avi_jwt_token=$(jq -c -r '.sddc.avi.jwt_token' $jsonFile)
 if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   avi_version=$(jq -c -r '.sddc.avi.version' $jsonFile)
