@@ -597,6 +597,13 @@ write_files:
           chmod 600 "/home/ubuntu/$n"
         done
       fi
+      # install the VCF CLI from the gw tools ISO (supervisor-bootstrap runs `vcf context ...`)
+      for t in /mnt/gw-tools/vcf-cli-*.tar.gz; do
+        [ -f "$t" ] || continue
+        tar -xzf "$t" -C /tmp
+        mv /tmp/vcf-cli-linux_amd64 /usr/local/bin/vcf
+      done
+      #
       #
       if [ -n "${gw_bootstrap_repo_url}" ]; then
         sudo -u ubuntu git clone "${gw_bootstrap_repo_url}" /home/ubuntu/dev-avi-vcf || echo "WARNING: could not clone ${gw_bootstrap_repo_url}" >&2
