@@ -10,6 +10,7 @@
   "yaml_folder": "yaml-files",
   "vault": {
     "secret_file_path": "/home/ubuntu/vault/secret.json",
+    "student_policy_name": "student-readonly",
     "pki": {
       "name": "pki",
       "max_lease_ttl": "87600h",
@@ -374,6 +375,34 @@
     }
   },
   "avi":{
+    "user_agents":
+    [
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.69"
+    ],
+    "loopback_ips":
+    [
+      "142.214.161.165/32",
+      "1.12.2.187/32",
+      "52.14.30.135/32",
+      "5.39.14.101/32",
+      "109.237.177.16/32",
+      "103.142.12.32/32",
+      "67.223.120.87/32",
+      "10.79.186.57/32",
+      "1.32.205.7/32",
+      "104.106.96.18/32",
+      "103.1.108.10/32",
+      "104.119.47.220/32",
+      "104.234.224.113/32",
+      "102.177.114.65/32",
+      "103.10.24.118",
+      "104.76.222.234"
+    ],
     "folder": "avi-ctrl",
     "ctrl_name": "avi-ctrl-01",
     "content_library_name": "avi",

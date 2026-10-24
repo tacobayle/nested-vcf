@@ -1,7 +1,9 @@
 #!/bin/bash
 #
-slack_webhook=$(jq -c -r .slack_webhook $jsonFile)
 gw_accounts_secret=$(jq -c -r '.gw_accounts_secret' $jsonFile)
+deployment_kind="sddc"
+k8s_enabled=$(jq -c -r '.sddc.k8s.enabled' $jsonFile)
+slack_webhook=$(jq -c -r .slack_webhook $jsonFile)
 google_webhook=$(jq -c -r .google_webhook $jsonFile)
 DEPOT_USERNAME=$(jq -c -r .depot.username $jsonFile)
 DEPOT_PASSWORD=$(jq -c -r .depot.password $jsonFile)
@@ -49,6 +51,7 @@ vault_pki_intermediate_cert_path_signed=$(jq -c -r '.vault.pki_intermediate.cert
 vault_pki_intermediate_role_name=$(jq -c -r '.vault.pki_intermediate.role.name' $jsonFile)
 vault_pki_intermediate_role_allow_subdomains=$(jq -c -r '.vault.pki_intermediate.role.allow_subdomains' $jsonFile)
 vault_pki_intermediate_role_max_ttl=$(jq -c -r '.vault.pki_intermediate.role.max_ttl' $jsonFile)
+vault_student_policy_name=$(jq -c -r '.vault.student_policy_name' $jsonFile)
 #
 #
 #
@@ -69,6 +72,7 @@ starting_ip_vmotion="$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | 
 ending_ip_vmotion="$(jq -c -r --arg arg "VMOTION" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.vcenter.vmotionPool ${jsonFile}| cut -f2 -d'-')"
 gw_pip_artefact=$(jq -c -r .gw.pip_artefact $jsonFile)
 ip_gw=$(jq -c -r .gw.ip $jsonFile)
+ip_gw_direct=$(jq -c -r .gw.ip $jsonFile)
 gw_vcf_cli_url=$(jq -c -r .gw.vcf_cli_url $jsonFile)
 ip_vcsa="$(jq -c -r --arg arg "VM_MANAGEMENT" '.sddc.vcenter.networks[] | select( .type == $arg).cidr' $jsonFile | awk -F'0/' '{print $1}')$(jq -c -r .sddc.vcenter.ip ${jsonFile})"
 name_cb=$(jq -c -r .cloud_builder.name $jsonFile)
@@ -261,8 +265,11 @@ nsx_config_transit_gateways=$(jq -c -r .nsx.config.transit_gateways $jsonFile)
 nsx_config_vpc_connectivity_profiles=$(jq -c -r .nsx.config.vpc_connectivity_profiles $jsonFile)
 nsx_config_vpc_service_profiles=$(jq -c -r .nsx.config.vpc_service_profiles $jsonFile)
 nsx_config_vpcs=$(jq -c -r .nsx.config.vpcs $jsonFile)
+avi_loopback_ips=$(jq -c -r '.avi.loopback_ips' $jsonFile)
+avi_user_agents=$(jq -c -r '.avi.user_agents' $jsonFile)
 avi_ova_url=$(jq -c -r '.sddc.avi.ova_url' $jsonFile)
 avi_pkg_url=$(jq -c -r '.sddc.avi.pkg_url' $jsonFile)
+avi_pkg_filename=$(jq -c -r '.sddc.avi.pkg_url' $jsonFile)
 avi_jwt_token=$(jq -c -r '.sddc.avi.jwt_token' $jsonFile)
 if [[ ${vcf_version_two_digit} == "9.1" ]]; then
   avi_version=$(jq -c -r '.sddc.avi.version' $jsonFile)
