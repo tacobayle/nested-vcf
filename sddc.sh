@@ -229,7 +229,6 @@ if [[ ${operation} == "apply" ]] ; then
           scp -o StrictHostKeyChecking=no "/root/$(basename ${avi_pkg_url})" ubuntu@${ip_gw}:/home/ubuntu/avi/$(basename ${avi_pkg_url})
           scp -o StrictHostKeyChecking=no -r /root/${basename_sddc}_${operation}.json ubuntu@${ip_gw}:/home/ubuntu/json/${basename_sddc}_${operation}.json
 #          ssh -o StrictHostKeyChecking=no -t ubuntu@${ip_gw} "nohup bash /home/ubuntu/dev-avi-vcf/scripts/vcf_bootstrap.sh /home/ubuntu/json/${basename_sddc}_${operation}.json" >> ${log_file}
-          exit
 #          for esxi in $(seq 1 $(echo ${ips_esxi} | jq -c -r '. | length'))
 #          do
 #            ip_esxi="$(echo ${ips_esxi} | jq -r .[$(expr ${esxi} - 1)])"
