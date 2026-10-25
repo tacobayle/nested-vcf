@@ -1,5 +1,6 @@
 #!/bin/bash
 #
+stop_before_phase=$(jq -c -r '.sddc.stop_before_phase // ""' $jsonFile)
 highest_patch_version=$(jq -c -r '.sddc.highest_patch_version // false' $jsonFile)
 gw_accounts_secret=$(jq -c -r '.gw_accounts_secret' $jsonFile)
 deployment_kind="sddc"
