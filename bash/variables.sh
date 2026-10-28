@@ -520,10 +520,3 @@ blueprint_apps_watcher_namespace=$(jq -c -r '.blueprint_apps.watcher_namespace' 
 blueprint_apps_image=$(jq -c -r '.blueprint_apps.image' $jsonFile)
 blueprint_apps_debounce=$(jq -c -r '.blueprint_apps.debounce_seconds' $jsonFile)
 blueprint_apps_resync=$(jq -c -r '.blueprint_apps.resync_seconds' $jsonFile)
-#
-# gw-org-api (vApp only, the phase exits early for sddc)
-#
-org_api_username=""
-org_api_password=""
-org_api_port="8443"
-k8s_version_short=""
