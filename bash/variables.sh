@@ -3,7 +3,7 @@
 org_api_username=$(jq -c -r '.gw.org_api.username // ""' $jsonFile)
 org_api_password=$(jq -c -r '.gw.org_api.password // ""' $jsonFile)
 org_api_port=$(jq -c -r '.gw.org_api.port // ""' $jsonFile)
-gw_account_secret=$(jq -c -r '.gw.account_secret // ""' $jsonFile)
+gw_accounts_secret=$(jq -c -r '.gw.accounts_secret // ""' $jsonFile)
 stop_before_phase=$(jq -c -r '.sddc.stop_before_phase // ""' $jsonFile)
 highest_patch_version=$(jq -c -r '.sddc.highest_patch_version // false' $jsonFile)
 gw_accounts_secret=$(jq -c -r '.gw_accounts_secret' $jsonFile)
