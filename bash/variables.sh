@@ -1,5 +1,9 @@
 #!/bin/bash
 #
+desktop_ova_url=$(jq -c -r '.desktop.ova_url // ""' $jsonFile)
+desktop_ip=$(jq -c -r '.desktop.ip // ""' $jsonFile)
+desktop_network_ref=$(jq -c -r '.desktop.network_ref // ""' $jsonFile)
+desktop_name=$(jq -c -r '.desktop.name // ""' $jsonFile)
 org_api_username=$(jq -c -r '.gw.org_api.username // ""' $jsonFile)
 org_api_password=$(jq -c -r '.gw.org_api.password // ""' $jsonFile)
 org_api_port=$(jq -c -r '.gw.org_api.port // ""' $jsonFile)

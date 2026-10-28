@@ -34,6 +34,7 @@ govc about
 if [ $? -ne 0 ] ; then touch /root/govc.error ; fi
 list_folder=$(govc find -json . -type f)
 list_gw=$(govc find -json vm -name "${gw_name}")
+list_desktop_name=$(govc find -json vm -name "${desktop_name}")
 #
 #
 # Apply use case
@@ -662,7 +663,19 @@ if [[ ${operation} == "destroy" ]] ; then
     govc vm.destroy "${gw_name}"
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${gw_name} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
   else
-    echo "ERROR: unable to delete VM ${gw_name}: it already exists" | tee -a ${log_file}
+    echo "ERROR: unable to delete VM ${gw_name}: it does not exists" | tee -a ${log_file}
+  fi
+  #
+  #
+  #
+  echo '------------------------------------------------------------' | tee -a ${log_file}
+  echo "Deletion of a VM on the underlay infrastructure - This should take less than a minute" | tee -a ${log_file}
+  if [[ ${list_desktop_name} != "null" ]] ; then
+    govc vm.power -off=true "${desktop_name}"
+    govc vm.destroy "${desktop_name}"
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${desktop_name} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
+  else
+    echo "ERROR: unable to delete VM ${desktop_name}: it does not exists" | tee -a ${log_file}
   fi
   #
   #
