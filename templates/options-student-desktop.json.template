@@ -1,0 +1,18 @@
+{
+  "DiskProvisioning": "thin",
+  "IPAllocationPolicy": "fixedPolicy",
+  "IPProtocol": "IPv4",
+  "PropertyMapping": [
+    { "Key": "guestinfo.desktop.mode",   "Value": "${desktop_mode}" },
+    { "Key": "guestinfo.desktop.vcf-gw", "Value": "${vcf_gw_ip}" },
+    { "Key": "guestinfo.desktop.ntp",    "Value": "${ntp_servers}" }
+  ],
+  "NetworkMapping": [
+    { "Name": "VM Network", "Network": "${network_ref}" }
+  ],
+  "MarkAsTemplate": false,
+  "PowerOn": false,
+  "InjectOvfEnv": false,
+  "WaitForIP": false,
+  "Name": "${desktop_name}"
+}

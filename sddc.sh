@@ -54,6 +54,16 @@ if [[ ${operation} == "apply" ]] ; then
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: vsphere external folder ${folder} created" ${log_file} ${slack_webhook} ${google_webhook}
   fi
   #
+  # student desktop
+  # ova download
+  download_file_from_url_to_location "${desktop_ova_url}" "/root/$(basename ${desktop_ova_url})" "Desktop OVA"
+  sed -e "s#\${desktop_mode}#auto#" \
+      -e "s@\${vcf_gw_ip}@${ip_gw}@" \
+      -e "s@\${network_ref}@${desktop_network_ref}@" \
+      -e "s@\${desktop_name}@${desktop_name}@" \
+      -e "s/\${ntp_servers}/${ip_gw}/" /nested-vcf/templates/options-student-desktop.json.template | tee "/tmp/options-student-desktop.json" > /dev/null
+  govc import.ova --options="/tmp/options-student-desktop.json" -folder "${folder}" "/root/$(basename ${desktop_ova_url})" > /dev/null 2>&1
+  #
   #
   echo '------------------------------------------------------------' >> ${log_file}
   echo "Creation of an external gw on the underlay infrastructure - This should take 10 minutes" >> ${log_file}

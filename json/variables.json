@@ -4,6 +4,7 @@
     "memory": 4096,
     "disk": "40G"
   },
+  "org_folders": [".kube", "gitops", "wireguard", "yaml-files"],
   "K8s_version_short": "v1.35",
   "folders_to_copy": ["bash", "json", "templates", "html"],
   "directories": ["bin", "esxi", "vault", "yaml-files", "html"],
