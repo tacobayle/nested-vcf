@@ -56,13 +56,15 @@ if [[ ${operation} == "apply" ]] ; then
   #
   # student desktop
   # ova download
+  if [[ $(echo "${list_desktop_name}" | jq -c -r 'length') -gt 0 ]]; then
   download_file_from_url_to_location "${desktop_ova_url}" "/root/$(basename ${desktop_ova_url})" "Desktop OVA"
-  sed -e "s#\${desktop_mode}#auto#" \
+  sed -e "s#\${desktop_mode}#vcf-auto#" \
       -e "s@\${vcf_gw_ip}@${ip_gw}@" \
       -e "s@\${network_ref}@${desktop_network_ref}@" \
       -e "s@\${desktop_name}@${desktop_name}@" \
       -e "s/\${ntp_servers}/${ip_gw}/" /nested-vcf/templates/options-student-desktop.json.template | tee "/tmp/options-student-desktop.json" > /dev/null
   govc import.ova --options="/tmp/options-student-desktop.json" -folder "${folder}" "/root/$(basename ${desktop_ova_url})" > /dev/null 2>&1
+  fi
   #
   #
   echo '------------------------------------------------------------' >> ${log_file}
@@ -673,7 +675,7 @@ if [[ ${operation} == "destroy" ]] ; then
     govc vm.destroy "${gw_name}"
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${gw_name} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
   else
-    echo "ERROR: unable to delete VM ${gw_name}: it does not exists" | tee -a ${log_file}
+    echo "ERROR: unable to delete VM ${gw_name}: it does not exist" | tee -a ${log_file}
   fi
   #
   #
@@ -685,7 +687,7 @@ if [[ ${operation} == "destroy" ]] ; then
     govc vm.destroy "${desktop_name}"
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${desktop_name} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
   else
-    echo "ERROR: unable to delete VM ${desktop_name}: it does not exists" | tee -a ${log_file}
+    echo "ERROR: unable to delete VM ${desktop_name}: it does not exist" | tee -a ${log_file}
   fi
   #
   #
