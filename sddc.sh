@@ -56,14 +56,16 @@ if [[ ${operation} == "apply" ]] ; then
   #
   # student desktop
   # ova download
-  if [[ $(echo "${list_desktop_name}" | jq -c -r 'length') -gt 0 ]]; then
-  download_file_from_url_to_location "${desktop_ova_url}" "/root/$(basename ${desktop_ova_url})" "Desktop OVA"
-  sed -e "s#\${desktop_mode}#vcf-auto#" \
-      -e "s@\${vcf_gw_ip}@${ip_gw}@" \
-      -e "s@\${network_ref}@${desktop_network_ref}@" \
-      -e "s@\${desktop_name}@${desktop_name}@" \
-      -e "s/\${ntp_servers}/${ip_gw}/" /nested-vcf/templates/options-student-desktop.json.template | tee "/tmp/options-student-desktop.json" > /dev/null
-  govc import.ova --options="/tmp/options-student-desktop.json" -folder "${folder}" "/root/$(basename ${desktop_ova_url})" > /dev/null 2>&1
+  if [[ ${list_gw} != "null" ]] ; then
+    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to create VM ${desktop_name}: it already exists" ${log_file} ${slack_webhook} ${google_webhook}
+  else
+    download_file_from_url_to_location "${desktop_ova_url}" "/root/$(basename ${desktop_ova_url})" "Desktop OVA"
+    sed -e "s#\${desktop_mode}#vcf-auto#" \
+        -e "s@\${vcf_gw_ip}@${ip_gw}@" \
+        -e "s@\${network_ref}@${desktop_network_ref}@" \
+        -e "s@\${desktop_name}@${desktop_name}@" \
+        -e "s/\${ntp_servers}/${ip_gw}/" /nested-vcf/templates/options-student-desktop.json.template | tee "/tmp/options-student-desktop.json" > /dev/null
+    govc import.ova --options="/tmp/options-student-desktop.json" -folder "${folder}" "/root/$(basename ${desktop_ova_url})" > /dev/null 2>&1
   fi
   #
   #
