@@ -56,7 +56,7 @@ if [[ ${operation} == "apply" ]] ; then
   #
   # student desktop
   # ova download
-  if [[ ${list_gw} != "null" ]] ; then
+  if [[ ${list_desktop_name} != "null" ]] ; then
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to create VM ${desktop_name}: it already exists" ${log_file} ${slack_webhook} ${google_webhook}
   else
     download_file_from_url_to_location "${desktop_ova_url}" "/root/$(basename ${desktop_ova_url})" "Desktop OVA"
