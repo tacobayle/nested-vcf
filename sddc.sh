@@ -54,20 +54,6 @@ if [[ ${operation} == "apply" ]] ; then
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: vsphere external folder ${folder} created" ${log_file} ${slack_webhook} ${google_webhook}
   fi
   #
-  # student desktop
-  # ova download
-  if [[ ${list_desktop_name} != "null" ]] ; then
-    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ERROR: unable to create VM ${desktop_name}: it already exists" ${log_file} ${slack_webhook} ${google_webhook}
-  else
-    download_file_from_url_to_location "${desktop_ova_url}" "/root/$(basename ${desktop_ova_url})" "Desktop OVA"
-    sed -e "s#\${desktop_mode}#vcf-auto#" \
-        -e "s@\${vcf_gw_ip}@${ip_gw}@" \
-        -e "s@\${network_ref}@${desktop_network_ref}@" \
-        -e "s@\${desktop_name}@${desktop_name}@" \
-        -e "s/\${ntp_servers}/${ip_gw}/" /nested-vcf/templates/options-student-desktop.json.template | tee "/tmp/options-student-desktop.json" > /dev/null
-    govc import.ova --options="/tmp/options-student-desktop.json" -folder "${folder}" "/root/$(basename ${desktop_ova_url})" > /dev/null 2>&1
-  fi
-  #
   #
   echo '------------------------------------------------------------' >> ${log_file}
   echo "Creation of an external gw on the underlay infrastructure - This should take 10 minutes" >> ${log_file}
@@ -678,18 +664,6 @@ if [[ ${operation} == "destroy" ]] ; then
     log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${gw_name} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
   else
     echo "ERROR: unable to delete VM ${gw_name}: it does not exist" | tee -a ${log_file}
-  fi
-  #
-  #
-  #
-  echo '------------------------------------------------------------' | tee -a ${log_file}
-  echo "Deletion of a VM on the underlay infrastructure - This should take less than a minute" | tee -a ${log_file}
-  if [[ ${list_desktop_name} != "null" ]] ; then
-    govc vm.power -off=true "${desktop_name}"
-    govc vm.destroy "${desktop_name}"
-    log_message "$(date "+%Y-%m-%d,%H:%M:%S"), nested-${basename_sddc}: ${desktop_name} VM powered off and destroyed" ${log_file} ${slack_webhook} ${google_webhook}
-  else
-    echo "ERROR: unable to delete VM ${desktop_name}: it does not exist" | tee -a ${log_file}
   fi
   #
   #

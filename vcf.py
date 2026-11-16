@@ -44,6 +44,29 @@ def delete_sddc(spec):
         json.dump(a_dict, outfile)
     result=subprocess.Popen(['/bin/bash', 'sddc.sh', json_file, log_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=folder)
 
+def create_desktop(spec):
+    folder='/nested-vcf'
+    a_dict = spec
+    a_dict['operation'] = "apply"
+    now = datetime.datetime.now()
+    json_file='/root/data_desktop.json'
+    log_file="/nested-vcf/log/{0}-{1}_apply_desktop.stdout".format(a_dict['desktop']['name'], now.strftime("%Y%m%d%H%M%S"))
+    with open(json_file, 'w') as outfile:
+        json.dump(a_dict, outfile)
+    result=subprocess.Popen(['/bin/bash', 'desktop.sh', json_file, log_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=folder)
+
+# Helper function to delete sddc
+def delete_desktop(spec):
+    folder='/nested-vcf'
+    a_dict = spec
+    a_dict['operation'] = "destroy"
+    now = datetime.datetime.now()
+    json_file='/root/data_desktop.json'
+    log_file="/nested-vcf/log/{0}-{1}_destroy_desktop.stdout".format(a_dict['desktop']['name'], now.strftime("%Y%m%d%H%M%S"))
+    with open(json_file, 'w') as outfile:
+        json.dump(a_dict, outfile)
+    result=subprocess.Popen(['/bin/bash', 'desktop.sh', json_file, log_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=folder)
+
 
 # def create_vcfi(spec):
 #     a_dict = spec
@@ -72,6 +95,22 @@ def on_delete(body, **kwargs):
     spec = body['spec']
     try:
         delete_sddc(spec)
+    except requests.RequestException as e:
+        raise kopf.PermanentError(f'Failed to delete external resource: {e}')
+
+@kopf.on.create('desktops')
+def on_create(body, **kwargs):
+    spec = body['spec']
+    try:
+        create_desktop(spec)
+    except requests.RequestException as e:
+        raise kopf.PermanentError(f'Failed to create external resource: {e}')
+
+@kopf.on.delete('desktops')
+def on_delete(body, **kwargs):
+    spec = body['spec']
+    try:
+        delete_desktop(spec)
     except requests.RequestException as e:
         raise kopf.PermanentError(f'Failed to delete external resource: {e}')
 
