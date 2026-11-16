@@ -47,6 +47,11 @@ if [[ ${operation} == "apply" ]] ; then
         -e "s@\${desktop_name}@${desktop_name}@" \
         -e "s/\${ntp_servers}/${ip_gw}/" /nested-vcf/templates/options-student-desktop.json.template | tee "/tmp/options-student-desktop.json" > /dev/null
     govc import.ova --options="/tmp/options-student-desktop.json" -folder "${folder}" "/root/$(basename ${desktop_ova_url})" > /dev/null 2>&1
+    net_gw=$(jq -r --arg r "${desktop_network_ref}" '.vsphere_underlay.networks[] | select(.ref==$r) | .gw' $jsonFile)
+    net_cidr=$(jq -r --arg r "${desktop_network_ref}" '.vsphere_underlay.networks[] | select(.ref==$r) | .cidr' $jsonFile)
+    p=${net_cidr#*/}; m=$(( (0xffffffff << (32-p)) & 0xffffffff ))
+    netmask=$(printf '%d.%d.%d.%d' $((m>>24&255)) $((m>>16&255)) $((m>>8&255)) $((m&255)))
+    govc vm.customize -vm "${desktop_name}" -name "${desktop_name}" -ip "${desktop_ip}" -netmask "${netmask}" -gateway "${net_gw}" -dns-server "${ip_gw}"
     govc vm.power -on=true "${desktop_name}" > /dev/null 2>&1
   fi
 fi
@@ -68,4 +73,3 @@ if [[ ${operation} == "destroy" ]] ; then
   #
   #
 fi
-
