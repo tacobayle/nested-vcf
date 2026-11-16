@@ -34,7 +34,6 @@ govc about
 if [ $? -ne 0 ] ; then touch /root/govc.error ; fi
 list_folder=$(govc find -json . -type f)
 list_gw=$(govc find -json vm -name "${gw_name}")
-list_desktop_name=$(govc find -json vm -name "${desktop_name}")
 #
 #
 # Apply use case

@@ -20,17 +20,17 @@ desktop_ova_url=$(jq -c -r '.desktop.ova_url // ""' $jsonFile)
 desktop_ip=$(jq -c -r '.desktop.ip // ""' $jsonFile)
 desktop_network_ref=$(jq -c -r '.desktop.network_ref // ""' $jsonFile)
 desktop_name=$(jq -c -r '.desktop.name // "desktop-vm"' $jsonFile)
-ip_gw=$(jq -c -r '.desktop.ip_gw // "desktop-vm"' $jsonFile)
+ip_gw=$(jq -c -r '.desktop.ip_gw // ""' $jsonFile)
 folder=$(jq -c -r .vsphere_underlay.folder $jsonFile)
-list_folder=$(govc find -json . -type f)
 source /nested-vcf/bash/govc/load_govc_external.sh
 govc about
+list_folder=$(govc find -json . -type f)
 list_desktop_name=$(govc find -json vm -name "${desktop_name}")
 if [[ ${operation} == "apply" ]] ; then
   #
   echo "Creation of a folder on the underlay infrastructure - This should take less than a minute" >> ${log_file}
   if $(echo ${list_folder} | jq -e '. | any(. == "./vm/'${folder}'")' >/dev/null ) ; then
-    echo "folder already exists"
+    echo "folder already exists" >> ${log_file}
   else
     govc folder.create /${vsphere_dc}/vm/${folder} > /dev/null 2>&1
   fi
@@ -38,7 +38,7 @@ if [[ ${operation} == "apply" ]] ; then
   # student desktop
   # ova download
   if [[ ${list_desktop_name} != "null" ]] ; then
-    echo" VM already exists"
+    echo "VM already exists" >> ${log_file}
   else
     download_file_from_url_to_location "${desktop_ova_url}" "/root/$(basename ${desktop_ova_url})" "Desktop OVA"
     sed -e "s#\${desktop_mode}#vcf-auto#" \

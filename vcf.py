@@ -99,7 +99,7 @@ def on_delete(body, **kwargs):
         raise kopf.PermanentError(f'Failed to delete external resource: {e}')
 
 @kopf.on.create('desktops')
-def on_create(body, **kwargs):
+def on_create_desktop(body, **kwargs):
     spec = body['spec']
     try:
         create_desktop(spec)
@@ -107,7 +107,7 @@ def on_create(body, **kwargs):
         raise kopf.PermanentError(f'Failed to create external resource: {e}')
 
 @kopf.on.delete('desktops')
-def on_delete(body, **kwargs):
+def on_delete_desktop(body, **kwargs):
     spec = body['spec']
     try:
         delete_desktop(spec)
