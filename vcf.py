@@ -55,7 +55,6 @@ def create_desktop(spec):
         json.dump(a_dict, outfile)
     result=subprocess.Popen(['/bin/bash', 'desktop.sh', json_file, log_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=folder)
 
-# Helper function to delete sddc
 def delete_desktop(spec):
     folder='/nested-vcf'
     a_dict = spec
